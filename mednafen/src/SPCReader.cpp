@@ -21,9 +21,7 @@
 
 #include <mednafen/mednafen.h>
 #include <mednafen/SPCReader.h>
-#include <mednafen/string/trim.h>
-
-#include <string.h>
+#include <mednafen/string/string.h>
 
 bool SPCReader::TestMagic(Stream* fp)
 {

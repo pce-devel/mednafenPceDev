@@ -89,132 +89,129 @@ static void DBG_CheckWriteBP(unsigned len, uint32 addr)
  }
 }
 
-static void GetAddressSpaceBytes(const char *name, uint32 Address, uint32 Length, uint8 *Buffer)
+enum
 {
- if(!strcmp(name, "physical"))
+ ASPACE_PHYSICAL = 0,
+ ASPACE_WORKRAML,
+ ASPACE_WORKRAMH,
+ ASPACE_SCSPRAM,
+ ASPACE_DSPPROG,
+ ASPACE_VDP1VRAM,
+ ASPACE_VDP1FB0,
+ ASPACE_VDP1FB1,
+ ASPACE_VDP2VRAM
+};
+
+template<unsigned id>
+static MDFN_COLD void GetAddressSpaceBytes(const char *name, uint32 Address, uint32 Length, uint8 *Buffer)
+{
+ while(MDFN_LIKELY(Length--))
  {
-  while(Length--)
+  switch(id)
   {
-   //Address &= 0xFFFFFFFF;
-   //*Buffer = CPU->PeekMem8(Address);
-   Address++;
-   Buffer++;
+   default:
+	break;
+
+   case ASPACE_PHYSICAL:
+	//TODO:
+	//Address &= 0x07FFFFFF;
+	//*Buffer = SH7095_BusPeek<uint8>(Address);
+	break;
+
+   case ASPACE_WORKRAML:
+	Address &= 0xFFFFF;
+	*Buffer = ne16_rbo_be<uint8>(WorkRAML, Address);
+	break;
+
+   case ASPACE_WORKRAMH:
+	Address &= 0xFFFFF;
+	*Buffer = ne16_rbo_be<uint8>(WorkRAMH, Address);
+	break;
+
+   case ASPACE_SCSPRAM:
+	Address &= 0x7FFFF;
+	*Buffer = SOUND_PeekRAM(Address);
+	break;
+
+   case ASPACE_DSPPROG:
+	Address &= 0x3FF;
+	*Buffer = SCU_DSP_PeekProgRAM(Address >> 2) >> (((Address & 0x3) ^ 0x3) << 3);
+	break;
+
+   case ASPACE_VDP1VRAM:
+	Address &= 0x7FFFF;
+	*Buffer = VDP1::PeekVRAM(Address);
+	break;
+
+   case ASPACE_VDP1FB0:
+   case ASPACE_VDP1FB1:
+	Address &= 0x3FFFF;
+	*Buffer = VDP1::PeekFB(id == ASPACE_VDP1FB1, Address);
+	break;
+
+   case ASPACE_VDP2VRAM:
+	Address &= 0x7FFFF;
+	*Buffer = VDP2::PeekVRAM(Address);
+	break;
   }
- }
- else if(!strcmp(name, "workraml"))
- {
-  while(Length--)
-  {
-   Address &= 0xFFFFF;
-   *Buffer = ne16_rbo_be<uint8>(WorkRAML, Address);
-   Address++;
-   Buffer++;
-  }
- }
- else if(!strcmp(name, "workramh"))
- {
-  while(Length--)
-  {
-   Address &= 0xFFFFF;
-   *Buffer = ne16_rbo_be<uint8>(WorkRAMH, Address);
-   Address++;
-   Buffer++;
-  }
- }
- else if(!strcmp(name, "scspram"))
- {
-  while(Length--)
-  {
-   Address &= 0x7FFFF;
-   *Buffer = SOUND_PeekRAM(Address);
-   Address++;
-   Buffer++;
-  }
- }
- else if(!strcmp(name, "dspprog"))
- {
-  while(Length--)
-  {
-   Address &= 0x3FF;
-   *Buffer = SCU_DSP_PeekProgRAM(Address >> 2) >> (((Address & 0x3) ^ 0x3) << 3);
-   Address++;
-   Buffer++;
-  }
- }
- else if(!strcmp(name, "vdp1vram"))
- {
-  while(Length--)
-  {
-   Address &= 0x7FFFF;
-   *Buffer = VDP1::PeekVRAM(Address);
-   Address++;
-   Buffer++;
-  }
- }
- else if(!strcmp(name, "vdp2vram"))
- {
-  while(Length--)
-  {
-   Address &= 0x7FFFF;
-   *Buffer = VDP2::PeekVRAM(Address);
-   Address++;
-   Buffer++;
-  }
+  Address++;
+  Buffer++;
  }
 }
 
-
-static void PutAddressSpaceBytes(const char *name, uint32 Address, uint32 Length, uint32 Granularity, bool hl, const uint8 *Buffer)
+template<unsigned id>
+static MDFN_COLD void PutAddressSpaceBytes(const char *name, uint32 Address, uint32 Length, uint32 Granularity, bool hl, const uint8 *Buffer)
 {
- if(!strcmp(name, "physical"))
+ while(MDFN_LIKELY(Length--))
  {
-  while(Length--)
+  switch(id)
   {
-   //Address &= 0xFFFFFFFF;
-   //CPU->PokeMem8(Address, *Buffer);
-   Address++;
-   Buffer++;
+   default:
+	break;
+
+   case ASPACE_PHYSICAL:
+	// TODO:
+	//Address &= 0x07FFFFFF;
+	//*Buffer = SH7095_BusPoke<uint8>(Address, *Buffer);
+	break;
+
+   case ASPACE_WORKRAML:
+	Address &= 0xFFFFF;
+	ne16_wbo_be<uint8>(WorkRAML, Address, *Buffer);
+	break;
+
+   case ASPACE_WORKRAMH:
+	Address &= 0xFFFFF;
+	ne16_wbo_be<uint8>(WorkRAMH, Address, *Buffer);
+	break;
+
+   case ASPACE_SCSPRAM:
+	Address &= 0x7FFFF;
+	SOUND_PokeRAM(Address, *Buffer);
+	break;
+
+   case ASPACE_DSPPROG:
+	// TODO:
+	break;
+
+   case ASPACE_VDP1VRAM:
+	Address &= 0x7FFFF;
+	VDP1::PokeVRAM(Address, *Buffer);
+	break;
+
+   case ASPACE_VDP1FB0:
+   case ASPACE_VDP1FB1:
+	Address &= 0x3FFFF;
+	VDP1::PokeFB(id == ASPACE_VDP1FB1, Address, *Buffer);
+	break;
+
+   case ASPACE_VDP2VRAM:
+	Address &= 0x7FFFF;
+	VDP2::PokeVRAM(Address, *Buffer);
+	break;
   }
- }
- else if(!strcmp(name, "workramh"))
- {
-  while(Length--)
-  {
-   Address &= 0xFFFFF;
-   ne16_wbo_be<uint8>(WorkRAMH, Address, *Buffer);
-   Address++;
-   Buffer++;
-  }
- }
- else if(!strcmp(name, "scspram"))
- {
-  while(Length--)
-  {
-   Address &= 0x7FFFF;
-   SOUND_PokeRAM(Address, *Buffer);
-   Address++;
-   Buffer++;
-  }
- }
- else if(!strcmp(name, "vdp1vram"))
- {
-  while(Length--)
-  {
-   Address &= 0x7FFFF;
-   VDP1::PokeVRAM(Address, *Buffer);
-   Address++;
-   Buffer++;
-  }
- }
- else if(!strcmp(name, "vdp2vram"))
- {
-  while(Length--)
-  {
-   Address &= 0x7FFFF;
-   VDP2::PokeVRAM(Address, *Buffer);
-   Address++;
-   Buffer++;
-  }
+  Address++;
+  Buffer++;
  }
 }
 
@@ -497,7 +494,7 @@ static MDFN_COLD void DBG_ToggleSyntax(void)
 //
 //
 
-static RegType DBG_Regs_CPU[] =
+static const RegType DBG_Regs_CPU[] =
 {
  { SH7095::GSREG_PC_ID, "PC", "PC (Effective)", 4 },
  { SH7095::GSREG_RPC, "RPC", "PC (Real)", 4 },
@@ -574,7 +571,7 @@ static RegType DBG_Regs_CPU[] =
  { 0, "", "", 0 },
 };
 
-static RegType DBG_Regs_CPUE[] =
+static const RegType DBG_Regs_CPUE[] =
 {
  { SH7095::GSREG_DMAOR, "DMAOR", "DMAOR", 1 },
  { SH7095::GSREG_DMAORM, "DMAORM", "DMAORM", 1 },
@@ -623,7 +620,7 @@ static MDFN_COLD void DBG_SetRegister_CPU(const unsigned int id, uint32 value)
  CPU[DBG.ActiveCPU].SetRegister(id, value);
 }
 
-static RegGroupType DBG_RegGroup_CPU =
+static const RegGroupType DBG_RegGroup_CPU =
 {
  NULL,
  DBG_Regs_CPU,
@@ -631,7 +628,7 @@ static RegGroupType DBG_RegGroup_CPU =
  DBG_SetRegister_CPU
 };
 
-static RegGroupType DBG_RegGroup_CPUE =
+static const RegGroupType DBG_RegGroup_CPUE =
 {
  NULL,
  DBG_Regs_CPUE,
@@ -640,11 +637,10 @@ static RegGroupType DBG_RegGroup_CPUE =
 };
 
 
-static RegType DBG_Regs_SCU[] =
+static const RegType DBG_Regs_SCU[] =
 {
  { SCU_GSREG_ILEVEL, "ILevel", "IRL Output to SH2-M", 1 },
  { SCU_GSREG_IVEC, "IVec", "Pending IRQ Vector Number", 1 },
- { SCU_GSREG_ICLEARMASK, "IClM", "Pending^2 IRQ Clear Mask", 1 },
 
  { 0, "------", "", 0xFFFF },
 
@@ -675,7 +671,7 @@ static RegType DBG_Regs_SCU[] =
  { 0, "", "", 0 },
 };
 
-static RegGroupType DBG_RegGroup_SCU =
+static const RegGroupType DBG_RegGroup_SCU =
 {
  NULL,
  DBG_Regs_SCU,
@@ -686,26 +682,57 @@ static RegGroupType DBG_RegGroup_SCU =
 //
 //
 
-static RegType DBG_Regs_VDP1_VDP2[] =
+static const RegType DBG_Regs_VDP1_VDP2_SCSP[] =
 {
  { 0, "------", "", 0xFFFF },
 
- { VDP2::GSREG_LINE, "Line", "Line", 2 },
- { VDP2::GSREG_DON, "DON", "Display On", 0x100 | 1 },
- { VDP2::GSREG_BM, "BM", "Border Mode", 0x100 | 1 },
- { VDP2::GSREG_IM, "IM", "Interlace Mode", 0x100 | 2 },
- { VDP2::GSREG_VRES, "VRES", "Vertical Resolution", 0x100 | 2 },
- { VDP2::GSREG_HRES, "HRES", "Horizontal Resolution", 0x100 | 3 },
+ { (1 << 16) | VDP2::GSREG_LINE, "Line", "Line", 2 },
+ { (1 << 16) | VDP2::GSREG_DON, "DON", "Display On", 0x100 | 1 },
+ { (1 << 16) | VDP2::GSREG_BM, "BM", "Border Mode", 0x100 | 1 },
+ { (1 << 16) | VDP2::GSREG_IM, "IM", "Interlace Mode", 0x100 | 2 },
+ { (1 << 16) | VDP2::GSREG_VRES, "VRES", "Vertical Resolution", 0x100 | 2 },
+ { (1 << 16) | VDP2::GSREG_HRES, "HRES", "Horizontal Resolution", 0x100 | 3 },
+
+ { 0, "------", "", 0xFFFF },
+
+ { (2 << 16) | SS_SCSP::GSREG_MVOL, "MVOL", "Master Volume", 0x100 | 4 },
+ { (2 << 16) | SS_SCSP::GSREG_DAC18B, "DAC18B", "18-bit DAC Enable", 0x100 | 1 },
+ { (2 << 16) | SS_SCSP::GSREG_MEM4MB, "Mem4Mb", "4Mb Memory Enable", 0x100 | 1 },
+ { (2 << 16) | SS_SCSP::GSREG_RBP, "RBP", "DSP Ringbuffer Base Address", 0x100 | 7 },
+ { (2 << 16) | SS_SCSP::GSREG_RBL, "RBL", "DSP Ringbuffer Length", 0x100 | 2 },
+ { (2 << 16) | SS_SCSP::GSREG_MSLC, "MSLC", "Slot to Monitor", 0x100 | 5 },
 
  { 0, "", "", 0 },
 };
 
-static RegGroupType DBG_RegGroup_VDP1_VDP2 =
+static uint32 VDP1_VDP2_SCSP_GetRegister(const unsigned id, char* const special, const uint32 special_len)
+{
+ switch(id >> 16)
+ {
+  case 0: return 0; //return VDP1::GetRegister((uint16)id, special, special_len);
+  case 1: return VDP2::GetRegister((uint16)id, special, special_len);
+  case 2: return SOUND_GetSCSPRegister((uint16)id, special, special_len);
+ }
+
+ return 0;
+}
+
+static void VDP1_VDP2_SCSP_SetRegister(const unsigned id, const uint32 value)
+{
+ switch(id >> 16)
+ {
+  case 0: break; //return VDP1::GetRegister((uint16)id, special, special_len);
+  case 1: VDP2::SetRegister((uint16)id, value); break;
+  case 2: SOUND_SetSCSPRegister((uint16)id, value); break;
+ }
+}
+
+static const RegGroupType DBG_RegGroup_VDP1_VDP2_SCSP =
 {
  NULL,
- DBG_Regs_VDP1_VDP2,
- VDP2::GetRegister,
- VDP2::SetRegister
+ DBG_Regs_VDP1_VDP2_SCSP,
+ VDP1_VDP2_SCSP_GetRegister,
+ VDP1_VDP2_SCSP_SetRegister
 };
 
 //
@@ -732,19 +759,21 @@ static void DBG_Init(void)
  MDFNDBG_AddRegGroup(&DBG_RegGroup_CPU);
  MDFNDBG_AddRegGroup(&DBG_RegGroup_CPUE);
  MDFNDBG_AddRegGroup(&DBG_RegGroup_SCU);
- MDFNDBG_AddRegGroup(&DBG_RegGroup_VDP1_VDP2);
+ MDFNDBG_AddRegGroup(&DBG_RegGroup_VDP1_VDP2_SCSP);
  //
  //
  //
- ASpace_Add(GetAddressSpaceBytes, PutAddressSpaceBytes, "physical", "SH-2 Physical", 32);
- ASpace_Add(GetAddressSpaceBytes, PutAddressSpaceBytes, "workraml", "Low Work RAM", 20);
- ASpace_Add(GetAddressSpaceBytes, PutAddressSpaceBytes, "workramh", "High Work RAM", 20);
- ASpace_Add(GetAddressSpaceBytes, PutAddressSpaceBytes, "scspram", "SCSP RAM", 19);
+ ASpace_Add(GetAddressSpaceBytes<ASPACE_PHYSICAL>, PutAddressSpaceBytes<ASPACE_PHYSICAL>, "physical", "SH-2 External Bus (TODO)", 27);
+ ASpace_Add(GetAddressSpaceBytes<ASPACE_WORKRAML>, PutAddressSpaceBytes<ASPACE_WORKRAML>, "workraml", "Low Work RAM", 20);
+ ASpace_Add(GetAddressSpaceBytes<ASPACE_WORKRAMH>, PutAddressSpaceBytes<ASPACE_WORKRAMH>, "workramh", "High Work RAM", 20);
+ ASpace_Add(GetAddressSpaceBytes<ASPACE_SCSPRAM>, PutAddressSpaceBytes<ASPACE_SCSPRAM>, "scspram", "SCSP RAM", 19);
 
- ASpace_Add(GetAddressSpaceBytes, PutAddressSpaceBytes, "dspprog", "DSP Program RAM", 10);
+ ASpace_Add(GetAddressSpaceBytes<ASPACE_DSPPROG>, PutAddressSpaceBytes<ASPACE_DSPPROG>, "dspprog", "DSP Program RAM", 10);
 
- ASpace_Add(GetAddressSpaceBytes, PutAddressSpaceBytes, "vdp1vram", "VDP1 VRAM", 19);
- ASpace_Add(GetAddressSpaceBytes, PutAddressSpaceBytes, "vdp2vram", "VDP2 VRAM", 19);
+ ASpace_Add(GetAddressSpaceBytes<ASPACE_VDP1VRAM>, PutAddressSpaceBytes<ASPACE_VDP1VRAM>, "vdp1vram", "VDP1 VRAM", 19);
+ ASpace_Add(GetAddressSpaceBytes<ASPACE_VDP1FB0>, PutAddressSpaceBytes<ASPACE_VDP1FB0>, "vdp1fb0",  "VDP1 FB0 RAM(raw, no 8bpp/rot addr bit swizzling)", 18);
+ ASpace_Add(GetAddressSpaceBytes<ASPACE_VDP1FB1>, PutAddressSpaceBytes<ASPACE_VDP1FB1>, "vdp1fb1",  "VDP1 FB1 RAM(raw, no 8bpp/rot addr bit swizzling)", 18);
+ ASpace_Add(GetAddressSpaceBytes<ASPACE_VDP2VRAM>, PutAddressSpaceBytes<ASPACE_VDP2VRAM>, "vdp2vram", "VDP2 VRAM", 19);
 }
 
 static void DBG_Kill(void) MDFN_COLD;

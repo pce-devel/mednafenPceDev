@@ -23,15 +23,12 @@
 
 #include "mednafen.h"
 
-#include <string.h>
 #include <ctype.h>
 #include <trio/trio.h>
-#include <errno.h>
 #include <unistd.h>
-#include <vector>
 
 #include "general.h"
-#include "string/trim.h"
+#include <mednafen/string/string.h>
 #include <mednafen/hash/md5.h>
 #include "mempatcher.h"
 #include "FileStream.h"
@@ -130,7 +127,7 @@ static std::vector<CHEATF> cheats;
 static bool savecheats;
 static uint32 resultsbytelen = 1;
 static bool resultsbigendian = 0;
-static bool CheatsActive = TRUE;
+static bool CheatsActive = true;
 
 bool SubCheatsOn = 0;
 std::vector<SUBCHEAT> SubCheats[8];
@@ -1000,7 +997,7 @@ static void SettingChanged(const char *name)
 }
 
 
-MDFNSetting MDFNMP_Settings[] =
+extern const MDFNSetting MDFNMP_Settings[] =
 {
  { "cheats", MDFNSF_NOFLAGS, "Enable cheats.", NULL, MDFNST_BOOL, "1", NULL, NULL, NULL, SettingChanged },
  { NULL}

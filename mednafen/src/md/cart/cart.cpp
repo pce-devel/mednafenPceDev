@@ -42,22 +42,22 @@ static MD_Cart_Type *cart_hardware = NULL;
 static uint8 *cart_rom = NULL;
 static uint32 Cart_ROM_Size;
 
-void MDCart_Write8(uint32 A, uint8 V)
+MDFN_FASTCALL void MDCart_Write8(uint32 A, uint8 V)
 {
  cart_hardware->Write8(A, V);
 }
 
-void MDCart_Write16(uint32 A, uint16 V)
+MDFN_FASTCALL void MDCart_Write16(uint32 A, uint16 V)
 {
  cart_hardware->Write16(A, V);
 }
 
-uint8 MDCart_Read8(uint32 A)
+MDFN_FASTCALL uint8 MDCart_Read8(uint32 A)
 {
  return(cart_hardware->Read8(A));
 }
 
-uint16 MDCart_Read16(uint32 A)
+MDFN_FASTCALL uint16 MDCart_Read16(uint32 A)
 {
  return(cart_hardware->Read16(A));
 }
@@ -298,7 +298,7 @@ typedef struct
  const char *sparam;
 } BoardHandler_t;
 
-static BoardHandler_t BoardHandlers[] =
+static const BoardHandler_t BoardHandlers[] =
 {
  { "ROM", MD_Make_Cart_Type_ROM, 0, NULL },
  { "SRAM", MD_Make_Cart_Type_SRAM, 0, NULL },
@@ -470,7 +470,7 @@ void MDCart_Load(md_game_info *ginfo, MDFNFILE *fp)
 
   {
    const BoardHandler_t *bh = BoardHandlers;
-   bool BoardFound = FALSE;
+   bool BoardFound = false;
 
    MDFN_printf(_("Mapper: %s\n"), mapper);
    MDFN_printf(_("SRAM Type:  0x%08x\n"), sram_type);
@@ -481,7 +481,7 @@ void MDCart_Load(md_game_info *ginfo, MDFNFILE *fp)
     if(!strcasecmp(bh->boardname, mapper))
     {
      cart_hardware = bh->MapperMake(ginfo, cart_rom, Cart_ROM_Size, bh->iparam, bh->sparam);
-     BoardFound = TRUE;
+     BoardFound = true;
      break;
     }
     bh++;

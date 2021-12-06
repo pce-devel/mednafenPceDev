@@ -18,7 +18,6 @@
 #include "main.h"
 #include "video.h"
 #include <trio/trio.h>
-#include <algorithm>
 
 static struct
 {
@@ -86,7 +85,7 @@ bool FPS_IsActive(int *w, int *h)
 
 void FPS_UpdateCalc(void)
 {
- uint32 curtime = SDL_GetTicks();
+ uint32 curtime = Time::MonoMS();
  uint32 mintime = ~0U;
 
  TimeDrawn[TDIndex].t = curtime;

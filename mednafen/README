@@ -12,17 +12,13 @@ Compilation Notes:
 	Reportedly, passing:	--build=x86_64-apple-darwin`uname -r`
 	to the configure script is necessary for building on Mac OS X to work properly.
 
+	Compiling at -O3 or higher, or with other custom optimization flags, is discouraged.
 
 
 ---------------------------------------------
 Some notes(and reminders) on the source code:
 ---------------------------------------------
-	The following system headers are included by including "mednafen.h", and always will be, so don't include them manually.
-		assert.h	(included in "types.h")
-		inttypes.h	(included in "types.h")
-		stdlib.h
-		stdio.h
-		string.h
+	Check "mednafen/src/types.h" for standard C and C++ library header includes, and avoid #include'ing the same files redundantly elsewhere.
 
 	Avoid %= in save state load variable sanitizing code unless the variable is unsigned.
 
@@ -50,3 +46,6 @@ Some notes(and reminders) on the source code:
 	Avoid compiling different C++ files with different compiler flags in regards to instruction set used(like -mmmx, -msse, -mfpmath, -march),
 	or else there may be (template-)function ODR violations that could cause compatibility problems.
 
+	GPLv3-incompatible code:
+		WonderSwan emulation code from Cygne.
+		QuickLZ(old version used)

@@ -51,7 +51,7 @@
 
 #pragma GCC optimize ("no-crossjumping,no-gcse")
 
-static void Dummy_BusRESET(bool state)
+static MDFN_FASTCALL void Dummy_BusRESET(bool state)
 {
 
 }
@@ -153,7 +153,7 @@ INLINE void M68K::RecalcInt(void)
 {
  XPending &= ~XPENDING_MASK_INT;
 
- if(IPL == 0x7 || IPL > (SRHB & 0x7))
+ if(IPL > (SRHB & 0x7))
   XPending |= XPENDING_MASK_INT;
 }
 
@@ -441,7 +441,7 @@ struct M68K::HAM
   }
  }
 
- INLINE void rmw(T (*cb)(M68K*, T))
+ INLINE void rmw(T (MDFN_FASTCALL *cb)(M68K*, T))
  {
   static_assert(am != PC_DISP && am != PC_INDEX && am != IMMEDIATE, "What");
 
@@ -1683,7 +1683,7 @@ INLINE void M68K::ROXR(HAM<T, TAM> &targ, unsigned count)
 //
 // TAS
 //
-static uint8 TAS_Callback(M68K* zptr, uint8 data)
+static MDFN_FASTCALL uint8 TAS_Callback(M68K* zptr, uint8 data)
 {
  zptr->CalcZN<uint8>(data);
  zptr->SetC(false);

@@ -17,21 +17,15 @@
 
 #include        "mednafen.h"
 
-#include	<math.h>
-#include        <string.h>
-#include	<stdarg.h>
-#include	<errno.h>
 #include	<sys/types.h>
 #include	<sys/stat.h>
 #include	<unistd.h>
 #include	<trio/trio.h>
-#include	<list>
-#include	<algorithm>
 
 #include	"netplay.h"
 #include	"netplay-driver.h"
 #include	"general.h"
-#include	"string/trim.h"
+#include	<mednafen/string/string.h>
 
 #include	"state.h"
 #include	"movie.h"
@@ -48,6 +42,7 @@
 #include	"qtrecord.h"
 #include	<mednafen/hash/md5.h>
 #include	<mednafen/MemoryStream.h>
+#include	<mednafen/Time.h>
 #include	"sound/Fir_Resampler.h"
 
 #include	"string/escape.h"
@@ -62,7 +57,7 @@ static const char *CSD_tblur = gettext_noop("Enable video temporal blur(50/50 pr
 static const char *CSD_tblur_accum = gettext_noop("Accumulate color data rather than discarding it.");
 static const char *CSD_tblur_accum_amount = gettext_noop("Blur amount in accumulation mode, specified in percentage of accumulation buffer to mix with the current frame.");
 
-static MDFNSetting_EnumList VCodec_List[] =
+static const MDFNSetting_EnumList VCodec_List[] =
 {
  { "raw", (int)QTRecord::VCODEC_RAW, "Raw",
 	gettext_noop("A fast codec, computationally, but will cause enormous file size and may exceed your storage medium's sustained write rate.") },
@@ -76,7 +71,7 @@ static MDFNSetting_EnumList VCodec_List[] =
  { NULL, 0 },
 };
 
-static MDFNSetting_EnumList Deinterlacer_List[] =
+static const MDFNSetting_EnumList Deinterlacer_List[] =
 {
  { "weave", Deinterlacer::DEINT_WEAVE, gettext_noop("Good for low-motion video; can be used in conjunction with negative <system>.scanlines setting values.") },
  { "bob", Deinterlacer::DEINT_BOB, gettext_noop("Good for causing a headache.  All glory to Bob.") },
@@ -85,9 +80,9 @@ static MDFNSetting_EnumList Deinterlacer_List[] =
  { NULL, 0 },
 };
 
-static const char *fname_extra = gettext_noop("See fname_format.txt for more information.  Edit at your own risk.");
+static const char* const fname_extra = gettext_noop("See fname_format.txt for more information.  Edit at your own risk.");
 
-static MDFNSetting MednafenSettings[] =
+static const MDFNSetting MednafenSettings[] =
 {
   { "netplay.password", MDFNSF_NOFLAGS, gettext_noop("Server password."), gettext_noop("Password to connect to the netplay server."), MDFNST_STRING, "" },
   { "netplay.localplayers", MDFNSF_NOFLAGS, gettext_noop("Local player count."), gettext_noop("Number of local players for network play.  This number is advisory to the server, and the server may assign fewer players if the number of players requested is higher than the number of controllers currently available."), MDFNST_UINT, "1", "0", "16" },
@@ -131,7 +126,7 @@ static MDFNSetting MednafenSettings[] =
   { NULL }
 };
 
-static MDFNSetting RenamedSettings[] =
+static const MDFNSetting RenamedSettings[] =
 {
  { "path_snap", MDFNSF_NOFLAGS, NULL, NULL, MDFNST_ALIAS  , 	"filesys.path_snap"	},
  { "path_sav", MDFNSF_NOFLAGS, NULL, NULL, MDFNST_ALIAS  , 	"filesys.path_sav"	},
@@ -172,6 +167,28 @@ static MDFNSetting RenamedSettings[] =
 
  { "netplay.smallfont",		MDFNSF_NOFLAGS, NULL, NULL, MDFNST_ALIAS	, "netplay.console.font" },
 
+ { "cdplay.pixshader",		MDFNSF_NOFLAGS, NULL, NULL, MDFNST_ALIAS	, "cdplay.shader" },
+ { "demo.pixshader",		MDFNSF_NOFLAGS, NULL, NULL, MDFNST_ALIAS	, "demo.shader" },
+ { "gb.pixshader",		MDFNSF_NOFLAGS, NULL, NULL, MDFNST_ALIAS	, "gb.shader" },
+ { "gba.pixshader",		MDFNSF_NOFLAGS, NULL, NULL, MDFNST_ALIAS	, "gba.shader" },
+ { "gg.pixshader",		MDFNSF_NOFLAGS, NULL, NULL, MDFNST_ALIAS	, "gg.shader" },
+ { "lynx.pixshader",		MDFNSF_NOFLAGS, NULL, NULL, MDFNST_ALIAS	, "lynx.shader" },
+ { "md.pixshader",		MDFNSF_NOFLAGS, NULL, NULL, MDFNST_ALIAS	, "md.shader" },
+ { "nes.pixshader",		MDFNSF_NOFLAGS, NULL, NULL, MDFNST_ALIAS	, "nes.shader" },
+ { "ngp.pixshader",		MDFNSF_NOFLAGS, NULL, NULL, MDFNST_ALIAS	, "ngp.shader" },
+ { "pce.pixshader",		MDFNSF_NOFLAGS, NULL, NULL, MDFNST_ALIAS	, "pce.shader" },
+ { "pce_fast.pixshader",	MDFNSF_NOFLAGS, NULL, NULL, MDFNST_ALIAS	, "pce_fast.shader" },
+ { "pcfx.pixshader",		MDFNSF_NOFLAGS, NULL, NULL, MDFNST_ALIAS	, "pcfx.shader" },
+ { "player.pixshader",		MDFNSF_NOFLAGS, NULL, NULL, MDFNST_ALIAS	, "player.shader" },
+ { "psx.pixshader",		MDFNSF_NOFLAGS, NULL, NULL, MDFNST_ALIAS	, "psx.shader" },
+ { "sms.pixshader",		MDFNSF_NOFLAGS, NULL, NULL, MDFNST_ALIAS	, "sms.shader" },
+ { "snes.pixshader",		MDFNSF_NOFLAGS, NULL, NULL, MDFNST_ALIAS	, "snes.shader" },
+ { "snes_faust.pixshader",	MDFNSF_NOFLAGS, NULL, NULL, MDFNST_ALIAS	, "snes_faust.shader" },
+ { "ss.pixshader",		MDFNSF_NOFLAGS, NULL, NULL, MDFNST_ALIAS	, "ss.shader" },
+ { "ssfplay.pixshader",		MDFNSF_NOFLAGS, NULL, NULL, MDFNST_ALIAS	, "ssfplay.shader" },
+ { "vb.pixshader",		MDFNSF_NOFLAGS, NULL, NULL, MDFNST_ALIAS	, "vb.shader" },
+ { "wswan.pixshader",		MDFNSF_NOFLAGS, NULL, NULL, MDFNST_ALIAS	, "wswan.shader" },
+
  { NULL }
 };
 
@@ -188,14 +205,12 @@ static QTRecord *qtrecorder = NULL;
 static WAVRecord *wavrecorder = NULL;
 static Fir_Resampler<16> ff_resampler;
 static double LastSoundMultiplier;
-
-static bool FFDiscard = FALSE; // TODO:  Setting to discard sound samples instead of increasing pitch
-
-static MDFN_PixelFormat last_pixel_format;
 static double last_sound_rate;
-
+static MDFN_PixelFormat last_pixel_format;
 static bool PrevInterlaced;
 static Deinterlacer deint;
+
+static bool FFDiscard = false; // TODO:  Setting to discard sound samples instead of increasing pitch
 
 static std::vector<CDIF *> CDInterfaces;	// FIXME: Cleanup on error out.
 
@@ -304,8 +319,7 @@ void MDFNI_CloseGame(void)
 {
  if(MDFNGameInfo)
  {
-  if(MDFNnetplay)
-   MDFNI_NetplayStop();
+  MDFNI_NetplayDisconnect();
 
   MDFNSRW_End();
   MDFNMOV_Stop();
@@ -367,12 +381,6 @@ void MDFNI_CloseGame(void)
 
  MDFN_ClearAllOverrideSettings();
 }
-
-int MDFNI_NetplayStart(void)
-{
- return(NetplayStart(PortDevice, PortDataLen));
-}
-
 
 #ifdef WANT_NES_EMU
 extern MDFNGI EmulatedNES;
@@ -473,21 +481,54 @@ void MDFNI_DumpModulesDef(const char *fn)
   fp.print_format("%s\n", MDFNSystems[i]->fullname);
   fp.print_format("%d\n", MDFNSystems[i]->nominal_width);
   fp.print_format("%d\n", MDFNSystems[i]->nominal_height);
+
+  size_t cpcount = 0;
+
+  if(MDFNSystems[i]->CPInfo)
+   for(auto cpi = MDFNSystems[i]->CPInfo; cpi->description || cpi->name_override; cpi++)
+    cpcount++;
+
+  fp.print_format("%zu\n", cpcount);
+
+  if(MDFNSystems[i]->CPInfo)
+  {
+   for(auto cpi = MDFNSystems[i]->CPInfo; cpi->description || cpi->name_override; cpi++)
+   {
+    fp.print_format("%s.pal\n", cpi->name_override ? cpi->name_override : MDFNSystems[i]->shortname);
+    fp.print_format("%s\n", cpi->description);
+    for(unsigned vec : cpi->valid_entry_count)
+    {
+     if(!vec)
+      break;
+     fp.print_format("%u ", vec);
+    }
+    fp.print_format("\n");
+   }
+  }
  }
+
  fp.close();
 }
 
-static void ReadM3U(std::vector<std::string> &file_list, std::string path, unsigned depth = 0)
+struct M3U_ListEntry
+{
+ std::string path;
+ std::unique_ptr<std::string> name;
+};
+
+static MDFN_COLD void ReadM3U(std::vector<M3U_ListEntry> &file_list, size_t* default_cd, std::string path, unsigned depth = 0)
 {
  FileStream m3u_file(path, FileStream::MODE_READ);
  std::string dir_path;
  std::string linebuf;
+ std::unique_ptr<std::string> name;
+ int termc;
 
  MDFN_GetFilePathComponents(path, &dir_path);
 
  linebuf.reserve(2048);
 
- while(m3u_file.get_line(linebuf) >= 0)
+ while((termc = m3u_file.get_line(linebuf)) >= 0)
  {
   std::string efp;
 
@@ -499,7 +540,18 @@ static void ReadM3U(std::vector<std::string> &file_list, std::string path, unsig
 
   // Comment line, skip it.
   if(linebuf[0] == '#')
+  {
+   if(!strcmp(linebuf.c_str(), "#MEDNAFEN_DEFAULT"))
+    *default_cd = file_list.size();
+   else if(!strncmp(linebuf.c_str(), "#MEDNAFEN_LABEL", 15))
+   {
+    name.reset(new std::string(linebuf.substr(15)));
+    UTF8_sanitize(*name);
+    MDFN_zapctrlchars(*name);
+    MDFN_trim(*name);
+   }
    continue;
+  }
 
   efp = MDFN_EvalFIP(dir_path, linebuf);
 
@@ -511,14 +563,14 @@ static void ReadM3U(std::vector<std::string> &file_list, std::string path, unsig
    if(depth == 99)
     throw(MDFN_Error(0, _("M3U load recursion too deep!")));
 
-   ReadM3U(file_list, efp, depth++);
+   ReadM3U(file_list, default_cd, efp, depth++);
   }
   else
-   file_list.push_back(efp);
+   file_list.emplace_back(M3U_ListEntry({efp, std::move(name)}));
  }
 }
 
-static void PrintDiscsLayout(std::vector<CDIF *> *ifaces)
+static MDFN_COLD void PrintDiscsLayout(std::vector<CDIF *> *ifaces)
 {
  MDFN_AutoIndent aind(1);
 
@@ -586,7 +638,7 @@ static void PrintDiscsLayout(std::vector<CDIF *> *ifaces)
  }
 }
 
-static void CalcDiscsLayoutMD5(std::vector<CDIF *> *ifaces, uint8 out_md5[16])
+static MDFN_COLD void CalcDiscsLayoutMD5(std::vector<CDIF *> *ifaces, uint8 out_md5[16])
 {
   md5_context layout_md5;
 
@@ -615,7 +667,7 @@ static void CalcDiscsLayoutMD5(std::vector<CDIF *> *ifaces, uint8 out_md5[16])
   layout_md5.finish(out_md5);
 }
 
-static void LoadCustomPalette(void)
+static MDFN_COLD void LoadCustomPalette(void)
 {
  if(!MDFNGameInfo->CPInfo)
   return;
@@ -683,7 +735,7 @@ static void LoadCustomPalette(void)
  }
 }
 
-static void LoadCommonPost(const char* path)
+static MDFN_COLD void LoadCommonPost(const char* path)
 {
 	DMStatus.resize(MDFNGameInfo->RMD->Drives.size());
 
@@ -735,7 +787,9 @@ static void LoadCommonPost(const char* path)
 
 MDFNGI *MDFNI_LoadCD(const char *force_module, const char *path)
 {
+ std::vector<M3U_ListEntry> file_list;
  uint8 LayoutMD5[16];
+ size_t default_cd = 0;
 
  MDFNI_CloseGame();
 
@@ -748,22 +802,14 @@ MDFNGI *MDFNI_LoadCD(const char *force_module, const char *path)
   const bool image_memcache = MDFN_GetSettingB("cd.image_memcache");
 
   if(strlen(path) > 4 && !strcasecmp(path + strlen(path) - 4, ".m3u"))
-  {
-   std::vector<std::string> file_list;
-
-   ReadM3U(file_list, path);
-
-   CDInterfaces.resize(file_list.size());
-   for(unsigned i = 0; i < file_list.size(); i++)
-   {
-    CDInterfaces[i] = CDIF_Open(file_list[i], image_memcache);
-   }
-  }
+   ReadM3U(file_list, &default_cd, path);
   else
-  {
-   CDInterfaces.resize(1);
-   CDInterfaces[0] = CDIF_Open(path, image_memcache);
-  }
+   file_list.emplace_back(M3U_ListEntry({ path }));
+
+  CDInterfaces.resize(file_list.size());
+  for(size_t i = 0; i < file_list.size(); i++)
+   CDInterfaces[i] = CDIF_Open(file_list[i].path, image_memcache);
+
   GetFileBase(path);
  }
  catch(std::exception &e)
@@ -814,16 +860,27 @@ MDFNGI *MDFNI_LoadCD(const char *force_module, const char *path)
 	 dr.MediaMtoPDelay = 2000;
 
 	 rmd->Drives.push_back(dr);
+	 rmd->DrivesDefaults.push_back(RMD_DriveDefaults({0, 0, 0}));
 	 rmd->MediaTypes.push_back(RMD_MediaType({"CD"}));
 	}
 
-
 	for(size_t i = 0; i < CDInterfaces.size(); i++)
 	{
-	 char namebuf[128];
+         if(i == default_cd)
+         {
+	  rmd->DrivesDefaults[0].State = 2;	// Tray Closed
+	  rmd->DrivesDefaults[0].Media = i;
+          rmd->DrivesDefaults[0].Orientation = 0;
+         }
 
-	 trio_snprintf(namebuf, sizeof(namebuf), _("Disc %zu of %zu"), i + 1, CDInterfaces.size());
-	 rmd->Media.push_back(RMD_Media({namebuf, 0}));
+	 if(file_list[i].name)
+	  rmd->Media.push_back(RMD_Media({std::string(1, '"') + *file_list[i].name + '"', 0}));
+	 else
+	 {
+	  char namebuf[128];
+	  trio_snprintf(namebuf, sizeof(namebuf), _("Disc %zu of %zu"), i + 1, CDInterfaces.size());
+	  rmd->Media.push_back(RMD_Media({namebuf, 0}));
+	 }
 	}
 
         for(std::list<MDFNGI *>::iterator it = MDFNSystemsPrio.begin(); it != MDFNSystemsPrio.end(); it++)  //_unsigned int x = 0; x < MDFNSystems.size(); x++)
@@ -878,6 +935,7 @@ MDFNGI *MDFNI_LoadCD(const char *force_module, const char *path)
 	 assert(MDFNGameInfo->soundchan != 0);
 
          MDFNGameInfo->name.clear();
+	 MDFNGameInfo->DesiredInput.clear();
          MDFNGameInfo->rotated = 0;
 	 MDFNGameInfo->RMD = rmd.get();
 
@@ -899,6 +957,8 @@ MDFNGI *MDFNI_LoadCD(const char *force_module, const char *path)
 
 	LoadCommonPost(path);
 
+	//
+	//
 	rmd.release();
  }
  catch(std::exception &e)
@@ -931,13 +991,13 @@ MDFNGI *MDFNI_LoadCD(const char *force_module, const char *path)
 
 	MDFN_ClearAllOverrideSettings();
 
-	return(NULL);
+	return NULL;
  }
 
- return(MDFNGameInfo);
+ return MDFNGameInfo;
 }
 
-static void LoadIPS(MDFNFILE* GameFile, const std::string& path)
+static MDFN_COLD void LoadIPS(MDFNFILE* GameFile, const std::string& path)
 {
  MDFN_printf(_("Applying IPS file \"%s\"...\n"), path.c_str());
 
@@ -964,7 +1024,7 @@ static void LoadIPS(MDFNFILE* GameFile, const std::string& path)
  }
 }
 
-static MDFNGI* FindCompatibleModule(const char* force_module, MDFNFILE* gf)
+static MDFN_COLD MDFNGI* FindCompatibleModule(const char* force_module, MDFNFILE* gf)
 {
  //for(unsigned pass = 0; pass < 2; pass++)
  //{
@@ -1016,7 +1076,7 @@ MDFNGI *MDFNI_LoadGame(const char *force_module, const char *name)
 {
  if(strlen(name) > 4 && (!strcasecmp(name + strlen(name) - 4, ".cue") || !strcasecmp(name + strlen(name) - 4, ".toc") || !strcasecmp(name + strlen(name) - 4, ".ccd") || !strcasecmp(name + strlen(name) - 4, ".m3u")))
  {
-  return(MDFNI_LoadCD(force_module, name));
+  return MDFNI_LoadCD(force_module, name);
  }
 
  MDFNI_CloseGame();
@@ -1076,6 +1136,7 @@ MDFNGI *MDFNI_LoadGame(const char *force_module, const char *name)
 	 assert(MDFNGameInfo->soundchan != 0);
 
          MDFNGameInfo->name.clear();
+	 MDFNGameInfo->DesiredInput.clear();
          MDFNGameInfo->rotated = 0;
 	 MDFNGameInfo->RMD = rmd.get();
 
@@ -1145,6 +1206,11 @@ static void BuildDynamicSetting(MDFNSetting *setting, const char *system_name, c
 
 bool MDFNI_InitializeModules(void)
 {
+ Time::Time_Init();
+ CDUtility::CDUtility_Init();
+ //
+ //
+ //
  static MDFNGI *InternalSystems[] =
  {
   #ifdef WANT_NES_EMU
@@ -1219,7 +1285,7 @@ bool MDFNI_InitializeModules(void)
   &EmulatedCDPlay,
   &EmulatedDEMO
  };
- assert(MEDNAFEN_VERSION_NUMERIC >= 0x00093902);
+ assert(MEDNAFEN_VERSION_NUMERIC >= 0x00094100);
 
  for(unsigned int i = 0; i < sizeof(InternalSystems) / sizeof(MDFNGI *); i++)
   AddSystem(InternalSystems[i]);
@@ -1239,8 +1305,6 @@ bool MDFNI_InitializeModules(void)
   modules_string += std::string(m->shortname);
  }
  MDFNI_printf(_("Emulation modules: %s\n"), modules_string.c_str());
-
- CDUtility::CDUtility_Init();
 
  return(1);
 }
@@ -1317,6 +1381,8 @@ int MDFNI_Initialize(const char *basedir, const std::vector<MDFNSetting> &Driver
 	}
 
 	MDFN_MergeSettings(RenamedSettings);
+
+	MDFN_FinalizeSettings();
 
 	try
 	{
@@ -1396,54 +1462,6 @@ static void ProcessAudio(EmulateSpecStruct *espec)
    for(int i = 0; i < SoundBufSize * MDFNGameInfo->soundchan; i++)
     SoundBufPristine[orig_size + i] = SoundBuf[i];
   }
-
-#if 0
-  //
-  // Sine wave sweep for test purposes.
-  //
-  {
-   static double phase = 0;
-   static double phase_inc = 0.000;
-   static double phase_inc_inc = 0.000003;
-   static int32 scounter = 0;
-
-   int16 *sbuf = SoundBuf;
-   int32 slen = SoundBufSize;
-
-
-   if(MDFNGameInfo->soundchan == 2)
-   {
-    for(int i = 0; i < slen; i++)
-    {
-     int16 tmp = 127 * 256 * sin(phase);
-
-     tmp = (scounter & 8) ? 127 * 256 : -127 * 256;
-
-     sbuf[i * 2 + 0] = tmp;
-     sbuf[i * 2 + 1] = tmp;
-     phase += phase_inc;
-     phase_inc += phase_inc_inc;
-     scounter++;
-    }
-   }
-   else
-   {
-    for(int i = 0; i < slen; i++)
-    {
-     int16 tmp = 127 * 256 * sin(phase);
-
-     tmp = (scounter & 8) ? 127 * 256 : -127 * 256;
-
-     sbuf[i] = tmp;
-
-     phase += phase_inc;
-     phase_inc += phase_inc_inc;
-     scounter++;
-    }
-   }
-  }
-
-#endif
 
   try
   {
@@ -1552,20 +1570,21 @@ static void ProcessAudio(EmulateSpecStruct *espec)
 
 void MDFN_MidSync(EmulateSpecStruct *espec)
 {
- if(MDFNnetplay)
-  return;
+ if(!MDFNnetplay)
+ {
+  ProcessAudio(espec);
 
- ProcessAudio(espec);
+  MDFND_MidSync(espec);
 
- MDFND_MidSync(espec);
+  espec->SoundBufSizeALMS = espec->SoundBufSize;
+  espec->MasterCyclesALMS = espec->MasterCycles;
 
- if(MDFNGameInfo->TransformInput)	// Call after MDFND_MidSync, and before MDFNMOV_ProcessInput
-  MDFNGameInfo->TransformInput();
+  if(MDFNGameInfo->TransformInput)	// Call after MDFND_MidSync, and before MDFNMOV_ProcessInput
+   MDFNGameInfo->TransformInput();
+ }
 
+ // Call even during netplay, so input-recording movies recorded during netplay will play back properly.
  MDFNMOV_ProcessInput(PortData, PortDataLen, MDFNGameInfo->PortInfo.size());
-
- espec->SoundBufSizeALMS = espec->SoundBufSize;
- espec->MasterCyclesALMS = espec->MasterCycles;
 }
 
 void MDFN_MidLineUpdate(EmulateSpecStruct *espec, int y)
@@ -1596,7 +1615,7 @@ void MDFNI_Emulate(EmulateSpecStruct *espec)
 
  if(memcmp(&last_pixel_format, &espec->surface->format, sizeof(MDFN_PixelFormat)))
  {
-  espec->VideoFormatChanged = TRUE;
+  espec->VideoFormatChanged = true;
 
   last_pixel_format = espec->surface->format;
  }
@@ -1623,10 +1642,7 @@ void MDFNI_Emulate(EmulateSpecStruct *espec)
  if(MDFNGameInfo->TransformInput)
   MDFNGameInfo->TransformInput();
 
- if(MDFNnetplay)
- {
-  Netplay_Update(PortDevice, PortData, PortDataLen);
- }
+ Netplay_Update(PortDevice, PortData, PortDataLen);
 
  MDFNMOV_ProcessInput(PortData, PortDataLen, MDFNGameInfo->PortInfo.size());
 
@@ -1654,31 +1670,6 @@ void MDFNI_Emulate(EmulateSpecStruct *espec)
   espec->NeedSoundReverse = MDFNSRW_Frame(espec->NeedRewind);
 
  MDFNGameInfo->Emulate(espec);
-
-#if 0
- {
-  MemoryStream orig_state(65536);
-  MemoryStream new_state(65536);
-
-  MDFNSS_SaveSM(&orig_state);
-  orig_state.rewind();
-  MDFNSS_LoadSM(&orig_state);
-  MDFNSS_SaveSM(&new_state);
-
-  if(!(orig_state.map_size() == new_state.map_size() && !memcmp(orig_state.map() + 32, new_state.map() + 32, orig_state.map_size() - 32)))
-  {
-   FileStream sd0("/tmp/sdump0", FileStream::MODE_WRITE);
-   FileStream sd1("/tmp/sdump1", FileStream::MODE_WRITE);
-
-   sd0.write(orig_state.map(), orig_state.map_size());
-   sd1.write(new_state.map(), new_state.map_size());
-   sd0.close();
-   sd1.close();
-   //assert(orig_state.map_size() == new_state.map_size() && !memcmp(orig_state.map() + 32, new_state.map() + 32, orig_state.map_size() - 32));
-   abort();
-  }
- }
-#endif
 
  if(MDFNnetplay)
   Netplay_PostProcess(PortDevice, PortData, PortDataLen);
@@ -1714,13 +1705,6 @@ void MDFNI_Emulate(EmulateSpecStruct *espec)
    deint.ClearState();
 
   deint.Process(espec->surface, espec->DisplayRect, espec->LineWidths, espec->InterlaceField);
-
-  if(deint.GetType() != Deinterlacer::DEINT_WEAVE)
-  {
-   espec->InterlaceOn = false;
-   espec->InterlaceField = 0;
-  }
-
   PrevInterlaced = true;
  }
  else

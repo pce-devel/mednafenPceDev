@@ -2,7 +2,7 @@
 /* Mednafen - Multi-system Emulator                                           */
 /******************************************************************************/
 /* debugger.cpp:
-**  Copyright (C) 2006-2016 Mednafen Team
+**  Copyright (C) 2006-2017 Mednafen Team
 **
 ** This program is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU General Public License
@@ -23,7 +23,6 @@
 #include <mednafen/FileStream.h>
 
 #include <trio/trio.h>
-#include <time.h>
 #include <map>
 #include "debugger.h"
 #include "gfxdebugger.h"
@@ -81,7 +80,7 @@ bool Debugger_GT_IsInSteppingMode(void)
 
 static uint32 GetPC(void)
 {
- RegGroupType *rg = (*CurGame->Debugger->RegGroups)[0];
+ const RegGroupType *rg = (*CurGame->Debugger->RegGroups)[0];
 
  return rg->GetRegister(rg->Regs[0].id, NULL, 0); // FIXME
 }
@@ -329,7 +328,7 @@ static void Regs_Init(const int max_height_hint)
      {
       if((*CurGame->Debugger->RegGroups)[r]->Regs[x].bsize != 0xFFFF)
       {
-       uint32 tmp_pw = strlen((*CurGame->Debugger->RegGroups)[r]->Regs[x].name.c_str());
+       uint32 tmp_pw = strlen((*CurGame->Debugger->RegGroups)[r]->Regs[x].name);
        unsigned int bsize = (*CurGame->Debugger->RegGroups)[r]->Regs[x].bsize;
 
        if(bsize & 0x100)
@@ -368,7 +367,7 @@ static void Regs_Init(const int max_height_hint)
  RegsTotalWidth = pw_offset;
 }
 
-static void Regs_DrawGroup(RegGroupType *rg, MDFN_Surface *surface, const int32 x, int highlight, uint32 which_font)
+static void Regs_DrawGroup(const RegGroupType* rg, MDFN_Surface *surface, const int32 x, int highlight, uint32 which_font)
 {
  const uint32 rname_color = surface->MakeColor(0xE0, 0xFF, 0xFF, 0xFF);
  const uint32 rval_color = surface->MakeColor(0xFF, 0xFF, 0xFF, 0xFF);
@@ -376,7 +375,7 @@ static void Regs_DrawGroup(RegGroupType *rg, MDFN_Surface *surface, const int32 
  const uint32 row_vspacing = GetFontHeight(which_font);
 
  unsigned int meowcow = 0;
- RegType *rec = rg->Regs;
+ const RegType* rec = rg->Regs;
  uint32 y_offs = 0;
 
  while(rec->bsize)
@@ -507,8 +506,8 @@ typedef enum
 
 // FIXME, cleanup, less spaghetti:
 static PromptType InPrompt = None;
-static RegType *CurRegIP;
-static RegGroupType *CurRegGroupIP;
+static const RegType* CurRegIP;
+static const RegGroupType* CurRegGroupIP;
 
 class DebuggerPrompt : public HappyPrompt
 {
@@ -594,17 +593,13 @@ class DebuggerPrompt : public HappyPrompt
 		    {
 		     try
 		     {
-		      time_t lovelytime;
-
 		      TraceLog.reset(new FileStream(tmpfn, FileStream::MODE_WRITE_INPLACE));
-
-		      lovelytime = time(NULL);
 
 		      TraceLog->seek(0, SEEK_END);
 		      if(TraceLog->tell() != 0)
 		       TraceLog->print_format("\n\n\n");
 
-		      TraceLog->print_format("Tracing began: %s", asctime(gmtime(&lovelytime)));
+		      TraceLog->print_format("Tracing began: %s\n", Time::StrTime().c_str());
 		      TraceLog->print_format("[ADDRESS]: [INSTRUCTION]   [REGISTERS(before instruction exec)]");
 
 		      if(num == 1)
@@ -679,7 +674,8 @@ class DebuggerPrompt : public HappyPrompt
                    if(WatchLogical)
                    {
                     trio_sscanf(tmp_c_str, "%x", &WatchAddr);
-                    WatchAddr &= 0xFFF0;
+                    WatchAddr &= (((uint64)1 << CurGame->Debugger->LogAddrBits) - 1);
+		    WatchAddr &= ~0xF;
                    }
                    else
                    {
@@ -1270,7 +1266,7 @@ static void DoTraceLog(const uint32 PC)
   {
    char regs_buf[1024 + 1];
    unsigned tpos = 0;
-   RegGroupType *rg = (*CurGame->Debugger->RegGroups)[0];
+   const RegGroupType* rg = (*CurGame->Debugger->RegGroups)[0];
 
    {
     unsigned sl = strlen(dis_text_buf);
@@ -1298,7 +1294,7 @@ static void DoTraceLog(const uint32 PC)
       regs_buf[tpos++] = ' ';
     }
 
-    for(unsigned s = 0; s < rt->name.size() && tpos < 1024; s++)
+    for(unsigned s = 0; rt->name[s] && tpos < 1024; s++)
     {
      regs_buf[tpos++] = rt->name[s];
     }
@@ -1341,9 +1337,6 @@ static void CPUCallback(uint32 PC, bool bpoint)
   NeedStep = 0;
  }
 
- if(TraceLog)
-  DoTraceLog(PC);
-
  while(InSteppingMode && GameThreadRun)
  {
   DebuggerFudge();
@@ -1362,6 +1355,11 @@ static void CPUCallback(uint32 PC, bool bpoint)
    UpdateCoreHooks();
  }
  if(NeedRun) NeedRun = 0;
+
+ //
+ //
+ if(TraceLog)
+  DoTraceLog(PC);
 }
 
 

@@ -2,7 +2,7 @@
 /* Mednafen Fast SNES Emulation Module                                        */
 /******************************************************************************/
 /* snes.cpp:
-**  Copyright (C) 2015-2016 Mednafen Team
+**  Copyright (C) 2015-2017 Mednafen Team
 **
 ** This program is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU General Public License
@@ -160,8 +160,6 @@ static DEFWRITE(WRAMWrite)
  WRAMWritten[A & mask] = true;
 }
 
-static uint8 WRIO;
-
 static uint8 Multiplicand;
 static uint16 MultProduct;	// Also division remainder.
 
@@ -176,7 +174,6 @@ static void ICRegsReset(bool powering_up)
 {
  if(powering_up)
  {
-  WRIO = 0xFF;
   Multiplicand = 0xFF;
   MultProduct = 0xFFFF;
 
@@ -197,10 +194,6 @@ static DEFWRITE(ICRegsWrite)
 
  switch(A & 0xFFFF)
  {
-  case 0x4201:	WRIO = V;
-		SNES_DBG("[SNES] Write WRIO: %02x\n", V);
-		break;
-
   case 0x4202:	Multiplicand = V;
 		break;
 
@@ -316,8 +309,16 @@ static DEFREAD(Read_2180)
 static SNSFLoader* snsf_loader = NULL;
 static SPCReader* spc_reader = NULL;
 
-static void Reset(bool powering_up)
+static MDFN_COLD void Reset(bool powering_up)
 {
+ if(spc_reader)
+ {
+  APU_Reset(powering_up);
+  APU_SetSPC(spc_reader);
+
+  return;
+ }
+
  if(powering_up)
  {
   for(unsigned i = 0, p = 0xCAFEBEEF; i < sizeof(WRAM); i++, p = (p << 1) | (((p >> 31) ^ (p >> 21) ^ (p >> 1) ^ p) & 1))
@@ -336,9 +337,6 @@ static void Reset(bool powering_up)
  CART_Reset(powering_up);
  INPUT_Reset(powering_up);
 
- if(spc_reader)
-  APU_SetSPC(spc_reader);
-
  //
  CPU_Reset(powering_up);
 
@@ -350,7 +348,7 @@ static void Reset(bool powering_up)
 //
 //
 
-static bool TestMagic(MDFNFILE *fp)
+static MDFN_COLD bool TestMagic(MDFNFILE *fp)
 {
  if(fp->ext == "sfc" || fp->ext == "smc")
   return true;
@@ -364,7 +362,7 @@ static bool TestMagic(MDFNFILE *fp)
  return false;
 }
 
-static void Cleanup(void)
+static MDFN_COLD void Cleanup(void)
 {
  if(SpecExSS)
  {
@@ -378,20 +376,36 @@ static void Cleanup(void)
   snsf_loader = NULL;
  }
 
+ APU_Kill();
+
  if(spc_reader)
  {
   delete spc_reader;
   spc_reader = NULL;
  }
-
- APU_Kill();
- PPU_Kill();
- INPUT_Kill();
- CART_Kill();
+ else
+ {
+  PPU_Kill();
+  INPUT_Kill();
+  CART_Kill();
+ }
 }
 
-static void Load(MDFNFILE *fp)
+static MDFN_COLD void Load(MDFNFILE *fp)
 {
+ if(SPCReader::TestMagic(fp->stream()))
+ {
+  spc_reader = new SPCReader(fp->stream());
+  Player_Init(1, spc_reader->GameName(), spc_reader->ArtistName(), "", std::vector<std::string>({ spc_reader->SongName() }));
+  EmulatedSNES_Faust.fps = (1U << 24) * 75;
+  EmulatedSNES_Faust.MasterClock = MDFN_MASTERCLOCK_FIXED(21477272.7);
+
+  APU_Init(false);
+  Reset(true);
+
+  return;
+ }
+
  SpecEx = MDFN_GetSettingB("snes_faust.spex");
  SpecExSoundToo = MDFN_GetSettingB("snes_faust.spex.sound");
  SpecExAudioExpected = -1;
@@ -448,7 +462,7 @@ static void Load(MDFNFILE *fp)
   {
    Set_A_Handlers((bank << 16) | 0x0000, (bank << 16) | 0x1FFF, WRAMRead<0x1FFF>, WRAMWrite<0x1FFF>);
 
-   Set_A_Handlers((bank << 16) | 0x4201, (bank << 16) | 0x4206, OBRead_FAST, ICRegsWrite);
+   Set_A_Handlers((bank << 16) | 0x4202, (bank << 16) | 0x4206, OBRead_FAST, ICRegsWrite);
    Set_A_Handlers((bank << 16) | 0x420D, OBRead_FAST, ICRegsWrite);
 
    Set_A_Handlers((bank << 16) | 0x4214, Read_4214, OBWrite_FAST);
@@ -458,37 +472,35 @@ static void Load(MDFNFILE *fp)
   }
  }
 
- if(SPCReader::TestMagic(fp->stream()))
+ if(SNSFLoader::TestMagic(fp->stream()))
  {
-  spc_reader = new SPCReader(fp->stream());
-  Player_Init(1, spc_reader->GameName(), spc_reader->ArtistName(), "", std::vector<std::string>({ spc_reader->SongName() }));
+  snsf_loader = new SNSFLoader(fp->stream());
+  Player_Init(1, snsf_loader->tags.GetTag("game"), snsf_loader->tags.GetTag("artist"), snsf_loader->tags.GetTag("copyright"), std::vector<std::string>({ snsf_loader->tags.GetTag("title") }));
  }
- else
- {
-  if(SNSFLoader::TestMagic(fp->stream()))
-  {
-   snsf_loader = new SNSFLoader(fp->stream());
-   Player_Init(1, snsf_loader->tags.GetTag("game"), snsf_loader->tags.GetTag("artist"), snsf_loader->tags.GetTag("copyright"), std::vector<std::string>({ snsf_loader->tags.GetTag("title") }));
-  }
 
-  CART_Init(snsf_loader ? &snsf_loader->ROM_Data : fp->stream(), EmulatedSNES_Faust.MD5);
-  CART_LoadNV();
- }
+ const bool IsPAL = CART_Init(snsf_loader ? &snsf_loader->ROM_Data : fp->stream(), EmulatedSNES_Faust.MD5);
+ CART_LoadNV();
 
  DMA_Init();
  INPUT_Init();
- PPU_Init();
- APU_Init();
+ {
+  const bool mte[2] = { MDFN_GetSettingB("snes_faust.input.sport1.multitap"), MDFN_GetSettingB("snes_faust.input.sport2.multitap") };
+  INPUT_SetMultitap(mte);
+ }
 
- if(spc_reader)
-  EmulatedSNES_Faust.fps = (1U << 24) * 75;
+ EmulatedSNES_Faust.MasterClock = IsPAL ? MDFN_MASTERCLOCK_FIXED(21281370.0) : MDFN_MASTERCLOCK_FIXED(21477272.7);
+
+ PPU_Init(IsPAL);
+ PPU_SetGetVideoParams(&EmulatedSNES_Faust, MDFN_GetSettingB("snes_faust.correct_aspect"));
+
+ APU_Init(IsPAL);
 
  Reset(true);
 }
 
-static void CloseGame(void)
+static MDFN_COLD void CloseGame(void)
 {
- if(!snsf_loader)
+ if(!snsf_loader && !spc_reader)
  {
   try
   {
@@ -648,7 +660,7 @@ void CPU_Misc::EventHandler(void)
 
 static void NO_INLINE EmulateReal(EmulateSpecStruct* espec)
 {
- APU_StartFrame(espec->SoundRate);
+ APU_StartFrame((double)EmulatedSNES_Faust.MasterClock / MDFN_MASTERCLOCK_FIXED(1), espec->SoundRate);
 
  if(spc_reader)
   CPUM.timestamp = 286364;
@@ -776,7 +788,6 @@ static void StateAction(StateMem *sm, const unsigned load, const bool data_only)
  {
   SFVAR(MemSelect),
   SFARRAY(WRAM, 0x20000),
-  SFVAR(WRIO),
 
   SFVAR(Multiplicand),
   SFVAR(MultProduct),
@@ -820,6 +831,12 @@ static const MDFNSetting Settings[] =
 
  { "snes_faust.spex", MDFNSF_NOFLAGS, gettext_noop("Enable 1-frame speculative execution for video output."), gettext_noop("Hack to reduce input->output video latency by 1 frame.  Enabling will increase CPU usage, and may cause video glitches(such as \"jerkiness\") in some oddball games, but most commercially-released games should be fine."), MDFNST_BOOL, "0" },
  { "snes_faust.spex.sound", MDFNSF_NOFLAGS, gettext_noop("Enable speculative execution for sound output too."), gettext_noop("Only has an effect when speculative-execution for video output is enabled.  Will cause minor sound glitches in some games."), MDFNST_BOOL, "1" },
+
+ { "snes_faust.input.sport1.multitap", MDFNSF_EMU_STATE | MDFNSF_UNTRUSTED_SAFE, gettext_noop("Enable multitap on SNES port 1."), NULL, MDFNST_BOOL, "0" },
+ { "snes_faust.input.sport2.multitap", MDFNSF_EMU_STATE | MDFNSF_UNTRUSTED_SAFE, gettext_noop("Enable multitap on SNES port 2."), NULL, MDFNST_BOOL, "0" },
+
+ { "snes_faust.correct_aspect", MDFNSF_NOFLAGS, gettext_noop("Correct aspect ratio."), NULL, MDFNST_BOOL, "1" },
+
  { NULL }
 };
 
@@ -866,7 +883,7 @@ MDFNGI EmulatedSNES_Faust =
  DoSimpleCommand,
  NULL,
  Settings,
- MDFN_MASTERCLOCK_FIXED(21477272.7),
+ 0,
  0,
 
  true, // Multires possible?
@@ -874,15 +891,15 @@ MDFNGI EmulatedSNES_Faust =
  //
  // Note: Following video settings may be overwritten during game load.
  //
- 512,	// lcm_width
- 448,	// lcm_height
+ 0,	// lcm_width
+ 0,	// lcm_height
  NULL,  // Dummy
 
  292,   // Nominal width
  224,   // Nominal height
 
- 512,   // Framebuffer width
- 480,   // Framebuffer height
+ 0,	// Framebuffer width
+ 0,	// Framebuffer height
  //
  //
  //

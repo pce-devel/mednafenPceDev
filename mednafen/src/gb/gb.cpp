@@ -23,13 +23,10 @@
 #include <mednafen/mempatcher.h>
 #include <mednafen/hash/md5.h>
 #include <mednafen/FileStream.h>
+#include <mednafen/Time.h>
 #include <mednafen/cheat_formats/gb.h>
 
-#include <string.h>
 #include <zlib.h>
-#include <math.h>
-
-#include <algorithm>
 
 #include "gb.h"
 #include "gbGlobals.h"
@@ -1613,18 +1610,17 @@ static void gbReadBatteryFile(const std::string& path)
       // Initialize time data before loading from save file, in case save file doesn't exist(or doesn't contain the time data) and throws an exception.
       //
       {
-	time_t tmp;
+	int64 tmp = Time::EpochTime();
 
-        time(&tmp);
         gbDataMBC3.mapperLastTime = tmp;
-        struct tm *lt;
-        lt = localtime(&tmp);
-        gbDataMBC3.mapperSeconds = lt->tm_sec;
-        gbDataMBC3.mapperMinutes = lt->tm_min;
-        gbDataMBC3.mapperHours = lt->tm_hour;
-        gbDataMBC3.mapperDays = lt->tm_yday & 255;
+        struct tm lt;
+        lt = Time::LocalTime(tmp);
+        gbDataMBC3.mapperSeconds = lt.tm_sec;
+        gbDataMBC3.mapperMinutes = lt.tm_min;
+        gbDataMBC3.mapperHours = lt.tm_hour;
+        gbDataMBC3.mapperDays = lt.tm_yday & 255;
         gbDataMBC3.mapperControl = (gbDataMBC3.mapperControl & 0xfe) |
-          (lt->tm_yday > 255 ? 1: 0);
+          (lt.tm_yday > 255 ? 1: 0);
       }
       gbReadSaveMBC3(path);
       break;
@@ -1645,13 +1641,13 @@ static void gbReadBatteryFile(const std::string& path)
   }
 }
 
-static SFORMAT Joy_StateRegs[] =
+static const SFORMAT Joy_StateRegs[] =
 {
  SFVAR(gbJoymask),
  SFEND
 };
 
-static SFORMAT MBC1_StateRegs[] =
+static const SFORMAT MBC1_StateRegs[] =
 {
  SFVARN(gbDataMBC1.mapperRAMEnable, "RAME"),
  SFVARN(gbDataMBC1.mapperROMBank, "ROMB"),
@@ -1660,14 +1656,14 @@ static SFORMAT MBC1_StateRegs[] =
  SFEND
 };
 
-static SFORMAT MBC2_StateRegs[] =
+static const SFORMAT MBC2_StateRegs[] =
 {
  SFVARN(gbDataMBC2.mapperRAMEnable, "RAME"),
  SFVARN(gbDataMBC2.mapperROMBank, "ROMB"),
  SFEND
 };
 
-static SFORMAT MBC3_StateRegs[] =
+static const SFORMAT MBC3_StateRegs[] =
 {
  SFVARN(gbDataMBC3.mapperRAMEnable, "RAME"),
  SFVARN(gbDataMBC3.mapperROMBank, "ROMB"),
@@ -1675,19 +1671,22 @@ static SFORMAT MBC3_StateRegs[] =
  SFVARN(gbDataMBC3.mapperClockLatch, "CLKL"),
  SFVARN(gbDataMBC3.mapperClockRegister, "CLKR"),
  SFVARN(gbDataMBC3.mapperSeconds, "SEC"),
+ SFVARN(gbDataMBC3.mapperMinutes, "MIN"),
  SFVARN(gbDataMBC3.mapperHours, "HOUR"),
  SFVARN(gbDataMBC3.mapperDays, "DAY"),
  SFVARN(gbDataMBC3.mapperControl, "CTRL"),
 
  SFVARN(gbDataMBC3.mapperLSeconds, "LSEC"),
+ SFVARN(gbDataMBC3.mapperLMinutes, "LMIN"),
  SFVARN(gbDataMBC3.mapperLHours, "LHUR"),
  SFVARN(gbDataMBC3.mapperLDays, "LDAY"),
  SFVARN(gbDataMBC3.mapperLControl, "LCTR"),
  SFVARN(gbDataMBC3.mapperLastTime, "LTIM"),
+
  SFEND
 };
 
-static SFORMAT MBC5_StateRegs[] =
+static const SFORMAT MBC5_StateRegs[] =
 {
  SFVAR(gbDataMBC5.mapperRAMEnable),
  SFVAR(gbDataMBC5.mapperROMBank),
@@ -1697,7 +1696,7 @@ static SFORMAT MBC5_StateRegs[] =
  SFEND
 };
 
-static SFORMAT MBC7_StateRegs[] =
+static const SFORMAT MBC7_StateRegs[] =
 {
  SFVARN(gbDataMBC7.mapperROMBank, "ROMB"),
  SFVARN(gbDataMBC7.cs, "CS"),
@@ -1717,7 +1716,7 @@ static SFORMAT MBC7_StateRegs[] =
  SFEND
 };
 
-static SFORMAT HuC1_StateRegs[] =
+static const SFORMAT HuC1_StateRegs[] =
 {
  SFVARN(gbDataHuC1.mapperRAMEnable, "RAME"),
  SFVARN(gbDataHuC1.mapperROMBank, "ROMB"),
@@ -1727,7 +1726,7 @@ static SFORMAT HuC1_StateRegs[] =
  SFEND
 };
 
-static SFORMAT HuC3_StateRegs[] =
+static const SFORMAT HuC3_StateRegs[] =
 {
  SFVARN(gbDataHuC3.mapperRAMEnable, "RAME"),
  SFVARN(gbDataHuC3.mapperROMBank, "ROMB"),
@@ -1748,7 +1747,7 @@ static SFORMAT HuC3_StateRegs[] =
 };
 
 
-static SFORMAT gbSaveGameStruct[] = 
+static const SFORMAT gbSaveGameStruct[] = 
 {
   SFVAR(GBLCD_MODE_0_CLOCK_TICKS),
   SFVAR(GBLCD_MODE_1_CLOCK_TICKS),
@@ -2111,7 +2110,7 @@ static void Load(MDFNFILE *fp)
   md5.update(gbRom, gbRomSize);
   md5.finish(MDFNGameInfo->MD5);
 
-  MDFNGameInfo->GameSetMD5Valid = FALSE;
+  MDFNGameInfo->GameSetMD5Valid = false;
 
   MDFN_printf(_("ROM:       %dKiB\n"), (gbRomSize + 1023) / 1024);
   MDFN_printf(_("ROM CRC32: 0x%08x\n"), (unsigned int)crc32(0, gbRom, gbRomSize));
@@ -2762,7 +2761,7 @@ static const MDFNSetting_EnumList SystemType_List[] =
  { NULL, 0 },
 };
 
-static MDFNSetting GBSettings[] =
+static const MDFNSetting GBSettings[] =
 {
  { "gb.system_type", MDFNSF_EMU_STATE | MDFNSF_UNTRUSTED_SAFE, gettext_noop("Emulated GB type."), NULL, MDFNST_ENUM, "auto", NULL, NULL, NULL, NULL, SystemType_List },
  { NULL }
@@ -2843,8 +2842,8 @@ static const FileExtensionSpecStruct KnownExtensions[] =
 
 static const CustomPalette_Spec CPInfo[] =
 {
- { gettext_noop("GameBoy(mono) palette"), NULL, { 4, 8, 12, 0 } },
- { gettext_noop("GameBoy Color 15-bit RGB"), "gbc", { 32768, 0 } },
+ { gettext_noop("GameBoy(mono)"), NULL, { 4, 8, 12, 0 } },
+ { gettext_noop("GameBoy Color 15-bit BGR"), "gbc", { 32768, 0 } },
  { NULL, NULL }
 };
 
@@ -2897,7 +2896,7 @@ MDFNGI EmulatedGB =
  GBSettings,
  MDFN_MASTERCLOCK_FIXED(4194304),
  (uint32)((double)4194304 / 70224 * 65536 * 256),
- FALSE, // Multires possible?
+ false, // Multires possible?
 
  160,	// lcm_width
  144,	// lcm_height

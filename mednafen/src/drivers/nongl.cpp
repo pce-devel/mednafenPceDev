@@ -24,10 +24,6 @@
 #include "nongl.h"
 #include "nnx.h"
 
-#include <algorithm>
-#include <math.h>
-#include <stdlib.h>
-
 //
 // Source rectangle sanity checking(more strict than dest rectangle sanity checking).	*/					
 //
@@ -300,7 +296,7 @@ static void BlitSScale(const MDFN_Surface *src_surface, const MDFN_Rect *src_rec
 
   sl_mult = 256 - 256 * abs(scanlines) / 100;
 
-  if(scanlines < 0 && InterlaceField >= 0)
+  if((scanlines < 0 || (dest_rect->h == original_src_rect->h)) && InterlaceField >= 0)
   {
    o_sr_h_ps = 1;
    sl_init_offs = InterlaceField;

@@ -25,9 +25,6 @@
 #include <mednafen/resampler/resampler.h>
 #include <mednafen/cheat_formats/snes.h>
 
-#include <vector>
-#include <memory>
-
 #include "src/base.hpp"
 
 extern MDFNGI EmulatedSNES;
@@ -52,6 +49,7 @@ static MDFN_Surface *tsurf = NULL;
 static int32 *tlw = NULL;
 static MDFN_Rect *tdr = NULL;
 static EmulateSpecStruct *es = NULL;
+static bool EnableHBlend;
 
 static int InputType[2];
 static uint8 *InputPtr[8] = { NULL };
@@ -98,9 +96,9 @@ static void BuildColorMap(MDFN_PixelFormat &format, uint8* CustomColorMap)
  }
 }
 
-static CustomPalette_Spec CPInfo[] =
+static const CustomPalette_Spec CPInfo[] =
 {
- { gettext_noop("SNES 15-bit RGB colormap"), NULL, { 32768, 0 } },
+ { gettext_noop("SNES 15-bit BGR"), NULL, { 32768, 0 } },
 
  { NULL, NULL }
 };
@@ -114,6 +112,18 @@ static void BlankMissingLines(int ystart, int ybound, const bool interlaced, con
   dest_line[0] = tsurf->MakeColor(0, 0/*rand() & 0xFF*/, 0);
   tlw[(y << interlaced) + field] = 1;
  }
+}
+
+static INLINE uint32 BlendFunc(const uint32 pp, const uint32 p, const uint32 pn)
+{
+ const uint32 pp_pn = (((uint64)pp + pn) - ((pp ^ pn) & 0x01010101)) >> 1;
+
+#if 1
+ return (((((pp_pn & 0x00FF00FF) * 120) + ((p & 0x00FF00FF) * 136)) >> 8) & 0x00FF00FF) +
+   		   (((((uint64)(pp_pn & 0xFF00FF00) * 120) + ((uint64)(p & 0xFF00FF00) * 136)) >> 8) & 0xFF00FF00);
+#else
+ return (((uint64)pp_pn + p) - ((pp_pn ^ p) & 0x01010101)) >> 1;
+#endif
 }
 
 void bSNES_v059::Interface::video_scanline(uint16_t *data, unsigned line, unsigned width, unsigned height, bool interlaced, bool field)
@@ -150,14 +160,19 @@ void bSNES_v059::Interface::video_scanline(uint16_t *data, unsigned line, unsign
  const uint16 *source_line = data;
  uint32 *dest_line = tsurf->pixels + (field * tsurf->pitch32) + ((y << interlaced) * tsurf->pitch32);
 
- //if(rand() & 1)
+ if(EnableHBlend && width == 256)
  {
-  tlw[(y << interlaced) + field] = width;
+  for(int x = 0; x < width; x++)
+  {
+   const uint32 p = ColorMap[source_line[x] & 0x7FFF];
+   dest_line[(x << 1) + 0] = p;
+   dest_line[(x << 1) + 1] = p;
+  }
+  width = 512;
  }
-
- if(width == 512 && (source_line[0] & 0x8000))
+ else if(!EnableHBlend && width == 512 && (source_line[0] & 0x8000))
  {
-  tlw[(y << interlaced) + field] = 256;
+  width = 256;
   for(int x = 0; x < 256; x++)
   {
    uint16 p1 = source_line[(x << 1) | 0] & 0x7FFF;
@@ -171,6 +186,27 @@ void bSNES_v059::Interface::video_scanline(uint16_t *data, unsigned line, unsign
    dest_line[x] = ColorMap[source_line[x] & 0x7FFF];
  }
 
+ if(EnableHBlend)
+ {
+  const uint32 black = tsurf->MakeColor(0, 0, 0);
+  uint32 pp = black;
+
+  //for(int x = 0; x < 512; x++)
+  // dest_line[x] = (!(x % 5)) ? tsurf->MakeColor(0xFF, 0xFF, 0xFF) : tsurf->MakeColor(0, 0, 0);
+
+  for(int x = 0; x < 511; x++)
+  {
+   const uint32 p = dest_line[x + 0];
+   const uint32 pn = dest_line[x + 1];
+
+   dest_line[x] = BlendFunc(pp, p, pn);
+   pp = p;
+  }
+
+  dest_line[511] = BlendFunc(pp, dest_line[511], black);
+ }
+
+ tlw[(y << interlaced) + field] = width;
  tdr->w = width;
  tdr->h = height << interlaced;
 
@@ -512,6 +548,7 @@ static void SetupMisc(bool PAL)
 
  if(!snsf_loader)
  {
+  EnableHBlend = MDFN_GetSettingB("snes.h_blend");
   MDFNGameInfo->nominal_width = MDFN_GetSettingB("snes.correct_aspect") ? (PAL ? 344/*354*/ : 292) : 256;
   MDFNGameInfo->nominal_height = PAL ? 239 : 224;
   MDFNGameInfo->lcm_height = MDFNGameInfo->nominal_height * 2;
@@ -629,7 +666,7 @@ static void CheatMap(bool uics, uint8 bank_lo, uint8 bank_hi, uint16 addr_lo, ui
 
 static void Load(MDFNFILE *fp)
 {
- bool PAL = FALSE;
+ bool PAL = false;
 
  CycleCounter = 0;
 
@@ -846,7 +883,7 @@ static void Emulate(EmulateSpecStruct *espec)
  SoundOn = espec->SoundBuf ? true : false;
 
  HasPolledThisFrame = false;
- InProperEmu = TRUE;
+ InProperEmu = true;
 
  // More aggressive frameskipping disabled until we can rule out undesirable side-effects and interactions.
  //bSNES_v059::ppu.enable_renderer(!espec->skip || PrevFrameInterlaced);
@@ -867,7 +904,7 @@ static void Emulate(EmulateSpecStruct *espec)
  tlw = NULL;
  tdr = NULL;
  es = NULL;
- InProperEmu = FALSE;
+ InProperEmu = false;
 
  espec->MasterCycles = CycleCounter;
  CycleCounter = 0;
@@ -1006,7 +1043,7 @@ static void StateAction(StateMem *sm, const unsigned load, const bool data_only)
   SFORMAT StateRegs[] =
   {
    SFARRAYN(ptr.get(), length, "OmniCat"),
-   { ExtraStateRegs, ~0U, 0, NULL },
+   SFLINK(ExtraStateRegs),
    SFEND
   };
 
@@ -1037,7 +1074,7 @@ static void StateAction(StateMem *sm, const unsigned load, const bool data_only)
   SFORMAT StateRegs[] =
   {
    SFARRAYN(ptr, length, "OmniCat"),
-   { ExtraStateRegs, ~0U, 0, NULL },
+   SFLINK(ExtraStateRegs),
    SFEND
   };
 
@@ -1288,6 +1325,8 @@ static const MDFNSetting SNESSettings[] =
 
  { "snes.correct_aspect", MDFNSF_CAT_VIDEO, gettext_noop("Correct the aspect ratio."), gettext_noop("Note that regardless of this setting's value, \"512\" and \"256\" width modes will be scaled to the same dimensions for display."), MDFNST_BOOL, "0" },
 
+ { "snes.h_blend", MDFNSF_NOFLAGS, gettext_noop("Enable horizontal blend(blur) filter."), gettext_noop("Intended for use in combination with the \"goat\" OpenGL shader, or with bilinear interpolation or linear interpolation on the X axis enabled."), MDFNST_BOOL, "0" },
+
  { "snes.apu.resamp_quality", MDFNSF_NOFLAGS, gettext_noop("APU output resampler quality."), gettext_noop("0 is lowest quality and latency and CPU usage, 10 is highest quality and latency and CPU usage.\n\nWith a Mednafen sound output rate of about 32041Hz or higher: Quality \"0\" resampler has approximately 0.125ms of latency, quality \"5\" resampler has approximately 1.25ms of latency, and quality \"10\" resampler has approximately 3.99ms of latency."), MDFNST_UINT, "5", "0", "10" },
 
  { NULL }
@@ -1351,7 +1390,7 @@ MDFNGI EmulatedSNES =
  SNESSettings,
  0,
  0,
- FALSE, // Multires
+ false, // Multires
 
  512,   // lcm_width
  480,   // lcm_height           (replaced in game load)

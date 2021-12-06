@@ -26,7 +26,6 @@
 
 #define SQ_SHIFT        8
 #define TRINPCM_SHIFT   0
-#include <math.h>
 
 namespace MDFN_IEN_NES
 {
@@ -104,7 +103,7 @@ static const uint32 NTSCNoiseFreqTable[0x10]=
 
 static const uint32 PALNoiseFreqTable[0x10] =
 {
- 4, 7, 14, 30, 60, 88, 118, 148, 188, 236, 354, 472, 708, 944, 1890, 3778
+ 4, 8, 14, 30, 60, 88, 118, 148, 188, 236, 354, 472, 708, 944, 1890, 3778
 };
 
 static const uint32 NTSCDMCTable[0x10]=
@@ -135,9 +134,9 @@ static int32 DMCSize;
 static uint8 DMCShift; 
 static uint8 SIRQStat=0;
 
-static char DMCHaveDMA;
+static int8 DMCHaveDMA;
 static uint8 DMCDMABuf=0;  
-static char DMCHaveSample;
+static int8 DMCHaveSample;
 
 static uint32 ChannelBC[5];
 
@@ -172,22 +171,11 @@ static int CheckFreq(uint32 cf, uint8 sr)
 static void SQReload(int x, uint8 V)
 {
            if(EnabledChannels&(1<<x))
-           {           
-            if(x)
-             DoSQ2();
-            else
-             DoSQ1();
             lengthcount[x]=lengthtable[(V>>3)&0x1f];
-	   }
 
-           //SweepOn[x]=(PSG[(x<<2)|1]&0x80) && SweepShift[x];
 	   curfreq[x] = (curfreq[x] & 0xFF) | ((V&7)<<8);
-           //curfreq[x]=PSG[(x<<2)|0x2]|((V&7)<<8);
-           //SweepCount[x]=((PSG[(x<<2)|0x1]>>4)&7)+1;           
-
            RectDutyCount[x]=7;
 	   EnvUnits[x].reloaddec=1;
-	   //reloadfreq[x]=1;
 }
 
 static DECLFW(Write_PSG)
@@ -215,6 +203,7 @@ static DECLFW(Write_PSG)
            break;
 
   case 0x3:
+	   DoSQ1();
            SQReload(0,V);
            break;
 
@@ -237,7 +226,8 @@ static DECLFW(Write_PSG)
           curfreq[1]|=V;
           break;
 
-  case 0x7:          
+  case 0x7:
+	  DoSQ2();
           SQReload(1,V);
           break;
 
@@ -557,15 +547,8 @@ static INLINE void DoSQ(int x)
    int32 rthresh;
    int16 *D;
    int32 currdc;
-   int32 cf;
+   int32 rc_reload;
    int32 rc;
-
-   if(curfreq[x]<8 || curfreq[x]>0x7ff)
-    goto endit;
-   if(!CheckFreq(curfreq[x],PSG[(x<<2)|0x1]))
-    goto endit;
-   if(!lengthcount[x])
-    goto endit;
 
    if(EnvUnits[x].Mode&0x1)
     amp=EnvUnits[x].Speed;
@@ -581,27 +564,39 @@ static INLINE void DoSQ(int x)
    V=SOUNDTS-ChannelBC[x];
    
    currdc=RectDutyCount[x];
-   cf=(curfreq[x]+1)*2;
+   rc_reload = (curfreq[x] + 1) * 2;
    rc=wlcount[x];
 
-   while(V>0)
+   if(curfreq[x] < 8 || !CheckFreq(curfreq[x],PSG[(x<<2)|0x1]) || !lengthcount[x])
+   {
+    rc -= V;
+    if(rc <= 0)
+     rc = rc_reload - (-rc % rc_reload);
+    V = 0;
+   }
+
+   if(rthresh == 6)	// Reversed below
+    currdc = (currdc - 2) & 0x7;
+
+   while(MDFN_LIKELY(V > 0))
    {
     if(currdc<rthresh)
      *D+=amp;
     rc--;
     if(!rc)
     {
-     rc=cf;
+     rc = rc_reload;
      currdc=(currdc+1)&7;
     }
     V--;
     D++;
    }   
+
+   if(rthresh == 6)	// Reverse above
+    currdc = (currdc + 2) & 0x7;
   
    RectDutyCount[x]=currdc;
    wlcount[x]=rc;
-
-   endit:
    ChannelBC[x]=SOUNDTS;
 }
 
@@ -936,7 +931,7 @@ static bool InitResampler(double rate)
 
  ff = new NES_Resampler(PAL ? PAL_CPU : NTSC_CPU, rate, MDFN_GetSettingF("nes.sound_rate_error"), 5216.592e-6, MDFN_GetSettingI("nes.soundq"));
  ff->SetVolume((double)3 / 2);
- return(TRUE);
+ return(true);
 }
 
 bool MDFNNES_SetSoundRate(double rate)
@@ -951,7 +946,7 @@ bool MDFNNES_SetSoundRate(double rate)
   if(!InitResampler(rate))
    return(false);
  }
- return(TRUE);
+ return(true);
 }
 
 /* Called when a game has been loaded. */

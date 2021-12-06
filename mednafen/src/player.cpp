@@ -17,7 +17,6 @@
 
 #include "mednafen.h"
 #include <trio/trio.h>
-#include <math.h>
 
 #include "video.h"
 #include "player.h"
@@ -119,6 +118,11 @@ static INLINE void DrawWaveform(MDFN_Surface* surface, const MDFN_Rect& dr, cons
 
  switch(surface->format.bpp)
  {
+  case 8:
+	// TODO(colors):
+	DrawWaveformSub(surface->pix<uint8>() + dr.x + dr.y * surface->pitchinpix, surface->pitchinpix, left_color, right_color, center_color, dr.w, dr.h, numchan, soundbuf, framecount);
+	break;
+
   case 16:
 	DrawWaveformSub(surface->pix<uint16>() + dr.x + dr.y * surface->pitchinpix, surface->pitchinpix, left_color, right_color, center_color, dr.w, dr.h, numchan, soundbuf, framecount);
 	break;

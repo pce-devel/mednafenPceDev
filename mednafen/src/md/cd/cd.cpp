@@ -19,7 +19,6 @@
 #include <mednafen/cdrom/cdromif.h>
 #include <mednafen/general.h>
 #include <mednafen/FileStream.h>
-#include <errno.h>
 #include "cd.h"
 #include "pcm.h"
 #include "cdc_cdd.h"
@@ -87,7 +86,7 @@ static uint8 COMM_STATUS[8 * 2];
 //#define UNDEFSUB(format, ...)
 //#endif
 
-static void MDCD_MainWrite8(uint32 A, uint8 V)
+static MDFN_FASTCALL void MDCD_MainWrite8(uint32 A, uint8 V)
 {
  A &= 0xFFFFFF;
 
@@ -136,7 +135,7 @@ static void MDCD_MainWrite8(uint32 A, uint8 V)
    default: UNDEFMAIN("Unknown write: %08x %02x\n", A, V);
 	    break;
    case 0x00: if(V & 0x1)
-	       MDCD_InterruptAssert(2, TRUE);
+	       MDCD_InterruptAssert(2, true);
 	      break;
    case 0x01: 
 	      if(SRES != (V & 0x1))
@@ -160,7 +159,7 @@ static void MDCD_MainWrite8(uint32 A, uint8 V)
               // if(!MM_DMNA) // Writing 0 to DMNA triggers it
               // {
               //  MM_RET = !MM_RET;
-	      //MM_DMNA = FALSE;
+	      //MM_DMNA = false;
               // }
               //}
 	      break;
@@ -184,7 +183,7 @@ static void MDCD_MainWrite8(uint32 A, uint8 V)
  }
 }
 
-static void MDCD_MainWrite16(uint32 A, uint16 V)
+static MDFN_FASTCALL void MDCD_MainWrite16(uint32 A, uint16 V)
 {
  A &= 0xFFFFFF;
 
@@ -234,7 +233,7 @@ static void MDCD_MainWrite16(uint32 A, uint16 V)
             break;
 
    case 0x00: if(V & 0x0100)
-               MDCD_InterruptAssert(2, TRUE);
+               MDCD_InterruptAssert(2, true);
 
               if(SRES != (V & 0x1))
               {
@@ -255,7 +254,7 @@ static void MDCD_MainWrite16(uint32 A, uint16 V)
               // if(MM_DMNA)
               // {
               //  MM_RET = !MM_RET;
-	      //MM_DMNA = FALSE;
+	      //MM_DMNA = false;
               // }
               // }
               break;
@@ -276,7 +275,7 @@ static void MDCD_MainWrite16(uint32 A, uint16 V)
  }
 }
 
-static uint8 MDCD_MainRead8(uint32 A)
+static MDFN_FASTCALL uint8 MDCD_MainRead8(uint32 A)
 {
  A &= 0xFFFFFF;
 
@@ -361,7 +360,7 @@ static uint8 MDCD_MainRead8(uint32 A)
  return(0x0);
 }
 
-static uint16 MDCD_MainRead16(uint32 A)
+static MDFN_FASTCALL uint16 MDCD_MainRead16(uint32 A)
 {
  A &= 0xFFFFFF;
 
@@ -446,7 +445,7 @@ static uint16 MDCD_MainRead16(uint32 A)
 // Sub 68K memory map handling:
 //
 //////////////////////////////////
-static void MDCD_SubWrite8(uint32 A, uint8 V)
+static MDFN_FASTCALL void MDCD_SubWrite8(uint32 A, uint8 V)
 {
  A &= 0xFFFFFF;
 
@@ -510,7 +509,7 @@ static void MDCD_SubWrite8(uint32 A, uint8 V)
    case 0x00: LEDControl = (V & 0x3);
 	      break;
    case 0x01: if(!(V & 0x1))
-	       InPeripheralReset = TRUE;
+	       InPeripheralReset = true;
 	      break;
 
    case 0x02: break; // WP, unused on sub cpu writes
@@ -553,7 +552,7 @@ static void MDCD_SubWrite8(uint32 A, uint8 V)
  }
 }
 
-static void MDCD_SubWrite16(uint32 A, uint16 V)
+static MDFN_FASTCALL void MDCD_SubWrite16(uint32 A, uint16 V)
 {
  A &= 0xFFFFFF;
 

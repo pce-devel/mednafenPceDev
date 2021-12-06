@@ -2,7 +2,7 @@
 /* Mednafen Sega Saturn Emulation Module                                      */
 /******************************************************************************/
 /* vdp2.h:
-**  Copyright (C) 2015-2016 Mednafen Team
+**  Copyright (C) 2015-2017 Mednafen Team
 **
 ** This program is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU General Public License
@@ -31,9 +31,10 @@ uint32 Write8_DB(uint32 A, uint16 DB) MDFN_HOT;
 uint32 Write16_DB(uint32 A, uint16 DB) MDFN_HOT;
 uint16 Read16_DB(uint32 A) MDFN_HOT;
 
-void Init(const bool IsPAL, const int sls, const int sle) MDFN_COLD;
-void FillVideoParams(MDFNGI* gi) MDFN_COLD;
+void Init(const bool IsPAL) MDFN_COLD;
+void SetGetVideoParams(MDFNGI* gi, const bool caspect, const int sls, const int sle, const bool show_h_overscan, const bool dohblend) MDFN_COLD;
 void Kill(void) MDFN_COLD;
+void StateAction(StateMem* sm, const unsigned load, const bool data_only) MDFN_COLD;
 
 void Reset(bool powering_up) MDFN_COLD;
 void SetLayerEnableMask(uint64 mask) MDFN_COLD;
@@ -41,10 +42,44 @@ void SetLayerEnableMask(uint64 mask) MDFN_COLD;
 sscpu_timestamp_t Update(sscpu_timestamp_t timestamp);
 void AdjustTS(const int32 delta);
 
+void GetGunXTranslation(const bool clock28m, float* scale, float* offs);
 void StartFrame(EmulateSpecStruct* espec, const bool clock28m);
 
 INLINE bool GetVBOut(void) { extern bool VBOut; return VBOut; }
 INLINE bool GetHBOut(void) { extern bool HBOut; return HBOut; }
+
+INLINE void SetExtLatch(sscpu_timestamp_t event_timestamp, bool status)
+{
+ extern bool ExLatchIn;
+ extern bool ExLatchEnable;
+ extern bool ExLatchPending;
+
+ if(MDFN_UNLIKELY(ExLatchIn != status))
+ {
+  ExLatchIn = status;
+  //
+  //
+  if(ExLatchEnable & ExLatchIn)
+  {
+   //
+   // Should be safer(avoid unintended reentrant and recursive calls to *Update() functions, now and in the future) to just schedule a call to VDP2::Update()
+   // than calling it directly from here, though it's possible a scheduled DMA could rewrite
+   // ExLatchEnable and VDP2 timing registers and cause weird results(latching correct values or not latching at all, versus also latching wrong values), but that shouldn't
+   // be a problem in practice...
+   //
+   ExLatchPending = true;
+   SS_SetEventNT(&events[SS_EVENT_VDP2], event_timestamp);
+#if 0
+   SS_SetEventNT(&events[SS_EVENT_VDP2], Update(event_timestamp));
+   //
+   LatchHV();
+   //
+   HVIsExLatched = true;
+   printf("ExLatch: %04x %04x\n", Latched_VCNT, Latched_HCNT);
+#endif
+  }
+ }
+}
 
 //
 //

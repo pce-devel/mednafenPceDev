@@ -2,7 +2,7 @@
 /* Mednafen NEC PC-FX Emulation Module                                        */
 /******************************************************************************/
 /* soundbox.cpp:
-**  Copyright (C) 2006-2016 Mednafen Team
+**  Copyright (C) 2006-2017 Mednafen Team
 **
 ** This program is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU General Public License
@@ -27,8 +27,6 @@
 #include <mednafen/sound/OwlResampler.h>
 
 #include <trio/trio.h>
-#include <math.h>
-#include <string.h>
 
 namespace MDFN_IEN_PCFX
 {
@@ -116,7 +114,7 @@ enum
  { PSG_GSREG_CH0_WINDEX | (n << 8), "WIndex", "PSG Ch"#n" Waveform Index", 1},     \
  { PSG_GSREG_CH0_SCACHE | (n << 8), "SCache", "PSG Ch"#n" Sample Cache", 1 }
 
-static RegType SBoxRegs[] =
+static const RegType SBoxRegs[] =
 {
  { PSG_GSREG_SELECT, "Select", "PSG Channel Select", 1 },
  { PSG_GSREG_GBALANCE, "GBal", "PSG Global Balance", 1 },
@@ -129,10 +127,10 @@ static RegType SBoxRegs[] =
  CHPDMOO(3),
  CHPDMOO(4),
  { PSG_GSREG_CH4_NCTRL, "NCtrl", "PSG Ch4 Noise Control", 1 },
- { PSG_GSREG_CH4_LFSR, "LFSR", "PSG Ch4 Noise LFSR", 2 },
+ { PSG_GSREG_CH4_LFSR, "LFSR", "PSG Ch4 Noise LFSR", 0x100 | 18 },
  CHPDMOO(5),
  { PSG_GSREG_CH5_NCTRL, "NCtrl", "PSG Ch5 Noise Control", 1 },
- { PSG_GSREG_CH5_LFSR, "LFSR", "PSG Ch5 Noise LFSR", 2 },
+ { PSG_GSREG_CH5_LFSR, "LFSR", "PSG Ch5 Noise LFSR", 0x100 | 18 },
 
  { 0, "--ADPCM:--", "", 0xFFFF },
 
@@ -252,7 +250,7 @@ static void SBoxDBG_SetRegister(const unsigned int id, uint32 value)
  }
 }
 
-static RegGroupType SBoxRegsGroup =
+static const RegGroupType SBoxRegsGroup =
 {
  "SndBox",
  SBoxRegs,
@@ -289,7 +287,7 @@ bool SoundBox_SetSoundRate(uint32 rate)
 
  RedoVolume();
 
- return(TRUE);
+ return(true);
 }
 
 static void Cleanup(void)
@@ -490,7 +488,7 @@ v810_timestamp_t SoundBox_ADPCMUpdate(const v810_timestamp_t timestamp)
      if(!sbox.ADPCMWhichNibble[ch])
      {
       sbox.ADPCMHalfWord[ch] = KING_GetADPCMHalfWord(ch);
-      sbox.ADPCMHaveHalfWord[ch] = TRUE;
+      sbox.ADPCMHaveHalfWord[ch] = true;
      }
 
      // If the channel's reset bit is set, don't update its ADPCM state.
@@ -540,7 +538,7 @@ v810_timestamp_t SoundBox_ADPCMUpdate(const v810_timestamp_t timestamp)
      sbox.ADPCMWhichNibble[ch] = (sbox.ADPCMWhichNibble[ch] + 4) & 0xF;
 
      if(!sbox.ADPCMWhichNibble[ch])
-      sbox.ADPCMHaveHalfWord[ch] = FALSE;
+      sbox.ADPCMHaveHalfWord[ch] = false;
     }
    } // for(int ch...)
   } // while(sbox.smalldiv <= 0)

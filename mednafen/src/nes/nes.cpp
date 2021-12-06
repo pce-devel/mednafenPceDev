@@ -19,7 +19,6 @@
  */
 
 #include	"nes.h"
-#include        <stdarg.h>
 
 #include	"x6502.h"
 #include	"ppu/ppu.h"
@@ -44,8 +43,7 @@ namespace MDFN_IEN_NES
 {
 uint64 timestampbase;
 
-// Accessed in debug.cpp
-NESGameType *GameInterface = NULL;
+static NESGameType GameInterface;
 
 static readfunc NonCheatARead[0x10000 + 0x100];
 readfunc ARead[0x10000 + 0x100];
@@ -144,7 +142,7 @@ static DECLFW(BOverflow)
 	return(BWrite[A](A, V));
 }
 
-static void Cleanup(void)
+static MDFN_COLD void Cleanup(void)
 {
  for(std::vector<EXPSOUND>::iterator ep = GameExpSound.begin(); ep != GameExpSound.end(); ep++)
  {
@@ -154,30 +152,27 @@ static void Cleanup(void)
 
  GameExpSound.clear();
 
- if(GameInterface)
- {
-  if(GameInterface->Kill)
-   GameInterface->Kill();
-  free(GameInterface);
-  GameInterface = NULL;
- }
+ if(GameInterface.Kill)
+  GameInterface.Kill();
+
+ memset(&GameInterface, 0, sizeof(GameInterface));
 
  Genie_Kill();
  MDFNSND_Close();
  MDFNPPU_Close();
 }
 
-static void CloseGame(void)
+static MDFN_COLD void CloseGame(void)
 {
- if(GameInterface && GameInterface->SaveNV)
-  GameInterface->SaveNV();
+ if(GameInterface.SaveNV)
+  GameInterface.SaveNV();
 
  Cleanup();
 }
 
-static void InitCommon(const std::string& fbase)
+static MDFN_COLD void InitCommon(const std::string& fbase)
 {
-        NESIsVSUni = FALSE;
+        NESIsVSUni = false;
         PPU_hook = 0;
         GameHBIRQHook = 0;
 
@@ -188,7 +183,7 @@ static void InitCommon(const std::string& fbase)
         MDFNGameInfo->VideoSystem = VIDSYS_NONE;
 
         MDFNGameInfo->cspecial = NULL;
-        MDFNGameInfo->GameSetMD5Valid = FALSE;
+        MDFNGameInfo->GameSetMD5Valid = false;
 
 
         if(MDFN_GetSettingB("nes.fnscan"))
@@ -197,12 +192,12 @@ static void InitCommon(const std::string& fbase)
           MDFNGameInfo->VideoSystem = VIDSYS_NTSC;
          else if(fbase.find("(J)") != std::string::npos || fbase.find("(Japan)") != std::string::npos)
           MDFNGameInfo->VideoSystem = VIDSYS_NTSC;
-         else if(fbase.find("(E)") != std::string::npos || fbase.find("(G)") != std::string::npos ||
-	         fbase.find("(Europe)") != std::string::npos || fbase.find("(Germany)") != std::string::npos)
+         else if(fbase.find("(E)") != std::string::npos || fbase.find("(G)") != std::string::npos || fbase.find("(F)") != std::string::npos ||
+	         fbase.find("(Europe)") != std::string::npos || fbase.find("(Germany)") != std::string::npos || fbase.find("(France)") != std::string::npos)
           MDFNGameInfo->VideoSystem = VIDSYS_PAL;
         }
 
-        GameInterface = (NESGameType *)calloc(1, sizeof(NESGameType));
+	memset(&GameInterface, 0, sizeof(GameInterface));
 
         SetReadHandler(0x0000, 0xFFFF, ANull);
         SetWriteHandler(0x0000, 0xFFFF, BNull);
@@ -228,9 +223,9 @@ static void InitCommon(const std::string& fbase)
         #endif
 }
 
-void UNIFLoad(Stream *fp, NESGameType *);
-void iNESLoad(Stream *fp, NESGameType *);
-void FDSLoad(Stream *fp, NESGameType *);
+void UNIFLoad(Stream *fp, NESGameType *) MDFN_COLD;
+void iNESLoad(Stream *fp, NESGameType *) MDFN_COLD;
+void FDSLoad(Stream *fp, NESGameType *) MDFN_COLD;
 
 bool iNES_TestMagic(MDFNFILE *fp);
 bool UNIF_TestMagic(MDFNFILE *fp);
@@ -262,7 +257,7 @@ static bool TestMagic(MDFNFILE *fp)
  return(GetLoadFunctionByMagic(fp) != NULL);
 }
 
-static void Load(MDFNFILE *fp)
+static MDFN_COLD void Load(MDFNFILE *fp)
 {
  try
  {
@@ -276,7 +271,7 @@ static void Load(MDFNFILE *fp)
 
 	InitCommon(fp->fbase);
 
-	LoadFunction(fp->stream(), GameInterface);
+	LoadFunction(fp->stream(), &GameInterface);
 
 	{
 	 int w;
@@ -393,8 +388,8 @@ static void Emulate(EmulateSpecStruct *espec)
 
 void ResetNES(void)
 {
-	if(GameInterface->Reset)
-         GameInterface->Reset();
+	if(GameInterface.Reset)
+         GameInterface.Reset();
         MDFNSND_Reset();
         MDFNPPU_Reset();
         X6502_Reset();
@@ -428,8 +423,8 @@ void PowerNES(void)
 	/* Have the external game hardware "powered" after the internal NES stuff.  
 	   Needed for the NSF code and VS System code.
 	*/
-	if(GameInterface->Power)
-	 GameInterface->Power();
+	if(GameInterface.Power)
+	 GameInterface.Power();
 
 	if(NESIsVSUni)
          MDFN_VSUniPower();
@@ -450,9 +445,9 @@ static void StateAction(StateMem *sm, const unsigned load, const bool data_only)
  MDFNSND_StateAction(sm, load, data_only);
  NESINPUT_StateAction(sm, load, data_only);
 
- if(GameInterface->StateAction)
+ if(GameInterface.StateAction)
  {
-  GameInterface->StateAction(sm, load, data_only);
+  GameInterface.StateAction(sm, load, data_only);
  }
 }
 
@@ -470,7 +465,7 @@ static const MDFNSetting_EnumList NTSCPresetList[] =
  { NULL, 0 },
 };
 
-static MDFNSetting NESSettings[] =
+static const MDFNSetting NESSettings[] =
 {
   { "nes.nofs", MDFNSF_EMU_STATE | MDFNSF_UNTRUSTED_SAFE, gettext_noop("Disable four-score emulation."), NULL, MDFNST_BOOL, "0" },
 
@@ -807,7 +802,7 @@ MDFNGI EmulatedNES =
  NESSettings,
  0,
  0,
- FALSE,	// Multires
+ false,	// Multires
 
  0,   // lcm_width		(replaced in game load)
  0,   // lcm_height           	(replaced in game load)

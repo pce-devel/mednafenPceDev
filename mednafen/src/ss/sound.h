@@ -37,7 +37,7 @@ sscpu_timestamp_t SOUND_Update(sscpu_timestamp_t timestamp);
 void SOUND_ResetTS(void);
 void SOUND_StartFrame(double rate, uint32 quality);
 int32 SOUND_FlushOutput(int16* SoundBuf, const int32 SoundBufMaxSize, const bool reverse);
-void SOUND_StateAction(StateMem *sm, const unsigned load, const bool data_only);
+void SOUND_StateAction(StateMem* sm, const unsigned load, const bool data_only) MDFN_COLD;
 
 uint16 SOUND_Read16(uint32 A);
 void SOUND_Write8(uint32 A, uint8 V);
@@ -45,6 +45,10 @@ void SOUND_Write16(uint32 A, uint16 V);
 
 uint8 SOUND_PeekRAM(uint32 A);
 void SOUND_PokeRAM(uint32 A, uint8 V);
+
+uint32 SOUND_GetSCSPRegister(const unsigned id, char* const special, const uint32 special_len) MDFN_COLD;
+void SOUND_SetSCSPRegister(const unsigned id, const uint32 value) MDFN_COLD;
+
 }
 
 #endif

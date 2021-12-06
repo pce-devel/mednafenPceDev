@@ -2,7 +2,7 @@
 
 <?php BeginPage('vb', 'Virtual Boy'); ?>
 
-<?php BeginSection('Introduction'); ?>
+<?php BeginSection('Introduction', 'Section_intro'); ?>
 
 <p>
 Virtual Boy emulation in Mednafen is original code, except for an extremely modified(optimizations, bug fixes, and better all-around emulation) V810 emulator core taken from Reality Boy years
@@ -26,6 +26,8 @@ To use the "hli" mode with a "Line Interlaced 3D" monitor, you'll want to set "v
 </p>
 
 <?php EndSection(); ?>
+
+<?php PrintCustomPalettes(); ?>
 
 <?php PrintSettings(); ?>
 

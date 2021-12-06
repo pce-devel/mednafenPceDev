@@ -26,9 +26,13 @@
 
 #include "mednafen.h"
 #include "lepacker.h"
+#include "tests.h"
 
 #include <mednafen/hash/sha1.h>
 #include <mednafen/hash/sha256.h>
+
+#include <mednafen/Time.h>
+#include <time.h>
 
 #include <zlib.h>
 
@@ -43,7 +47,23 @@
 #include <fenv.h>
 #endif
 
-#define FATALME	 { printf("Math test failed: %s:%d\n", __FILE__, __LINE__); fprintf(stderr, "Math test failed: %s:%d\n", __FILE__, __LINE__); return(0); }
+#include <atomic>
+
+#if defined(ARCH_POWERPC_ALTIVEC) && defined(HAVE_ALTIVEC_H)
+ #include <altivec.h>
+#endif
+
+#ifdef __ARM_NEON__
+ #include <arm_neon.h>
+#endif
+
+#ifdef __MMX__
+ #include <mmintrin.h>
+#endif
+
+#ifdef __SSE__
+ #include <xmmintrin.h>
+#endif
 
 namespace MDFN_TESTS_CPP
 {
@@ -88,36 +108,101 @@ MathTestEntry math_test_vals[] =
  { 0, 0, 0, 0 },
 };
 
-static bool DoSizeofTests(void)
+static void TestSignExtend(void)
 {
- const int SizePairs[][2] =
- {
-  { sizeof(uint8), 1 },
-  { sizeof(int8), 1 },
+ MathTestEntry *itoo = math_test_vals;
 
-  { sizeof(uint16), 2 },
-  { sizeof(int16), 2 },
+ assert(sign_9_to_s16(itoo->negative_one) == -1 && sign_9_to_s16(itoo->mostneg) == itoo->mostnegresult);
+ itoo++;
 
-  { sizeof(uint32), 4 },
-  { sizeof(int32), 4 },
+ assert(sign_10_to_s16(itoo->negative_one) == -1 && sign_10_to_s16(itoo->mostneg) == itoo->mostnegresult);
+ itoo++;
 
-  { sizeof(uint64), 8 },
-  { sizeof(int64), 8 },
+ assert(sign_11_to_s16(itoo->negative_one) == -1 && sign_11_to_s16(itoo->mostneg) == itoo->mostnegresult);
+ itoo++;
 
-  { 0, 0 },
- };
+ assert(sign_12_to_s16(itoo->negative_one) == -1 && sign_12_to_s16(itoo->mostneg) == itoo->mostnegresult);
+ itoo++;
 
- int i = -1;
+ assert(sign_13_to_s16(itoo->negative_one) == -1 && sign_13_to_s16(itoo->mostneg) == itoo->mostnegresult);
+ itoo++;
 
- while(SizePairs[++i][0])
- {
-  if(SizePairs[i][0] != SizePairs[i][1])
-   FATALME;
- }
+ assert(sign_14_to_s16(itoo->negative_one) == -1 && sign_14_to_s16(itoo->mostneg) == itoo->mostnegresult);
+ itoo++;
+
+ assert(sign_15_to_s16(itoo->negative_one) == -1 && sign_15_to_s16(itoo->mostneg) == itoo->mostnegresult);
+ itoo++;
+
+ assert(sign_x_to_s32(17, itoo->negative_one) == -1 && sign_x_to_s32(17, itoo->mostneg) == itoo->mostnegresult);
+ itoo++;
+
+ assert(sign_x_to_s32(18, itoo->negative_one) == -1 && sign_x_to_s32(18, itoo->mostneg) == itoo->mostnegresult);
+ itoo++;
+
+ assert(sign_x_to_s32(19, itoo->negative_one) == -1 && sign_x_to_s32(19, itoo->mostneg) == itoo->mostnegresult);
+ itoo++;
+
+ assert(sign_x_to_s32(20, itoo->negative_one) == -1 && sign_x_to_s32(20, itoo->mostneg) == itoo->mostnegresult);
+ itoo++;
+
+ assert(sign_x_to_s32(21, itoo->negative_one) == -1 && sign_x_to_s32(21, itoo->mostneg) == itoo->mostnegresult);
+ itoo++;
+
+ assert(sign_x_to_s32(22, itoo->negative_one) == -1 && sign_x_to_s32(22, itoo->mostneg) == itoo->mostnegresult);
+ itoo++;
+
+ assert(sign_x_to_s32(23, itoo->negative_one) == -1 && sign_x_to_s32(23, itoo->mostneg) == itoo->mostnegresult);
+ itoo++;
+
+ assert(sign_x_to_s32(24, itoo->negative_one) == -1 && sign_x_to_s32(24, itoo->mostneg) == itoo->mostnegresult);
+ itoo++;
+
+ assert(sign_x_to_s32(25, itoo->negative_one) == -1 && sign_x_to_s32(25, itoo->mostneg) == itoo->mostnegresult);
+ itoo++;
+
+ assert(sign_x_to_s32(26, itoo->negative_one) == -1 && sign_x_to_s32(26, itoo->mostneg) == itoo->mostnegresult);
+ itoo++;
+
+ assert(sign_x_to_s32(27, itoo->negative_one) == -1 && sign_x_to_s32(27, itoo->mostneg) == itoo->mostnegresult);
+ itoo++;
+
+ assert(sign_x_to_s32(28, itoo->negative_one) == -1 && sign_x_to_s32(28, itoo->mostneg) == itoo->mostnegresult);
+ itoo++;
+
+ assert(sign_x_to_s32(29, itoo->negative_one) == -1 && sign_x_to_s32(29, itoo->mostneg) == itoo->mostnegresult);
+ itoo++;
+
+ assert(sign_x_to_s32(30, itoo->negative_one) == -1 && sign_x_to_s32(30, itoo->mostneg) == itoo->mostnegresult);
+ itoo++;
+
+ assert(sign_x_to_s32(31, itoo->negative_one) == -1 && sign_x_to_s32(31, itoo->mostneg) == itoo->mostnegresult);
+ itoo++;
+}
+
+static void DoSizeofTests(void)
+{
+ assert(sizeof(uint8) == 1);
+ assert(sizeof(int8) == 1);
+
+ assert(sizeof(uint16) == 2);
+ assert(sizeof(int16) == 2);
+
+ assert(sizeof(uint32) == 4);
+ assert(sizeof(int32) == 4);
+
+ assert(sizeof(uint64) == 8);
+ assert(sizeof(int64) == 8);
 
  assert(sizeof(char) == 1);
  assert(sizeof(int) == 4);
  assert(sizeof(long) >= 4);
+ assert(sizeof(long long) >= 8);
+
+ assert(sizeof(float) >= 4);
+ assert(sizeof(double) >= 8);
+ assert(sizeof(long double) >= 8);
+
+ assert(sizeof(void*) >= 4);
 
  assert(sizeof(char) == SIZEOF_CHAR);
  assert(sizeof(short) == SIZEOF_SHORT);
@@ -126,8 +211,18 @@ static bool DoSizeofTests(void)
  assert(sizeof(long long) == SIZEOF_LONG_LONG);
 
  assert(sizeof(off_t) == SIZEOF_OFF_T);
+ assert(sizeof(ptrdiff_t) == SIZEOF_PTRDIFF_T);
+ assert(sizeof(size_t) == SIZEOF_SIZE_T);
+ assert(sizeof(void*) == SIZEOF_VOID_P);
 
- return(1);
+ assert(sizeof(double) == SIZEOF_DOUBLE);
+}
+
+static void TestTypesSign(void)
+{
+ // Make sure the "char" type is signed(pass -fsigned-char to gcc).  New code in Mednafen shouldn't be written with the
+ // assumption that "char" is signed, but there likely is at least some code that does.
+ assert((char)255 < 0);
 }
 
 static void AntiNSOBugTest_Sub1_a(int *array) NO_INLINE;
@@ -163,7 +258,7 @@ static void AntiNSOBugTest_Sub3(int *array)
  }
 }
 
-static bool DoAntiNSOBugTest(void)
+static void DoAntiNSOBugTest(void)
 {
  int array1[256], array2[256], array3[256];
  
@@ -178,16 +273,10 @@ static bool DoAntiNSOBugTest(void)
 
  for(int i = 0; i < 256; i++)
  {
-  if((array1[i] != array2[i]) || (array2[i] != array3[i]))
-  {
-   printf("%d %d %d %d\n", i, array1[i], array2[i], array3[i]);
-   FATALME;
-  }
+  assert((array1[i] == array2[i]) && (array2[i] == array3[i]));
  }
  //for(int value = 0; value < 256; value++)
  // printf("%d, %d\n", (int8)value, ((int8)value) * 15);
-
- return(1);
 }
 
 //
@@ -199,7 +288,7 @@ static bool DoAntiNSOBugTest(void)
 static void DoAntiNSOBugTest2014_SubA(int a) NO_INLINE NO_CLONE;
 static void DoAntiNSOBugTest2014_SubA(int a)
 {
- char c = 0;
+ signed char c = 0;
 
  for(; a; a--)
  {
@@ -224,7 +313,7 @@ static void DoAntiNSOBugTest2014_SubMx_F(void)
 static void DoAntiNSOBugTest2014_SubM1(void) NO_INLINE NO_CLONE;
 static void DoAntiNSOBugTest2014_SubM1(void)
 {
- char a;
+ signed char a;
 
  for(a = 127 - 1; a >= 0; a++)
   DoAntiNSOBugTest2014_SubMx_F();
@@ -233,7 +322,7 @@ static void DoAntiNSOBugTest2014_SubM1(void)
 static void DoAntiNSOBugTest2014_SubM3(void) NO_INLINE NO_CLONE;
 static void DoAntiNSOBugTest2014_SubM3(void)
 {
- char a;
+ signed char a;
 
  for(a = 127 - 3; a >= 0; a++)
   DoAntiNSOBugTest2014_SubMx_F();
@@ -254,7 +343,7 @@ static void DoAntiNSOBugTest2014(void)
 }
 
 
-bool DoLEPackerTest(void)
+void DoLEPackerTest(void)
 {
  MDFN::LEPacker mizer;
  static const uint8 correct_result[24] = { 0xed, 0xfe, 0xed, 0xde, 0xaa, 0xca, 0xef, 0xbe, 0xbe, 0xba, 0xfe, 0xca, 0xad, 0xde, 0x01, 0x9a, 0x0c, 0xa7, 0xff, 0x00, 0xff, 0xff, 0x55, 0x7f };
@@ -280,18 +369,12 @@ bool DoLEPackerTest(void)
  mizer ^ u8_test;
  mizer ^ s8_test;
 
- if(mizer.size() != 24)
- {
-  printf("Test failed: LEPacker data incorrect size.\n");
-  return(FALSE);
- }
+ assert(mizer.size() == 24);
 
  for(unsigned int i = 0; i < mizer.size(); i++)
-  if(mizer[i] != correct_result[i])
-  {
-   printf("Test failed: LEPacker packed data incorrect.\n");
-   return(FALSE);
-  }
+ {
+  assert(mizer[i] == correct_result[i]);
+ }
 
  u64_test = 0;
  u32_test = 0;
@@ -304,7 +387,7 @@ bool DoLEPackerTest(void)
  bool_test0 = 1;
  bool_test1 = 0;
 
- mizer.set_read_mode(TRUE);
+ mizer.set_read_mode(true);
 
  mizer ^ u32_test;
  mizer ^ u16_test;
@@ -317,62 +400,15 @@ bool DoLEPackerTest(void)
  mizer ^ s8_test;
 
 
- if(u32_test != 0xDEEDFEED)
- {
-  printf("Test failed: LEPacker u32 unpacking incorrect.\n");
-  return(FALSE);
- }
-
- if(u16_test != 0xCAAA)
- {
-  printf("Test failed: LEPacker u16 unpacking incorrect.\n");
-  return(FALSE);
- }
-
- if(u64_test != 0xDEADCAFEBABEBEEFULL)
- {
-  printf("%16llx\n", (unsigned long long)u64_test);
-  printf("Test failed: LEPacker u64 unpacking incorrect.\n");
-  return(FALSE);
- }
-
- if(u8_test != 0x55)
- {
-  printf("Test failed: LEPacker u8 unpacking incorrect.\n");
-  return(FALSE);
- }
-
- if(s32_test != -5829478)
- {
-  printf("Test failed: LEPacker s32 unpacking incorrect.\n");
-  return(FALSE);
- }
-
- if(s16_test != -1)
- {
-  printf("Test failed: LEPacker s16 unpacking incorrect.\n");
-  return(FALSE);
- }
-
- if(s8_test != 127)
- {
-  printf("Test failed: LEPacker s8 unpacking incorrect.\n");
-  return(FALSE);
- }
-
- if(bool_test0 != 0)
- {
-  printf("Test failed: LEPacker bool unpacking incorrect.\n");
-  return(FALSE);
- }
-
- if(bool_test1 != 1)
- {
-  printf("Test failed: LEPacker bool unpacking incorrect.\n");
-  return(FALSE);
- }
-
- return(TRUE);
+ assert(u32_test == 0xDEEDFEED);
+ assert(u16_test == 0xCAAA);
+ assert(u64_test == 0xDEADCAFEBABEBEEFULL);
+ assert(u8_test == 0x55);
+ assert(s32_test == -5829478);
+ assert(s16_test == -1);
+ assert(s8_test == 127);
+ assert(bool_test0 == 0);
+ assert(bool_test1 == 1);
 }
 
 struct MathTestTSOEntry
@@ -694,6 +730,69 @@ void NO_INLINE NO_CLONE TestGCC70941(void)
  assert(tmp == -1);
 }
 
+void NO_INLINE NO_CLONE TestGCC71488_Sub(long long* p, int v)
+{
+ for(unsigned i = 0; i < 4; i++)
+  p[i] = ((!p[4]) > (unsigned)!v) + !p[4];
+}
+
+void NO_INLINE NO_CLONE TestGCC71488(void)
+{
+ long long p[5] = { 0, 0, 0, 0, 0 };
+
+ TestGCC71488_Sub(p, 1);
+
+ assert(p[0] == 2 && p[1] == 2 && p[2] == 2 && p[3] == 2 && p[4] == 0);
+}
+
+int NO_INLINE NO_CLONE TestGCC80631_Sub(int* p)
+{
+ int ret = -1;
+
+ for(int i = 0; i < 8; i++)
+  if(p[i])
+   ret = i;
+
+ return ret;
+}
+
+void NO_INLINE NO_CLONE TestGCC80631(void)
+{
+ int p[32];
+
+ for(int i = 0; i < 32; i++)
+  p[i] = (i == 0 || i >= 8);
+
+ assert(TestGCC80631_Sub(p) == 0);
+}
+
+NO_INLINE NO_CLONE void TestGCC81740_Sub(int* p, unsigned count)
+{
+ static const int good[20] = { 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 10, 5, 6, 7, 8, 15, 10, 11, 12, 13 };
+
+ assert(count == 20);
+
+ for(unsigned i = 0; i < count; i++)
+  assert(good[i] == p[i]);
+}
+
+int TestGCC81740_b;
+
+NO_INLINE NO_CLONE void TestGCC81740(void)
+{
+ int v[4][5] = { 0 };
+
+ for(unsigned i = 0; i < sizeof(v) / sizeof(int); i++)
+  (&v[0][0])[i] = i;
+
+ for(int a = 3; a >= 0; a--)
+  for(TestGCC81740_b = 0; TestGCC81740_b < 3; TestGCC81740_b++)
+   v[TestGCC81740_b + 1][a + 1] = v[TestGCC81740_b][a];
+
+ TestGCC81740_Sub(&v[0][0], sizeof(v) / sizeof(int));
+}
+
+
 template<typename A, typename B>
 void NO_INLINE NO_CLONE TestSUCompare_Sub(A a, B b)
 {
@@ -724,43 +823,81 @@ void NO_INLINE NO_CLONE TestSUCompare(void)
  TestSUCompare_Sub<int8, uint8>(TestSUCompare_x0, 255);
 }
 
+template<typename T>
+NO_INLINE NO_CLONE void CheckAlignasType_Sub(void* p)
+{
+ assert(((uintptr_t)p % alignof(T)) == 0);
+}
+
+template<size_t I>
+NO_INLINE NO_CLONE void CheckAlignasI_Sub(void* p)
+{
+ assert(((uintptr_t)p % I) == 0);
+}
+
+template<typename T>
+NO_INLINE NO_CLONE void CheckAlignasType(void)
+{
+ alignas(alignof(T)) uint8 lv0[sizeof(T) + 1];
+ alignas(alignof(T)) uint8 lv1[sizeof(T) + 1];
+ alignas(alignof(T)) static uint8 gv0[sizeof(T) + 1];
+ alignas(alignof(T)) static uint8 gv1[sizeof(T) + 1];
+
+ CheckAlignasType_Sub<T>((void*)lv0);
+ CheckAlignasType_Sub<T>((void*)lv1);
+ CheckAlignasType_Sub<T>((void*)gv0);
+ CheckAlignasType_Sub<T>((void*)gv1);
+}
+
+template<size_t I>
+NO_INLINE NO_CLONE void CheckAlignasI(void)
+{
+ alignas(I) uint8 lv0[I + 1];
+ alignas(I) uint8 lv1[I + 1];
+ alignas(I) static uint8 gv0[I + 1];
+ alignas(I) static uint8 gv1[I + 1];
+
+ CheckAlignasI_Sub<I>((void*)lv0);
+ CheckAlignasI_Sub<I>((void*)lv1);
+ CheckAlignasI_Sub<I>((void*)gv0);
+ CheckAlignasI_Sub<I>((void*)gv1);
+}
+
 static void DoAlignmentChecks(void)
 {
- uint8 padding0[3];
- alignas(16) uint8 aligned0[7];
- alignas(4)  uint8 aligned1[2];
- alignas(16) uint32 aligned2[2];
- uint8 padding1[3];
+ static_assert(alignof(uint8) <= sizeof(uint8), "Alignment of type is greater than size of type.");
+ static_assert(alignof(uint16) <= sizeof(uint16), "Alignment of type is greater than size of type.");
+ static_assert(alignof(uint32) <= sizeof(uint32), "Alignment of type is greater than size of type.");
+ static_assert(alignof(uint64) <= sizeof(uint64), "Alignment of type is greater than size of type.");
 
- static uint8 g_padding0[3];
- alignas(16) static uint8 g_aligned0[7];
- alignas(4)  static uint8 g_aligned1[2];
- alignas(16) static uint32 g_aligned2[2];
- static uint8 g_padding1[3];
+ CheckAlignasType<uint16>();
+ CheckAlignasType<uint32>();
+ CheckAlignasType<uint64>();
+ CheckAlignasType<float>();
+ CheckAlignasType<double>();
 
- // Make sure compiler doesn't removing padding vars
- assert((&padding0[1] - &padding0[0]) == 1);
- assert((&padding1[1] - &padding1[0]) == 1);
- assert((&g_padding0[1] - &g_padding0[0]) == 1);
- assert((&g_padding1[1] - &g_padding1[0]) == 1);
+#if defined(ARCH_X86)
+ CheckAlignasI<16>();
+#endif
 
+#if defined(__MMX__)
+ CheckAlignasType<__m64>();
+#endif
 
- assert( (((unsigned long long)&aligned0[0]) & 0xF) == 0);
- assert( (((unsigned long long)&aligned1[0]) & 0x3) == 0);
- assert( (((unsigned long long)&aligned2[0]) & 0xF) == 0);
+#if defined(__SSE__)
+ CheckAlignasType<__m128>();
+#endif
 
- assert(((uint8 *)&aligned0[1] - (uint8 *)&aligned0[0]) == 1);
- assert(((uint8 *)&aligned1[1] - (uint8 *)&aligned1[0]) == 1);
- assert(((uint8 *)&aligned2[1] - (uint8 *)&aligned2[0]) == 4);
+#if defined(ARCH_POWERPC_ALTIVEC)
+ CheckAlignasType<vector unsigned int>();
+ CheckAlignasType<vector unsigned short>();
+#endif
 
-
- assert( (((unsigned long long)&g_aligned0[0]) & 0xF) == 0);
- assert( (((unsigned long long)&g_aligned1[0]) & 0x3) == 0);
- assert( (((unsigned long long)&g_aligned2[0]) & 0xF) == 0);
-
- assert(((uint8 *)&g_aligned0[1] - (uint8 *)&g_aligned0[0]) == 1);
- assert(((uint8 *)&g_aligned1[1] - (uint8 *)&g_aligned1[0]) == 1);
- assert(((uint8 *)&g_aligned2[1] - (uint8 *)&g_aligned2[0]) == 4);
+#ifdef __ARM_NEON__
+ CheckAlignasType<int16x4_t>();
+ CheckAlignasType<int32x4_t>();
+ CheckAlignasType<float32x4_t>();
+#endif
 }
 
 static uint32 NO_INLINE NO_CLONE RunMASMemTests_DoomAndGloom(uint32 offset)
@@ -817,6 +954,12 @@ static void RunMASMemTests(void)
  }
 
  assert(RunMASMemTests_DoomAndGloom(0) == 1);
+}
+
+
+void NO_INLINE NO_CLONE RunMiscEndianTests_Sub(uint32 v, volatile uint16* a)
+{
+ *a = (v << 24) | (v >> 24) | ((v << 8) & 0xFF0000) | ((v >> 8) & 0xFF00);
 }
 
 static void NO_INLINE NO_CLONE RunMiscEndianTests(uint32 arg0, uint32 arg1)
@@ -884,6 +1027,48 @@ static void NO_INLINE NO_CLONE RunMiscEndianTests(uint32 arg0, uint32 arg1)
  assert(mem16[3] == 0x5566);
  assert(mem16[2] == 0x3344);
 
+ {
+  uint64 v64 = 0xDEADBEEFCAFEBABEULL;
+
+  for(unsigned i = 0; i < 8; i++)
+  {
+   if(!(i & 0x7))
+   {
+    assert(ne64_rbo_be<uint64>(&v64, i) == v64);
+    assert(ne64_rbo_le<uint64>(&v64, i) == v64);
+   }
+
+   if(!(i & 0x3))
+   {
+    assert(ne64_rbo_be<uint32>(&v64, i) == (uint32)(v64 >> (32 - i * 8)));
+    assert(ne64_rbo_le<uint32>(&v64, i) == (uint32)(v64 >> (i * 8)));
+   }
+
+   if(!(i & 0x1))
+   {
+    assert(ne64_rbo_be<uint16>(&v64, i) == (uint16)(v64 >> (48 - i * 8)));
+    assert(ne64_rbo_le<uint16>(&v64, i) == (uint16)(v64 >> (i * 8)));
+   }
+
+   assert(ne64_rbo_be<uint8>(&v64, i) == (uint8)(v64 >> (56 - i * 8)));
+   assert(ne64_rbo_le<uint8>(&v64, i) == (uint8)(v64 >> (i * 8)));
+  }
+
+  ne64_wbo_be<uint64>(&v64, 0, 0xCAFEBABEDEADBEEF);
+  assert(v64 == 0xCAFEBABEDEADBEEF);
+  ne64_wbo_le<uint32>(&v64, 0, 0xD00FDAD0);
+  ne64_wbo_be<uint16>(&v64, 0, 0xF00D);
+  uint8 z[2] = { 0xC0, 0xBB };
+  ne64_rwbo_be<uint8, true>(&v64, 2, &z[0]);
+  ne64_rwbo_le<uint8, true>(&v64, 4, &z[1]);
+
+  ne64_rwbo_le<uint8, false>(&v64, 5, &z[0]);
+  ne64_rwbo_be<uint8, false>(&v64, 3, &z[1]);
+
+  assert(z[0] == 0xC0 && z[1] == 0xBB);
+  assert(v64 == 0xF00DC0BBD00FDAD0ULL);
+ }
+
  //
  //
  //
@@ -900,6 +1085,17 @@ static void NO_INLINE NO_CLONE RunMiscEndianTests(uint32 arg0, uint32 arg1)
 
   for(unsigned z = 0; z < 8; z++)
    assert(mem[z] == ((z >= i) ? z : (i - 1 - z)));
+ }
+ //
+ //
+ //
+ {
+  volatile uint16 greatzorb[2] = { 0x0123, 0x4567 };
+
+  RunMiscEndianTests_Sub(0xA55ADEAD, greatzorb);
+
+  assert(greatzorb[0] == 0x5AA5);
+  assert(greatzorb[1] == 0x4567);
  }
 }
 
@@ -926,39 +1122,52 @@ static void NO_INLINE NO_CLONE ExceptionTestSub(int v, int n, int* y)
   throw MDFN_Error(v, "%d", v);
 }
 
-static void RunExceptionTests(void)
+static NO_CLONE NO_INLINE int RunExceptionTests_TEP(void* data)
 {
- int y = 0;
- int z = 0;
+ std::atomic_int_least32_t* sv = (std::atomic_int_least32_t*)data;
 
- for(int x = -8; x < 8; x++)
+ sv->fetch_sub(1, std::memory_order_release);
+
+ while(sv->load(std::memory_order_acquire) > 0);
+
+ unsigned t = 0;
+
+ for(; !t || sv->load(std::memory_order_acquire) == 0; t++)
  {
-  try
-  {
-   ExceptionTestSub(x, x & 3, &y);
-  }
-  catch(const MDFN_Error &e)
-  {
-   int epv = x;
+  int y = 0;
+  int z = 0;
 
-   for(unsigned i = x & 3; i; i--)
-    epv += i;
-
-   z += epv;
-
-   assert(e.GetErrno() == epv);
-   assert(atoi(e.what()) == epv);
-   continue;
-  }
-  catch(...)
+  for(int x = -8; x < 8; x++)
   {
+   try
+   {
+    ExceptionTestSub(x, x & 3, &y);
+   }
+   catch(const MDFN_Error &e)
+   {
+    int epv = x;
+
+    for(unsigned i = x & 3; i; i--)
+     epv += i;
+
+    z += epv;
+
+    assert(e.GetErrno() == epv);
+    assert(atoi(e.what()) == epv);
+    continue;
+   }
+   catch(...)
+   {
+    abort();
+   }
    abort();
   }
-  abort();
+
+  assert(y == 16);
+  assert(z == 32);
  }
 
- assert(y == 16);
- assert(z == 32);
+ return t;
 }
 
 std::vector<int> stltests_vec[2];
@@ -983,22 +1192,26 @@ static void LZTZCount_Test(void)
  for(uint32 i = 0, x = 0; i < 33; i++, x = (x << 1) + 1)
  {
   assert(MDFN_tzcount16(~x) == std::min<uint32>(16, i));
+  assert(MDFN_tzcount32(~x) == i);
   assert(MDFN_lzcount32(x) == 32 - i);
  }
 
  for(uint32 i = 0, x = 0; i < 33; i++, x = (x ? (x << 1) : 1))
  {
   assert(MDFN_tzcount16(x) == (std::min<uint32>(17, i) + 16) % 17);
+  assert(MDFN_tzcount32(x) == (i + 32) % 33);
   assert(MDFN_lzcount32(x) == 32 - i);
  }
 
  for(uint64 i = 0, x = 0; i < 65; i++, x = (x << 1) + 1)
  {
+  assert(MDFN_tzcount64(~x) == i);
   assert(MDFN_lzcount64(x) == 64 - i);
  }
 
  for(uint64 i = 0, x = 0; i < 65; i++, x = (x ? (x << 1) : 1))
  {
+  assert(MDFN_tzcount64(x) == (i + 64) % 65);
   assert(MDFN_lzcount64(x) == 64 - i);
  }
 
@@ -1144,50 +1357,6 @@ static void NE1664_Test(void)
  assert(var64 == 0x333333337778CCCBULL);
 }
 
-#if 0
-static void NO_CLONE NO_INLINE ThreadSub(int tv)
-{
- throw MDFN_Error(tv, "%d\n", tv);
-}
-
-
-static int ThreadTestEntry(void* data)
-{
- const uint32 st = *(uint32*)data;
-
- while(MDFND_GetTime() < st)
- {
-  try
-  {
-   ThreadSub(rand());
-  }
-  catch(MDFN_Error &e)
-  {
-   assert(e.GetErrno() == atoi(e.what()));
-  }
- }
-
- return 0;
-}
-
-
-static void RunThreadTests(void)
-{
- MDFN_Thread *a, *b, *c, *d;
- uint32 t = MDFND_GetTime() + 5000;
-
- a = MDFND_CreateThread(ThreadTestEntry, &t);
- b = MDFND_CreateThread(ThreadTestEntry, &t);
- c = MDFND_CreateThread(ThreadTestEntry, &t);
- d = MDFND_CreateThread(ThreadTestEntry, &t);
- 
- MDFND_WaitThread(a, NULL);
- MDFND_WaitThread(b, NULL);
- MDFND_WaitThread(c, NULL);
- MDFND_WaitThread(d, NULL);
-}
-#endif
-
 static void zlib_test(void)
 {
  auto cfl = zlibCompileFlags();
@@ -1235,50 +1404,447 @@ static void memops_test(void)
  memops_test_sub(mem8);
 }
 
+static void TestLog2(void)
+{
+ static const struct
+ {
+  uint64 val;
+  unsigned expected;
+ } log2_test_vals[] =
+ {
+  { 0, 0 },
+  { 1, 0 },
+  { 2, 1 },
+  { 3, 1 },
+  { 4, 2 },
+  { 5, 2 },
+  { 6, 2 },
+  { 7, 2 },
+  { 4095, 11 },
+  { 4096, 12 },
+  { 4097, 12 },
+  { 0x7FFE, 14 },
+  { 0x7FFF, 14 },
+  { 0x8000, 15 },
+  { 0x8001, 15 },
+  { 0xFFFF, 15 },
+  { 0x7FFFFFFF, 30 },
+  { 0x80000000, 31 },
+  { 0xFFFFFFFF, 31 },
+  { 0x7FFFFFFFFFFFFFFEULL, 62 },
+  { 0x7FFFFFFFFFFFFFFFULL, 62 },
+  { 0x8000000000000000ULL, 63 },
+  { 0x8000000000000001ULL, 63 },
+  { 0x8AAAAAAAAAAAAAAAULL, 63 },
+  { 0xFFFFFFFFFFFFFFFFULL, 63 },
+ };
 
+ for(const auto& tv : log2_test_vals)
+ {
+  if((uint32)tv.val == tv.val)
+  {
+   assert(MDFN_log2((uint32)tv.val) == tv.expected);
+   assert(MDFN_log2((int32)tv.val) == tv.expected);  
+  }
+
+  assert(MDFN_log2((uint64)tv.val) == tv.expected);
+  assert(MDFN_log2((int64)tv.val) == tv.expected);  
+ }
+}
+
+static void TestRoundPow2(void)
+{
+ static const struct
+ {
+  uint64 val;
+  uint64 expected;
+ } rup2_test_vals[] =
+ {
+  { 0, 1 },
+  { 1, 1 },
+  { 2, 2 },
+  { 3, 4 },
+  { 4, 4 },
+  { 5, 8 },
+  { 7, 8 },
+  { 8, 8 },
+  {      0x7FFF,         0x8000 },
+  {      0x8000,         0x8000 },
+  {      0x8001,        0x10000 },
+  {     0x10000,        0x10000 },
+  {     0x10001,        0x20000 },
+  {  0x7FFFFFFF,     0x80000000 },
+  {  0x80000000,     0x80000000 },
+  {  0x80000001,    0x100000000ULL },
+  { 0x100000000ULL, 0x100000000ULL },
+  { 0x100000001ULL, 0x200000000ULL },
+  { 0xFFFFFFFFFFFFFFFFULL, 0 },
+ };
+
+ for(auto const& tv : rup2_test_vals)
+ {
+  if((uint32)tv.val == tv.val)
+  {
+   assert(round_up_pow2((uint32)tv.val) == (uint64)tv.expected);
+   assert(round_up_pow2((int32)tv.val) == (uint64)tv.expected);
+  }
+
+  assert(round_up_pow2((uint64)tv.val) == (uint64)tv.expected);
+  assert(round_up_pow2((int64)tv.val) == (uint64)tv.expected);
+ }
+
+ for(unsigned i = 1; i < 64; i++)
+ {
+  if(i < 32)
+  {
+   assert(round_up_pow2((uint32)(((uint64)1 << i) + 0)) ==  ((uint64)1 << i));
+   assert(round_up_pow2((uint32)(((uint64)1 << i) + 1)) == (((uint64)1 << i) << 1));
+  }
+  assert(round_up_pow2(((uint64)1 << i) + 0) ==  ((uint64)1 << i));
+  assert(round_up_pow2(((uint64)1 << i) + 1) == (((uint64)1 << i) << 1));
+ }
+
+ assert(round_nearest_pow2((uint16)0xC000, false) ==  0x00008000U);
+ assert(round_nearest_pow2( (int16)0x6000, false) ==  0x00004000U);
+ assert(round_nearest_pow2( (int16)0x6000,  true) ==  0x00008000U);
+ assert(round_nearest_pow2((uint16)0xC000) 	  ==  0x00010000U);
+ assert(round_nearest_pow2( (int16)0xC000) 	  == 0x100000000ULL);
+
+ for(int i = 0; i < 64; i++)
+ {
+  assert( round_nearest_pow2(((uint64)1 << i)                          + 0) == (((uint64)1 << i) << 0) );
+  if(i > 0)
+  {
+   assert( round_nearest_pow2(((uint64)1 << i) + ((uint64)1 << (i - 1))    ) == (((uint64)1 << i) << 1) );
+   assert( round_nearest_pow2(((uint64)1 << i) + ((uint64)1 << (i - 1)) - 1) == (((uint64)1 << i) << 0) );
+  }
+
+  assert( round_nearest_pow2(((uint64)1 << i)                          + 0, false) == (((uint64)1 << i) << 0) );
+  if(i > 0)
+  {
+   assert( round_nearest_pow2(((uint64)1 << i) + ((uint64)1 << (i - 1)) + 1, false) == (((uint64)1 << i) << 1) );
+   assert( round_nearest_pow2(((uint64)1 << i) + ((uint64)1 << (i - 1)) + 0, false) == (((uint64)1 << i) << 0) );
+   assert( round_nearest_pow2(((uint64)1 << i) + ((uint64)1 << (i - 1)) - 1, false) == (((uint64)1 << i) << 0) );
+  }
+
+  {
+   float tmp = i ? floor((1.0 / 2) + (float)i / (1U << MDFN_log2(i))) * (1U << MDFN_log2(i)) : 1.0;
+   //printf("%d, %d %d -- %f\n", i, round_nearest_pow2(i, true), round_nearest_pow2(i, false), tmp);
+   assert(tmp == round_nearest_pow2(i));
+  }
+ }
+
+ #if 0
+ {
+  uint64 lcg = 7;
+  uint64 accum = 0;
+
+  for(unsigned i = 0; i < 256; i++, lcg = (lcg * 6364136223846793005ULL) + 1442695040888963407ULL)
+   accum += round_up_pow2(lcg) * 1 + round_up_pow2((uint32)lcg) * 3 + round_up_pow2((uint16)lcg) * 5 + round_up_pow2((uint8)lcg) * 7;
+
+  assert(accum == 0xb40001fbdb46577cULL);
+ }
+ #endif
+}
+
+template<typename RT, typename T, unsigned sa>
+static NO_INLINE NO_CLONE RT TestCasts_Sub_L(T v)
+{
+ return (RT)v << sa;
+}
+
+template<typename RT, typename T, unsigned sa>
+static NO_INLINE NO_CLONE RT TestCasts_Sub_R(T v)
+{
+ return (RT)v >> sa;
+}
+
+template<typename RT, typename T, signed sa>
+static INLINE RT TestCasts_Sub(T v)
+{
+ if(sa < 0)
+  return TestCasts_Sub_R<RT, T, (-sa) & (8 * sizeof(RT) - 1)>(v);
+ else
+  return TestCasts_Sub_L<RT, T, sa & (8 * sizeof(RT) - 1)>(v);
+}
+
+static void TestCastShift(void)
+{
+ assert((TestCasts_Sub< int64, uint8, 4>(0xEF) == 0x0000000000000EF0ULL));
+ assert((TestCasts_Sub<uint64,  int8, 4>(0xEF) == 0xFFFFFFFFFFFFFEF0ULL));
+
+ assert((TestCasts_Sub< int64, uint16, 4>(0xBEEF) == 0x00000000000BEEF0ULL));
+ assert((TestCasts_Sub<uint64,  int16, 4>(0xBEEF) == 0xFFFFFFFFFFFBEEF0ULL));
+
+ assert((TestCasts_Sub< int64, uint32, 4>(0xDEADBEEF) == 0x0000000DEADBEEF0ULL));
+ assert((TestCasts_Sub<uint64,  int32, 4>(0xDEADBEEF) == 0xFFFFFFFDEADBEEF0ULL));
+
+ assert((TestCasts_Sub< int64, uint8, 20>(0xEF) == 0x000000000EF00000ULL));
+ assert((TestCasts_Sub<uint64,  int8, 20>(0xEF) == 0xFFFFFFFFFEF00000ULL));
+
+ assert((TestCasts_Sub< int64, uint16, 20>(0xBEEF) == 0x0000000BEEF00000ULL));
+ assert((TestCasts_Sub<uint64,  int16, 20>(0xBEEF) == 0xFFFFFFFBEEF00000ULL));
+
+ assert((TestCasts_Sub< int64, uint32, 20>(0xDEADBEEF) == 0x000DEADBEEF00000ULL));
+ assert((TestCasts_Sub<uint64,  int32, 20>(0xDEADBEEF) == 0xFFFDEADBEEF00000ULL));
+
+ assert((TestCasts_Sub< int64, uint8, -4>(0xEF) == 0x000000000000000EULL));
+ assert((TestCasts_Sub<uint64,  int8, -4>(0xEF) == 0x0FFFFFFFFFFFFFFEULL));
+
+ assert((TestCasts_Sub< int64, uint16, -4>(0xBEEF) == 0x0000000000000BEEULL));
+ assert((TestCasts_Sub<uint64,  int16, -4>(0xBEEF) == 0x0FFFFFFFFFFFFBEEULL));
+
+ assert((TestCasts_Sub< int64, uint32, -4>(0xDEADBEEF) == 0x000000000DEADBEEULL));
+ assert((TestCasts_Sub<uint64,  int32, -4>(0xDEADBEEF) == 0x0FFFFFFFFDEADBEEULL));
+
+ assert((TestCasts_Sub< int64, uint8, -20>(0xEF) == 0x0000000000000000ULL));
+ assert((TestCasts_Sub<uint64,  int8, -20>(0xEF) == 0x00000FFFFFFFFFFFULL));
+
+ assert((TestCasts_Sub< int64, uint16, -20>(0xBEEF) == 0x0000000000000000ULL));
+ assert((TestCasts_Sub<uint64,  int16, -20>(0xBEEF) == 0x00000FFFFFFFFFFFULL));
+
+ assert((TestCasts_Sub< int64, uint32, -20>(0xDEADBEEF) == 0x0000000000000DEAULL));
+ assert((TestCasts_Sub<uint64,  int32, -20>(0xDEADBEEF) == 0x00000FFFFFFFFDEAULL));
+}
+
+union tup_floatyint
+{
+ float f;
+ uint32 i;
+ uint64 j;
+};
+
+void NO_INLINE NO_CLONE TestUnionPun_Sub0(tup_floatyint* t)
+{
+ t->f = 1.0;
+ t->i++;
+ t->j -= 0x100000001ULL;
+}
+
+float NO_INLINE NO_CLONE TestUnionPun_Sub1(tup_floatyint* t, int z)
+{
+ float a = 0;
+
+ while(z--)
+ {
+  t->f = 1.0;
+  t->i++;
+  t->j -= 0x100000001ULL;
+  a += t->f;
+ }
+
+ return a;
+}
+
+float NO_INLINE NO_CLONE TestUnionPun_Sub2(tup_floatyint* t, int z)
+{
+ float a = 0;
+
+ while(z--)
+ {
+  t->f *= 2;
+  t->i++;
+  t->j -= 0x100000001ULL;
+  t->f /= 2;
+  a += t->f * 2;
+ }
+
+ return a;
+}
+
+
+static void TestUnionPun(void)
+{
+ tup_floatyint v;
+
+ v.j = ~(uint64)0;
+ v.f = 1.0;
+ v.i++;
+ assert(v.f != 1.0);
+ v.j -= 0x100000001ULL;
+ assert(v.f == 1.0);
+
+ v.f++;
+ v.j = ~(uint64)0;
+ TestUnionPun_Sub0(&v);
+ assert(v.f == 1.0);
+
+ v.f--;
+ v.j = ~(uint64)0;
+ float t0 = TestUnionPun_Sub1(&v, 9);
+ assert(t0 == 9.0);
+ assert(v.f == 1.0);
+
+ v.j = ~(uint64)0;
+ v.f = 32;
+ float t1 = TestUnionPun_Sub2(&v, 15);
+ assert(t1 == 960.0);
+ assert(v.f == 32.0);
+}
+
+void NO_INLINE NO_CLONE TestI8Alias_Sub(int8* a, uint8* b, unsigned* c)
+{
+ (*a)++;
+ *c *= 2;
+ (*b)++;
+ *c *= 3;
+ (*a)++;
+ *c *= 4;
+ (*b)++;
+ *c *= 5;
+
+ (*a)++;
+ *c *= 6;
+ (*a)++;
+ *c *= 7;
+ (*a)++;
+ *c *= 8;
+ (*a)++;
+ *c *= 9;
+
+ (*b)++;
+ *c *= 10;
+ (*b)++;
+ *c *= 11;
+ (*b)++;
+ *c *= 12;
+ (*b)++;
+ *c *= 13;
+
+ (*b)++;
+ *c *= 14 + (*a < 0);
+ (*b)++;
+ *c *= 15 + (*a < 0);
+ (*b)++;
+ *c *= 16 + (*a < 0);
+ (*b)++;
+ *c *= 17 + (*a < 0);
+}
+
+static void TestI8Alias(void)
+{
+ unsigned v = 1;
+ for(char* z = (char*)&v; z != (char*)&v + sizeof(v); z++)
+ {
+  if(*z)
+  {
+   TestI8Alias_Sub((int8*)z, (uint8*)z, &v);
+   //printf("%08x\n", v);
+   break;
+  }
+ }
+ assert(v == 0x297adbae);
+}
+
+template<typename T, typename U>
+NO_INLINE NO_CLONE void TestSUSAlias_Sub(T* a, U* b)
+{
+ *a *= 2;
+ *b += 1;
+ *a *= 2;
+}
+
+static void TestSUSAlias(void)
+{
+ unsigned char d = 1;
+ unsigned short e = 1;
+ unsigned int f = 1;
+ unsigned long g = 1;
+ unsigned long long h = 1;
+
+ TestSUSAlias_Sub((unsigned char*)&d, (signed char*)&d);
+ TestSUSAlias_Sub((unsigned short*)&e, (signed short*)&e);
+ TestSUSAlias_Sub((unsigned int*)&f, (signed int*)&f);
+ TestSUSAlias_Sub((unsigned long*)&g, (signed long*)&g);
+ TestSUSAlias_Sub((unsigned long long*)&h, (signed long long*)&h);
+
+ assert(d == 6);
+ assert(e == 6);
+ assert(f == 6);
+ assert(g == 6);
+ assert(h == 6);
+}
+
+NO_INLINE NO_CLONE int8 TestDiv_Sub0(int8 a)
+{
+ return (uint16)a / -3;
+}
+
+NO_INLINE NO_CLONE int8 TestDiv_Sub1(int8 a)
+{
+ return (int8)(-a) / 2;
+}
+
+NO_INLINE NO_CLONE int16 TestDiv_Sub2(int16 a)
+{
+ return (int16)(-a) / 2;
+}
+
+NO_INLINE NO_CLONE int32 TestDiv_Sub3(int32 a)
+{
+ return (int32)(-(uint32)a) / 2;
+}
+
+NO_INLINE NO_CLONE int64 TestDiv_Sub4(int64 a)
+{
+ return (int64)(-(uint64)a) / 2;
+}
+
+static void TestDiv(void)
+{
+ //assert((uint8)TestDiv_Sub0(-1) == (uint8)(0xFFFF / -3));
+ assert(TestDiv_Sub1(-128) == -64);
+ assert(TestDiv_Sub2(-32768) == -16384);
+ assert(TestDiv_Sub3((uint32)1 << 31) == -1073741824);
+ assert(TestDiv_Sub4((uint64)1 << 63) == (int64)((uint64)1 << 63) >> 1);
+}
+
+static void Time_Test(void)
+{
+ {
+  struct tm ut = Time::UTCTime(0);
+
+  assert(ut.tm_sec == 0);
+  assert(ut.tm_min == 0);
+  assert(ut.tm_hour == 0);
+  assert(ut.tm_mday == 1);
+  assert(ut.tm_mon == 0);
+  assert(ut.tm_year = 70);
+  assert(ut.tm_wday == 4);
+  assert(ut.tm_yday == 0);
+  assert(ut.tm_isdst <= 0);
+ }
+
+ #ifndef WIN32
+ if(sizeof(time_t) >= 8)
+ #endif
+ {
+  struct tm ut = Time::UTCTime((int64)1 << 32);
+
+  assert(ut.tm_sec == 16);
+  assert(ut.tm_min == 28);
+  assert(ut.tm_hour == 6);
+  assert(ut.tm_mday == 7);
+  assert(ut.tm_mon == 1);
+  assert(ut.tm_year = 106);
+  assert(ut.tm_wday == 0);
+  assert(ut.tm_yday == 37);
+  assert(ut.tm_isdst <= 0);
+ }
+}
 
 const char* MDFN_tests_stringA = "AB\0C";
 const char* MDFN_tests_stringB = "AB\0CD";
 const char* MDFN_tests_stringC = "AB\0X";
 
-}
-
-using namespace MDFN_TESTS_CPP;
-
-bool MDFN_RunMathTests(void)
+static void TestSStringNullChar(void)
 {
- MathTestEntry *itoo = math_test_vals;
-
- if(!DoSizeofTests())
-  return(0);
-
  assert(MDFN_tests_stringA != MDFN_tests_stringB && MDFN_tests_stringA[3] == 'C' && MDFN_tests_stringB[4] == 'D');
  assert(MDFN_tests_stringA != MDFN_tests_stringC && MDFN_tests_stringB != MDFN_tests_stringC && MDFN_tests_stringC[3] == 'X');
+}
 
- // Make sure the "char" type is signed(pass -fsigned-char to gcc).  New code in Mednafen shouldn't be written with the
- // assumption that "char" is signed, but there likely is at least some code that does.
- {
-  char tmp = 255;
-  assert(tmp < 0);
- }
-
- #if 0
- // TODO(except for 32-bit >> 32 test)
- {
-  uint8 test_cow8 = (uint8)0xFF >> mdfn_shifty_test[1];
-  uint16 test_cow16 = (uint16)0xFFFF >> mdfn_shifty_test[2];
-  uint32 test_cow32 = (uint32)0xFFFFFFFF >> mdfn_shifty_test[3];
-  uint32 test_cow32_2 = (uint32)0xFFFFFFFF >> mdfn_shifty_test[0];
-
- printf("%08x\n", test_cow32);
-
-  assert(test_cow8 == 0);
-  assert(test_cow16 == 0);
-  assert(test_cow32 == 0);
-  assert(test_cow32_2 == 0xFFFFFFFF);
- }
- #endif
-
+static void TestArithRightShift(void)
+{
  {
   int32 meow;
 
@@ -1378,8 +1944,95 @@ bool MDFN_RunMathTests(void)
    assert(hflip_xor == hflip_xor_alt);
    assert(vflip_xor == vflip_xor_alt);
   }
-
  }
+}
+
+static int ThreadSafeErrno_Test_Entry(void* data)
+{
+ MDFN_Sem** sem = (MDFN_Sem**)data;
+
+ errno = 0;
+
+ MDFND_PostSem(sem[0]);
+ MDFND_WaitSem(sem[1]);
+
+ errno = 0xDEAD;
+ MDFND_PostSem(sem[0]);
+ return 0;
+}
+
+static void ThreadSafeErrno_Test(void)
+{
+ //uint64 st = Time::MonoUS();
+ //
+ MDFN_Sem* sem[2] = { MDFND_CreateSem(), MDFND_CreateSem() };
+ MDFN_Thread* thr = MDFND_CreateThread(ThreadSafeErrno_Test_Entry, sem);
+
+ MDFND_WaitSem(sem[0]);
+ errno = 0;
+ MDFND_PostSem(sem[1]);
+ MDFND_WaitSem(sem[0]);
+ assert(errno != 0xDEAD);
+ MDFND_WaitThread(thr, nullptr);
+ MDFND_DestroySem(sem[0]);
+ MDFND_DestroySem(sem[1]);
+ //
+ //
+ //
+ errno = 0;
+ //printf("%llu\n", (unsigned long long)Time::MonoUS() - st);
+}
+
+}
+
+using namespace MDFN_TESTS_CPP;
+
+void MDFN_RunExceptionTests(const unsigned thread_count, const unsigned thread_delay)
+{
+ std::atomic_int_least32_t sv;
+
+ if(thread_count == 1)
+ {
+  sv.store(-1, std::memory_order_release);
+  RunExceptionTests_TEP(&sv);
+ }
+ else
+ {
+  ThreadSafeErrno_Test();
+  //
+  //
+  std::vector<MDFN_Thread*> t;
+  std::vector<int> trv;
+
+  t.resize(thread_count);
+  trv.resize(thread_count);
+
+  sv.store(thread_count, std::memory_order_release);
+
+  for(unsigned i = 0; i < thread_count; i++)
+   t[i] = MDFND_CreateThread(RunExceptionTests_TEP, &sv);
+
+  Time::SleepMS(thread_delay);
+
+  sv.store(-1, std::memory_order_release);
+
+  for(unsigned i = 0; i < thread_count; i++)
+   MDFND_WaitThread(t[i], &trv[i]);
+
+  for(unsigned i = 0; i < thread_count; i++)
+   printf("%d: %d\n", i, trv[i]);
+ }
+}
+
+bool MDFN_RunMathTests(void)
+{
+ DoSizeofTests();
+
+ TestSStringNullChar();
+
+ TestTypesSign();
+
+ TestArithRightShift();
 
  DoAlignmentChecks();
  TestSignedOverflow();
@@ -1390,6 +2043,9 @@ bool MDFN_RunMathTests(void)
  TestGCC60196();
  TestGCC69606();
  TestGCC70941();
+ TestGCC71488();
+ TestGCC80631();
+ TestGCC81740();
 
  TestModTern();
  TestBWNotMask31GTZ();
@@ -1398,111 +2054,16 @@ bool MDFN_RunMathTests(void)
 
  TestSUCompare();
 
- if(sign_9_to_s16(itoo->negative_one) != -1 || sign_9_to_s16(itoo->mostneg) != itoo->mostnegresult)
-  FATALME;
- itoo++;
+ TestSignExtend();
 
- if(sign_10_to_s16(itoo->negative_one) != -1 || sign_10_to_s16(itoo->mostneg) != itoo->mostnegresult)
-  FATALME;
- itoo++;
-
- if(sign_11_to_s16(itoo->negative_one) != -1 || sign_11_to_s16(itoo->mostneg) != itoo->mostnegresult)
-  FATALME;
- itoo++;
-
- if(sign_12_to_s16(itoo->negative_one) != -1 || sign_12_to_s16(itoo->mostneg) != itoo->mostnegresult)
-  FATALME;
- itoo++;
-
- if(sign_13_to_s16(itoo->negative_one) != -1 || sign_13_to_s16(itoo->mostneg) != itoo->mostnegresult)
-  FATALME;
- itoo++;
-
- if(sign_14_to_s16(itoo->negative_one) != -1 || sign_14_to_s16(itoo->mostneg) != itoo->mostnegresult)
-  FATALME;
- itoo++;
-
- if(sign_15_to_s16(itoo->negative_one) != -1 || sign_15_to_s16(itoo->mostneg) != itoo->mostnegresult)
-  FATALME;
- itoo++;
-
- if(sign_x_to_s32(17, itoo->negative_one) != -1 || sign_x_to_s32(17, itoo->mostneg) != itoo->mostnegresult)
-  FATALME;
- itoo++;
-
- if(sign_x_to_s32(18, itoo->negative_one) != -1 || sign_x_to_s32(18, itoo->mostneg) != itoo->mostnegresult)
-  FATALME;
- itoo++;
-
- if(sign_x_to_s32(19, itoo->negative_one) != -1 || sign_x_to_s32(19, itoo->mostneg) != itoo->mostnegresult)
-  FATALME;
- itoo++;
-
- if(sign_x_to_s32(20, itoo->negative_one) != -1 || sign_x_to_s32(20, itoo->mostneg) != itoo->mostnegresult)
-  FATALME;
- itoo++;
-
- if(sign_x_to_s32(21, itoo->negative_one) != -1 || sign_x_to_s32(21, itoo->mostneg) != itoo->mostnegresult)
-  FATALME;
- itoo++;
-
- if(sign_x_to_s32(22, itoo->negative_one) != -1 || sign_x_to_s32(22, itoo->mostneg) != itoo->mostnegresult)
-  FATALME;
- itoo++;
-
- if(sign_x_to_s32(23, itoo->negative_one) != -1 || sign_x_to_s32(23, itoo->mostneg) != itoo->mostnegresult)
-  FATALME;
- itoo++;
-
- if(sign_x_to_s32(24, itoo->negative_one) != -1 || sign_x_to_s32(24, itoo->mostneg) != itoo->mostnegresult)
-  FATALME;
- itoo++;
-
- if(sign_x_to_s32(25, itoo->negative_one) != -1 || sign_x_to_s32(25, itoo->mostneg) != itoo->mostnegresult)
-  FATALME;
- itoo++;
-
- if(sign_x_to_s32(26, itoo->negative_one) != -1 || sign_x_to_s32(26, itoo->mostneg) != itoo->mostnegresult)
-  FATALME;
- itoo++;
-
- if(sign_x_to_s32(27, itoo->negative_one) != -1 || sign_x_to_s32(27, itoo->mostneg) != itoo->mostnegresult)
-  FATALME;
- itoo++;
-
- if(sign_x_to_s32(28, itoo->negative_one) != -1 || sign_x_to_s32(28, itoo->mostneg) != itoo->mostnegresult)
-  FATALME;
- itoo++;
-
- if(sign_x_to_s32(29, itoo->negative_one) != -1 || sign_x_to_s32(29, itoo->mostneg) != itoo->mostnegresult)
-  FATALME;
- itoo++;
-
- if(sign_x_to_s32(30, itoo->negative_one) != -1 || sign_x_to_s32(30, itoo->mostneg) != itoo->mostnegresult)
-  FATALME;
- itoo++;
-
- if(sign_x_to_s32(31, itoo->negative_one) != -1 || sign_x_to_s32(31, itoo->mostneg) != itoo->mostnegresult)
-  FATALME;
- itoo++;
-
- if(sizeof(int8) != 1 || sizeof(uint8) != 1)
-  FATALME;
-
-
- if(!DoAntiNSOBugTest())
-  return(0);
-
+ DoAntiNSOBugTest();
  DoAntiNSOBugTest2014();
 
- if(!DoLEPackerTest())
-  return(0);
+ DoLEPackerTest();
 
- assert(uilog2(0) == 0);
- assert(uilog2(1) == 0);
- assert(uilog2(3) == 1);
- assert(uilog2(4095) == 11);
- assert(uilog2(0xFFFFFFFF) == 31);
+ TestLog2();
+
+ TestRoundPow2();
 
  RunFPTests();
 
@@ -1510,9 +2071,7 @@ bool MDFN_RunMathTests(void)
 
  RunMiscEndianTests(0xAA010203, 0xBB030201);
 
- RunExceptionTests();
-
- //RunThreadTests();
+ MDFN_RunExceptionTests(1, 0);
 
  RunSTLTests();
 
@@ -1526,6 +2085,19 @@ bool MDFN_RunMathTests(void)
  zlib_test();
 
  memops_test();
+
+ Time_Test();
+
+ TestCastShift();
+
+ TestUnionPun();
+
+ TestI8Alias();
+
+ TestSUSAlias();
+
+ TestDiv();
+
 #if 0
 // Not really a math test.
  const char *test_paths[] = { "/meow", "/meow/cow", "\\meow", "\\meow\\cow", "\\\\meow", "\\\\meow\\cow",
@@ -1551,6 +2123,6 @@ bool MDFN_RunMathTests(void)
  }
 #endif
 
-
  return(1);
 }
+

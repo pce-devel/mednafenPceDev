@@ -2,7 +2,7 @@
 /* Mednafen Sega Saturn Emulation Module                                      */
 /******************************************************************************/
 /* 3dpad.h:
-**  Copyright (C) 2016 Mednafen Team
+**  Copyright (C) 2016-2017 Mednafen Team
 **
 ** This program is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU General Public License
@@ -28,14 +28,14 @@ namespace MDFN_IEN_SS
 class IODevice_3DPad final : public IODevice
 {
  public:
- IODevice_3DPad();
- virtual ~IODevice_3DPad() override;
+ IODevice_3DPad() MDFN_COLD;
+ virtual ~IODevice_3DPad() override MDFN_COLD;
 
- virtual void Power(void) override;
- virtual void UpdateInput(const uint8* data) override;
+ virtual void Power(void) override MDFN_COLD;
+ virtual void UpdateInput(const uint8* data, const int32 time_elapsed) override;
  virtual void StateAction(StateMem* sm, const unsigned load, const bool data_only, const char* sname_prefix) override;
 
- virtual uint8 UpdateBus(const uint8 smpc_out, const uint8 smpc_out_asserted) override;
+ virtual uint8 UpdateBus(const sscpu_timestamp_t timestamp, const uint8 smpc_out, const uint8 smpc_out_asserted) override;
 
  private:
  uint16 dbuttons;

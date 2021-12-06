@@ -18,8 +18,6 @@
 #include <mednafen/mednafen.h>
 #include "psg.h"
 
-#include <math.h>
-#include <string.h>
 #include <trio/trio.h>
 
 namespace PCE_Fast
@@ -619,6 +617,7 @@ void PCEFast_PSG::StateAction(StateMem *sm, int load, int data_only)
 
   SFVAR(vol_update_counter),
   SFVAR(vol_update_which),
+  SFVAR(vol_update_vllatch),
   SFVAR(vol_pending),
   SFEND
  };

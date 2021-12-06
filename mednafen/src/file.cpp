@@ -21,12 +21,9 @@
 #include <mednafen/MemoryStream.h>
 #include <mednafen/IPSPatcher.h>
 
-#include <stdarg.h>
-#include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <errno.h>
 #include <trio/trio.h>
 
 #include "compress/unzip.h"
@@ -118,7 +115,7 @@ void MDFNFILE::Open(const char *path, const FileExtensionSpecStruct *known_ext, 
 
    if(known_ext)
    {
-    bool FileFound = FALSE;
+    bool FileFound = false;
     while(!FileFound)
     {
      size_t tempu_strlen;
@@ -138,7 +135,7 @@ void MDFNFILE::Open(const char *path, const FileExtensionSpecStruct *known_ext, 
       if(tempu_strlen >= ttmeow)
       {
        if(!strcasecmp(tempu + tempu_strlen - ttmeow, ext_search->extension))
-        FileFound = TRUE;
+        FileFound = true;
       }
       ext_search++;
      }

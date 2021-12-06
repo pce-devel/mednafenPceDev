@@ -1,8 +1,6 @@
 #ifndef __MDFN_GIT_H
 #define __MDFN_GIT_H
 
-#include <string>
-
 #include "video.h"
 
 typedef struct
@@ -78,13 +76,21 @@ enum InputDeviceInputType : uint8
 };
 
 
-#define IDIT_BUTTON_ANALOG_FLAG_SQLR	0x00000001	// Denotes analog data that may need to be scaled to ensure a more squareish logical range(for emulated
-							// analog sticks).
+#define IDIT_BUTTON_ANALOG_FLAG_SQLR	0x01	// Denotes analog data that may need to be scaled to ensure a more squareish logical range(for emulated analog sticks).
+#define IDIT_FLAG_AUX_SETTINGS_UNDOC	0x80
+
 struct IDIIS_StatusState
 {
 	const char* ShortName;
 	const char* Name;
 	int32 Color;	// (msb)0RGB(lsb), -1 for unused.
+};
+
+struct IDIIS_SwitchPos
+{
+	const char* SettingName;
+	const char* Name;
+	const char* Description;
 };
 
 struct InputDeviceInputInfoStruct
@@ -95,8 +101,6 @@ struct InputDeviceInputInfoStruct
 	InputDeviceInputType Type;
 	const char *ExcludeName;	// SettingName of a button that can't be pressed at the same time as this button
 					// due to physical limitations.
-
-	const char *RotateName[3];	// 90, 180, 270
 	uint8 Flags;
 	uint8 BitSize;
 	uint16 BitOffset;
@@ -105,15 +109,15 @@ struct InputDeviceInputInfoStruct
 	{
          struct
          {
-	  const char** SwitchPosName;	//
-	  uint32 SwitchNumPos;
-         };
+	  const IDIIS_SwitchPos* Pos;
+	  uint32 NumPos;
+         } Switch;
 
 	 struct
 	 {
-	  const IDIIS_StatusState* StatusStates;
-	  uint32 StatusNumStates;
-	 };
+	  const IDIIS_StatusState* States;
+	  uint32 NumStates;
+	 } Status;
 	};
 };
 
@@ -130,25 +134,21 @@ extern const IDIISG IDII_Empty;
 template<bool CanRapid = false>
 struct IDIIS_Button : public InputDeviceInputInfoStruct
 {
-	IDIIS_Button(const char* sname, const char* name, int co, const char* en = NULL,
-			const char* Rotate90Name = NULL, const char* Rotate180Name = NULL, const char* Rotate270Name = NULL)
+	IDIIS_Button(const char* sname, const char* name, int co, const char* exn = NULL)
 	{
 	 SettingName = sname;
 	 Name = name;
 	 ConfigOrder = co;
 	 Type = (CanRapid ? IDIT_BUTTON_CAN_RAPID : IDIT_BUTTON);
 
-	 ExcludeName = en;
-	 RotateName[0] = Rotate90Name;
-	 RotateName[1] = Rotate180Name;
-	 RotateName[2] = Rotate270Name;
+	 ExcludeName = exn;
 	}
 };
 #endif
 
 struct IDIIS_Switch : public InputDeviceInputInfoStruct
 {
-	IDIIS_Switch(const char* sname, const char* name, int co, const char** spn, const uint32 spn_num)
+	IDIIS_Switch(const char* sname, const char* name, int co, const IDIIS_SwitchPos* spn, const uint32 spn_num, bool undoc_defpos = true)
 	{
 	 SettingName = sname;
 	 Name = name;
@@ -156,10 +156,9 @@ struct IDIIS_Switch : public InputDeviceInputInfoStruct
 	 Type = IDIT_SWITCH;
 
 	 ExcludeName = NULL;
-	 RotateName[0] = RotateName[1] = RotateName[2] = NULL;
-	 Flags = 0;
-	 SwitchPosName = spn;
-	 SwitchNumPos = spn_num;
+	 Flags = undoc_defpos ? IDIT_FLAG_AUX_SETTINGS_UNDOC : 0;
+	 Switch.Pos = spn;
+	 Switch.NumPos = spn_num;
 	}
 };
 
@@ -173,10 +172,9 @@ struct IDIIS_Status : public InputDeviceInputInfoStruct
 	 Type = IDIT_STATUS;
 
 	 ExcludeName = NULL;
-	 RotateName[0] = RotateName[1] = RotateName[2] = NULL;
 	 Flags = 0;
-	 StatusStates = ss;
-	 StatusNumStates = ss_num;
+	 Status.States = ss;
+	 Status.NumStates = ss_num;
 	}
 };
 
@@ -187,6 +185,13 @@ struct InputDeviceInfoStruct
  const char *Description;
 
  const IDIISG& IDII;
+
+ unsigned Flags;
+
+ enum
+ {
+  FLAG_KEYBOARD = (1U << 0)
+ };
 };
 
 struct InputPortInfoStruct
@@ -271,8 +276,8 @@ typedef struct
 	// The framebuffer pointed to by surface->pixels is written to by the system emulation code.
 	MDFN_Surface *surface;
 
-	// Will be set to TRUE if the video pixel format has changed since the last call to Emulate(), FALSE otherwise.
-	// Will be set to TRUE on the first call to the Emulate() function/method
+	// Will be set to true if the video pixel format has changed since the last call to Emulate(), false otherwise.
+	// Will be set to true on the first call to the Emulate() function/method
 	bool VideoFormatChanged;
 
 	// Set by the system emulation code every frame, to denote the horizontal and vertical offsets of the image, and the size
@@ -296,9 +301,6 @@ typedef struct
 	uint8 *CustomPalette;
 	uint32 CustomPaletteNumEntries;
 
-	// TODO
-	bool *IsFMV;
-
 	// Set(optionally) by emulation code.  If InterlaceOn is true, then assume field height is 1/2 DisplayRect.h, and
 	// only every other line in surface (with the start line defined by InterlacedField) has valid data
 	// (it's up to internal Mednafen code to deinterlace it).
@@ -311,8 +313,8 @@ typedef struct
 	//
 	// If sound is disabled, the driver code must set SoundRate to false, SoundBuf to NULL, SoundBufMaxSize to 0.
 
-        // Will be set to TRUE if the sound format(only rate for now, at least) has changed since the last call to Emulate(), FALSE otherwise.
-        // Will be set to TRUE on the first call to the Emulate() function/method
+        // Will be set to true if the sound format(only rate for now, at least) has changed since the last call to Emulate(), false otherwise.
+        // Will be set to true on the first call to the Emulate() function/method
 	bool SoundFormatChanged;
 
 	// Sound rate.  Set by driver side.
@@ -401,11 +403,19 @@ struct RMD_Drive
 					// by the media changing user interface.
 };
 
+struct RMD_DriveDefaults
+{
+ uint32 State;
+ uint32 Media;
+ uint32 Orientation;
+};
+
 struct RMD_Layout
 {
  std::vector<RMD_Drive> Drives;
  std::vector<RMD_MediaType> MediaTypes;
  std::vector<RMD_Media> Media;
+ std::vector<RMD_DriveDefaults> DrivesDefaults;
 };
 
 struct CustomPalette_Spec

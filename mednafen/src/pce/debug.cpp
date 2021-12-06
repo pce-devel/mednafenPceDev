@@ -16,7 +16,6 @@
  */
 
 #include "pce.h"
-#include <string.h>
 #include <trio/trio.h>
 #include <iconv.h>
 
@@ -89,7 +88,7 @@ static void (*CPUCB)(uint32 PC, bool bpoint) = NULL;
 static bool CPUCBContinuous = false;
 static bool FoundBPoint = false;
 static void (*LogFunc)(const char *, const char *);
-bool PCE_LoggingOn = FALSE;
+bool PCE_LoggingOn = false;
 static uint16 LastPC = 0xBEEF;
 
 static void AddBranchTrace(uint32 from, uint32 to, uint32 vector)
@@ -216,7 +215,7 @@ void PCEDBG_CheckBP(int type, uint32 address, unsigned int len)
   {
    if(tmp_address >= bpit->A[0] && tmp_address <= bpit->A[1])
    {
-    FoundBPoint = TRUE;
+    FoundBPoint = true;
     break;
    }
    tmp_address++;
@@ -319,7 +318,7 @@ static void TestRWBP(void)
 
  vce->ResetSimulateVDC();
 
- ShadowCPU.Run(TRUE);
+ ShadowCPU.Run(true);
 
  //printf("%d, %02x\n",ShadowCPU.IRQlow);
  //assert(!ShadowCPU.IRQlow);
@@ -556,7 +555,7 @@ void PCEDBG_SetLogFunc(void (*func)(const char *, const char *))
 {
  LogFunc = func;
 
- PCE_LoggingOn = func ? TRUE : FALSE;
+ PCE_LoggingOn = func ? true : false;
  SCSICD_SetLog(func ? PCEDBG_DoLog : NULL);
 
  if(PCE_LoggingOn)
@@ -681,7 +680,7 @@ static void SetRegister_CD(const unsigned int id, uint32 value)
 }
 
 
-static RegType Regs_HuC6280[] =
+static const RegType Regs_HuC6280[] =
 {
         { HuC6280::GSREG_PC, "PC", "Program Counter", 2 },
         { HuC6280::GSREG_A, "A", "Accumulator", 1 },
@@ -708,7 +707,7 @@ static RegType Regs_HuC6280[] =
         { 0, "", "", 0 },
 };
 
-static RegGroupType RegsGroup_HuC6280 =
+static const RegGroupType RegsGroup_HuC6280 =
 {
 	"HuC6280",
         Regs_HuC6280,
@@ -725,7 +724,7 @@ static RegGroupType RegsGroup_HuC6280 =
  { PSG_GSREG_CH0_WINDEX | (n << 8), "CH"#n"WIndex", "PSG Ch"#n" Waveform Index", 1},     \
  { PSG_GSREG_CH0_SCACHE | (n << 8), "CH"#n"SCache", "PSG Ch"#n" Sample Cache", 1 }
 
-static RegType Regs_PSG[] =
+static const RegType Regs_PSG[] =
 {
  { PSG_GSREG_SELECT, "Select", "PSG Channel Select", 1 },
  { PSG_GSREG_GBALANCE, "GBalance", "PSG Global Balance", 1 },
@@ -738,15 +737,15 @@ static RegType Regs_PSG[] =
  CHPDMOO(3),
  CHPDMOO(4),
  { PSG_GSREG_CH4_NCTRL, "CH4NCtrl", "PSG Ch4 Noise Control", 1 },
- { PSG_GSREG_CH4_LFSR, "CH4LFSR", "PSG Ch4 Noise LFSR", 2 },
+ { PSG_GSREG_CH4_LFSR, "CH4LFSR", "PSG Ch4 Noise LFSR", 0x100 | 18 },
  CHPDMOO(5),
  { PSG_GSREG_CH5_NCTRL, "CH5NCtrl", "PSG Ch5 Noise Control", 1 },
- { PSG_GSREG_CH5_LFSR, "CH5LFSR", "PSG Ch5 Noise LFSR", 2 },
+ { PSG_GSREG_CH5_LFSR, "CH5LFSR", "PSG Ch5 Noise LFSR", 0x100 | 18 },
 
  { 0, "", "", 0 },
 };
 
-static RegGroupType RegsGroup_PSG =
+static const RegGroupType RegsGroup_PSG =
 {
  "PSG",
  Regs_PSG,
@@ -754,7 +753,7 @@ static RegGroupType RegsGroup_PSG =
  SetRegister_PSG
 };
 
-static RegType Regs_VDC[] =
+static const RegType Regs_VDC[] =
 {
 	{ VDC::GSREG_SELECT, "Select", "Register Select", 1 },
         { VDC::GSREG_STATUS, "Status", "Status", 1 },
@@ -787,7 +786,7 @@ static RegType Regs_VDC[] =
         { 0, "", "", 0 },
 };
 
-static RegGroupType RegsGroup_VDC =
+static const RegGroupType RegsGroup_VDC =
 {
 	"VDC",
         Regs_VDC,
@@ -796,7 +795,7 @@ static RegGroupType RegsGroup_VDC =
 };
 
 
-static RegType Regs_SGXVDC[] =
+static const RegType Regs_SGXVDC[] =
 {
         { VDC::GSREG_SELECT, "Select", "Register Select, VDC-B", 1 },
 	{ VDC::GSREG_STATUS, "Status", "Status, VDC-B", 1 },
@@ -831,7 +830,7 @@ static RegType Regs_SGXVDC[] =
         { 0, "", "", 0 },
 };
 
-static RegGroupType RegsGroup_SGXVDC =
+static const RegGroupType RegsGroup_SGXVDC =
 {
 	"VDC-B",
         Regs_SGXVDC,
@@ -839,7 +838,7 @@ static RegGroupType RegsGroup_SGXVDC =
         SetRegister_SGXVDC
 };
 
-static RegType Regs_CD[] =
+static const RegType Regs_CD[] =
 {
  { CD_GSREG_BSY, "BSY", "SCSI BSY", 1 },
  { CD_GSREG_REQ, "REQ", "SCSI REQ", 1 },
@@ -863,7 +862,7 @@ static RegType Regs_CD[] =
  { 0, "", "", 0 },
 };
 
-static RegGroupType RegsGroup_CD =
+static const RegGroupType RegsGroup_CD =
 {
  "CD",
  Regs_CD,
@@ -1173,14 +1172,14 @@ void PCEDBG_Init(bool sgx, PCE_PSG *new_psg, const uint32 vram_size)
   vram_addr_mask = (vram_size - 1);
   if(IsSGX)
   {
-   ASpace_Add(Do16BitGet, Do16BitPut, "vram0", "VDC-A VRAM", uilog2(vram_size) + 1);
+   ASpace_Add(Do16BitGet, Do16BitPut, "vram0", "VDC-A VRAM", MDFN_log2(vram_size) + 1);
    ASpace_Add(Do16BitGet, Do16BitPut, "sat0", "VDC-A SAT", 8 + 1);
-   ASpace_Add(Do16BitGet, Do16BitPut, "vram1", "VDC-B VRAM", uilog2(vram_size) + 1);
+   ASpace_Add(Do16BitGet, Do16BitPut, "vram1", "VDC-B VRAM", MDFN_log2(vram_size) + 1);
    ASpace_Add(Do16BitGet, Do16BitPut, "sat1", "VDC-B SAT", 8 + 1);
   }
   else
   {
-   ASpace_Add(Do16BitGet, Do16BitPut, "vram0", "VDC VRAM", uilog2(vram_size) + 1);
+   ASpace_Add(Do16BitGet, Do16BitPut, "vram0", "VDC VRAM", MDFN_log2(vram_size) + 1);
    ASpace_Add(Do16BitGet, Do16BitPut, "sat0", "VDC SAT", 8 + 1);
   }
 
@@ -1216,7 +1215,7 @@ void PCEDBG_Init(bool sgx, PCE_PSG *new_psg, const uint32 vram_size)
      newt.TotalBits = 5;
      newt.NP2Size = 0;
 
-     newt.IsWave = TRUE;
+     newt.IsWave = true;
      newt.WaveFormat = ASPACE_WFMT_UNSIGNED;
      newt.WaveBits = 5;
      ASpace_Add(newt); //PSG_GetAddressSpaceBytes, PSG_PutAddressSpaceBytes, tmpname, tmpinfo, 5);

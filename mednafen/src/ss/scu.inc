@@ -2,7 +2,7 @@
 /* Mednafen Sega Saturn Emulation Module                                      */
 /******************************************************************************/
 /* scu.inc - SCU Emulation
-**  Copyright (C) 2015-2016 Mednafen Team
+**  Copyright (C) 2015-2017 Mednafen Team
 **
 ** This program is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU General Public License
@@ -49,6 +49,28 @@
  (writes often take longer on the Saturn if the DMA write address doesn't increment).
 */
 
+static const char* IntNames[0x20] =
+{
+ "VBIN",
+ "VBOUT",
+ "HBIN",
+ "TIMER0",
+ "TIMER1",
+ "DSP",
+ "SCSP",
+ "SMPC",
+ "PAD",
+ "L2DMA",
+ "L1DMA",
+ "L0DMA",
+ "DMA_ILL",
+ "VDP1",
+ nullptr,
+ nullptr,
+
+ "EXT0", "EXT1", "EXT2", "EXT3", "EXT4", "EXT5", "EXT6", "EXT7", "EXT8", "EXT9", "EXTA", "EXTB", "EXTC", "EXTD", "EXTE", "EXTF"
+};
+
 #include "scu_dsp_common.inc"
 
 static void DSP_Reset(bool powering_up);
@@ -64,7 +86,7 @@ struct DMAWriteTabS
  uint8 compare;
 };
 
-static DMAWriteTabS dma_write_tab[2/*bus*/][8/*add setting*/][4/*write align*/][12/*count*/][5] =
+static const DMAWriteTabS dma_write_tab[2/*bus*/][8/*add setting*/][4/*write align*/][12/*count*/][5] =
 {
  {
   #include "scu_actab.inc"
@@ -74,7 +96,7 @@ static DMAWriteTabS dma_write_tab[2/*bus*/][8/*add setting*/][4/*write align*/][
  }
 };
 
-static DMAWriteTabS dma_write_tab_aciv1[4][24][8] =
+static const DMAWriteTabS dma_write_tab_aciv1[4][24][8] =
 {
  #include "scu_aciv1tab.inc"
 };
@@ -124,6 +146,8 @@ static sscpu_timestamp_t SCU_DMA_TimeCounter;
 static sscpu_timestamp_t SCU_DMA_RunUntil;
 static int32 SCU_DMA_ReadOverhead;	// range -whatever to 0.
 
+static uint32 SCU_DMA_VDP1WriteIgnoreKludge;
+
 static void RecalcDMAHalt(void);
 static void CheckDMAStart(DMALevelS* d);
 static void CheckDMASFByInt(unsigned int_which);
@@ -137,7 +161,6 @@ static uint32 ABusIProhibit;
 static bool RSEL;
 
 static uint8 ILevel, IVec;
-static uint32 IClearMask;
 
 static INLINE void RecalcMasterIntOut(void)
 {
@@ -176,9 +199,8 @@ static INLINE void RecalcMasterIntOut(void)
   {
    ILevel = olev;
    IVec = ovec;
-   IClearMask = 1U << bpos;
-
-   //SS_DBGTI(SS_DBG_ERROR, "[SCU] Interrupt level=0x%02x, vector=0x%02x --- IPending=0x%04x", ILevel, IVec, IPending);
+   IPending &= ~(1U << bpos);
+   SS_DBGTI(SS_DBG_SCU_INT, "[SCU] Interrupt %d/%s(level=0x%02x, vector=0x%02x) --- IPending=0x%04x", bpos, IntNames[bpos], ILevel, IVec, IPending);
   }
  }
 
@@ -198,22 +220,26 @@ static bool Timer_Enable;
 
 static bool HB_FromVDP2, VB_FromVDP2;
 
+//
+//
+//
+
 static uint8 SCU_MSH2VectorFetch(void)
 {
  uint8 ret = IVec;
-
- //SS_DBGTI(SS_DBG_ERROR, "[SCU]   Interrupt cleared.");
 
  if(MDFN_UNLIKELY(ILevel == 0))
  {
   SS_DBG(SS_DBG_WARNING | SS_DBG_SCU, "[SCU] [MSH2] [BUG] SCU_MSH2VectorFetch() called when ILevel == 0\n");
  }
+ else
+ {
+  SS_DBGTI(SS_DBG_SCU_INT, "[SCU] Interrupt level=0x%02x cleared via vector fetch.", ILevel);
+ }
 
  if(MDFN_UNLIKELY(IVec == 0x40 /* || IVec == 0x41 */))	// VB In, apply cheats.
   MDFNMP_ApplyPeriodicCheats();
 
- IPending &= ~IClearMask;
- //IMask |= IClearMask;
  IMask = 0xBFFF;
 
  ILevel = 0;
@@ -255,6 +281,9 @@ static INLINE void SetInt(unsigned which, bool active)
  {
   if((old_IAsserted ^ IAsserted) & IAsserted)
   {
+   if(!(IPending & (1U << which)))
+    SS_DBGTI(SS_DBG_SCU_INT, "[SCU] Interrupt %d/%s pending.", which, IntNames[which]);
+
    IPending |= 1U << which;
    CheckDMASFByInt(which);
    RecalcMasterIntOut();
@@ -329,52 +358,6 @@ int32 SCU_SetHBVB(int32 pclocks, bool new_HB_FromVDP2, bool new_VB_FromVDP2)
  VB_FromVDP2 = new_VB_FromVDP2;
 
  return Timer1_Counter ? Timer1_Counter : 0x200;
-}
-
-static void SCU_Init(void)
-{
- SCU_DMA_TimeCounter = 0;
- SCU_DMA_RunUntil = 0;
- IAsserted = 0;
- HB_FromVDP2 = false;
- VB_FromVDP2 = false;
-
- DSP_Init();
-}
-
-void SCU_Reset(bool powering_up)
-{
- ILevel = IVec = IClearMask = 0;
- IMask = 0xBFFF;
- IPending = 0;
- ABusIProhibit = 0;
- RSEL = 0;
-
- if(powering_up)
-  memset(DMALevel, 0x00, sizeof(DMALevel));
-
- for(auto& d : DMALevel)
- {
-  d.ReadAdd = true;
-  d.WriteAdd = 0x1;
-
-  d.Enable = false;
-  d.GoGoGadget = false;
-  d.Active = false;
-
-  d.Indirect = false;
-  d.ReadUpdate = false;
-  d.WriteUpdate = false;
-  d.SF = 0;
- }
- //SCU_DMA_CycleCounter = 0;
- SCU_DMA_ReadOverhead = 0;
-
- RecalcDMAHalt();
-
- DSP_Reset(powering_up);
-
- RecalcMasterIntOut();
 }
 
 static void SCU_AdjustTS(const int32 delta)
@@ -461,11 +444,13 @@ static INLINE void SCU_RegRW_DB(uint32 A, uint32* DB)
 	break;
 
    case 0xA0:
+	SS_DBGTI(SS_DBG_SCU_INT, "[SCU] Write to IMS: 0x%04x --- ILevel=0x%02x, vector=0x%02x IPending=0x%04x", *DB, ILevel, IVec, IPending);
 	IMask = (IMask &~ mask) | (*DB & mask & 0xBFFF);
 	RecalcMasterIntOut();
 	break;
 
    case 0xA4:
+	SS_DBGTI(SS_DBG_SCU_INT, "[SCU] Write to IST: 0x%04x --- ILevel=0x%02x, vector=0x%02x IPending=0x%04x", *DB, ILevel, IVec, IPending);
 	IPending &= *DB | ~mask;
 	RecalcMasterIntOut();
 	break;
@@ -765,6 +750,21 @@ static INLINE void BBusRW_DB(uint32 A, uint16* DB, int32* time_thing, int32* dma
   if(dma_time_thing != NULL)
   {
    *dma_time_thing -= 1;
+
+   if(IsWrite)
+   {
+    if(MDFN_UNLIKELY(A >= 0x05D00000))
+    {
+     const bool ignore_write = (A >= 0x5D00004 && SCU_DMA_VDP1WriteIgnoreKludge > 0) | (SCU_DMA_VDP1WriteIgnoreKludge & 0x1);
+
+     SCU_DMA_VDP1WriteIgnoreKludge++;
+     if(ignore_write)
+      return;
+     //printf("%08x %04x\n", A, *DB);
+    }
+    else
+     SCU_DMA_VDP1WriteIgnoreKludge = 0;
+   }
   }
 
   if(time_thing != NULL)
@@ -896,10 +896,12 @@ template<typename T, bool IsWrite, bool SH32 = false>
 static INLINE void ABusRW_DB(uint32 A, uint16* DB, int32* time_thing, int32* dma_time_thing = NULL, int32* sh2_dma_time_thing = NULL)	// add to time_thing, subtract from dma_time_thing
 {
  //
- // A-Bus CS0
+ // A-Bus CS0 and CS1
  //
- if(A >= 0x02000000 && A <= 0x03FFFFFF)
+ if(A >= 0x02000000 && A <= 0x04FFFFFF)
  {
+  // [(bool)(A & 0x04000000)]
+
   if(sh2_dma_time_thing != NULL)
    *sh2_dma_time_thing -= 1;	// TODO
 
@@ -909,43 +911,21 @@ static INLINE void ABusRW_DB(uint32 A, uint16* DB, int32* time_thing, int32* dma
   if(IsWrite)
   {
    if(sizeof(T) == 1)
-    CART_CS0_Write8_DB(A, DB);
+    CART_CS01_Write8_DB(A, DB);
    else
-    CART_CS0_Write16_DB(A, DB);
+    CART_CS01_Write16_DB(A, DB);
   }
   else
-   CART_CS0_Read16_DB(A, DB);
+   CART_CS01_Read16_DB(A, DB);
 
   return;
  }
 
- if(A >= 0x04000000 && A <= 0x04FFFFFF)
+ //
+ // A-bus Dummy
+ //
+ if(MDFN_UNLIKELY(A >= 0x05000000 && A <= 0x057FFFFF))
  {
-  // A-Bus CS1
-  if(sh2_dma_time_thing != NULL)
-   *sh2_dma_time_thing -= 1;	// TODO
-
-  if(dma_time_thing != NULL)
-   *dma_time_thing -= 1;	// TODO
-
-  if(IsWrite)
-  {
-   if(sizeof(T) == 1)
-    CART_CS1_Write8_DB(A, DB);
-   else
-    CART_CS1_Write16_DB(A, DB);
-  }
-  else
-  {
-   CART_CS1_Read16_DB(A, DB);
-  }
-
-  return;
- }
-
- if(A >= 0x05000000 && A <= 0x057FFFFF)
- {
-  // A-Bus Dummy
   if(sh2_dma_time_thing != NULL)
    *sh2_dma_time_thing -= 16;
 
@@ -1002,9 +982,14 @@ static INLINE void ABusRW_DB(uint32 A, uint16* DB, int32* time_thing, int32* dma
   }
 
   if(IsWrite)
-   SS_DBG(SS_DBG_WARNING | SS_DBG_SCU, "[A-Bus CS2] Unknown %zu-byte write to 0x%08x(DB=0x%04x)\n", sizeof(T), A, *DB);
+  {
+   if(sizeof(T) == 1)
+    CART_CS2_Write8_DB(A, DB);
+   else
+    CART_CS2_Write16_DB(A, DB);
+  }
   else
-   SS_DBG(SS_DBG_WARNING | SS_DBG_SCU, "[A-Bus CS2] Unknown %zu-byte read from 0x%08x\n", sizeof(T), A);
+   CART_CS2_Read16_DB(A, DB);
 
   return;
  }
@@ -1202,10 +1187,12 @@ static bool StartDMATransfer(DMALevelS* d, const uint32 ra, const uint32 wa, con
 {
  int rb, wb;
 
+ SCU_DMA_VDP1WriteIgnoreKludge = 0;
+
  rb = AddressToBus(ra);
  wb = AddressToBus(wa);
 
- SS_DBG(SS_DBG_SCU, "[SCU] Starting DMA level %d transfer; ra=0x%08x wa=0x%08x bc=0x%08x - read_inc=%d, write_inc=0x%02x -- indirect=%d %d\n", (int)(d - DMALevel), ra, wa, bc, d->ReadAdd, d->WriteAdd, d->Indirect, d->SF);
+ SS_DBGTI(SS_DBG_SCU, "[SCU] Starting DMA level %d transfer; ra=0x%08x wa=0x%08x bc=0x%08x - read_inc=%d write_inc=0x%01x - indirect=%d %d", (int)(d - DMALevel), ra, wa, bc, d->ReadAdd, d->WriteAdd, d->Indirect, d->SF);
 
  if(MDFN_UNLIKELY(rb == -1))
  {
@@ -1282,6 +1269,28 @@ static bool NextIndirect(DMALevelS* d)
   tmp[0] = 0x100000;
 
  return StartDMATransfer(d, tmp[2] & 0x07FFFFFF, tmp[1] & 0x07FFFFFF, tmp[0]);
+}
+
+bool SCU_CheckVDP1HaltKludge(void)
+{
+ bool ret = false;
+
+ for(int level = 2; level >= 0; level--)
+ {
+  DMALevelS* d = &DMALevel[level];
+
+  if(d->Active > 0)
+  {
+   if(d->WriteBus == 1 && d->ReadFunc == DMA_ReadCBus && d->CurWriteAddr >= 0x5C00000 && d->CurWriteAddr <= 0x5DFFFFF)
+    ret = true;
+   //else if(d->WriteBus == 2 && d->ReadFunc == DMA_ReadBBus && d->CurReadBase >= 0x5C00000 && d->CurReadBase <= 0x5C7FFFF)
+   // ret = true;
+
+   break;
+  }
+ }
+
+ return ret;
 }
 
 static void RecalcDMAHalt(void)
@@ -1694,7 +1703,13 @@ static NO_INLINE NO_CLONE void DMAInstr(void)
  uint8 count;	// 0 = 256
 
  if(DSP.T0_Until < DSP.CycleCounter)
+ {
+  // TODO: Rework how DSP DMA is handled if this condition occurs with the same data RAM bank in any games.
+  if(format)
+   SS_DBG(SS_DBG_WARNING | SS_DBG_SCU_DSP, "[SCU] Executing DSP DMA instruction 0x%08x before previous DMA has finished!\n", instr);
+
   DSP.CycleCounter = DSP.T0_Until &~ 1;
+ }
 
  DSP.T0_Until = DSP.CycleCounter;
 
@@ -1710,7 +1725,7 @@ static NO_INLINE NO_CLONE void DMAInstr(void)
   count = instr & 0xFF;
 
  //printf("%02x %08x Count: %u\n", DSP.PC, instr, count);
- //SS_DBG(SS_DBG_WARNING | SS_DBG_SCU, "[SCU] DSP DMA; looped=%u, add_mode=0x%01x, hold=%u, format=%u, dir=%u, drw=0x%02x -- count=%u, RAO=0x%08x, WAO=0x%08x\n", looped, add_mode, hold, format, dir, drw, count, DSP.RAO, DSP.WAO);
+ SS_DBG(SS_DBG_SCU_DSP, "[SCU] DSP DMA; looped=%u, add_mode=0x%01x, hold=%u, format=%u, dir=%u, drw=0x%02x -- count=%u, RAO<<2=0x%08x, WAO<<2=0x%08x\n", looped, add_mode, hold, format, dir, drw, count, DSP.RAO << 2, DSP.WAO << 2);
 
  if(dir)
  {
@@ -1720,7 +1735,7 @@ static NO_INLINE NO_CLONE void DMAInstr(void)
 
   if(MDFN_UNLIKELY(WriteBus == -1))
   {
-   SS_DBG(SS_DBG_WARNING | SS_DBG_SCU, "[SCU] Bad DSP DMA to 0x%08x --- Instr=0x%08x, Next_Instr=0x%08x, PC=0x%02x\n", addr, instr, (unsigned)(DSP.NextInstr >> 32), DSP.PC);
+   SS_DBG(SS_DBG_WARNING | SS_DBG_SCU | SS_DBG_SCU_DSP, "[SCU] Bad DSP DMA to 0x%08x --- Instr=0x%08x, Next_Instr=0x%08x, PC=0x%02x\n", addr, instr, (unsigned)(DSP.NextInstr >> 32), DSP.PC);
    return;
   }
 
@@ -1776,12 +1791,12 @@ static NO_INLINE NO_CLONE void DMAInstr(void)
 
   if(MDFN_UNLIKELY(ReadBus == -1))
   {
-   SS_DBG(SS_DBG_WARNING | SS_DBG_SCU, "[SCU] Bad DSP DMA from 0x%08x --- Instr=0x%08x, Next_Instr=0x%08x, PC=0x%02x\n", addr, instr, (unsigned)(DSP.NextInstr >> 32), DSP.PC);
+   SS_DBG(SS_DBG_WARNING | SS_DBG_SCU | SS_DBG_SCU_DSP, "[SCU] Bad DSP DMA from 0x%08x --- Instr=0x%08x, Next_Instr=0x%08x, PC=0x%02x\n", addr, instr, (unsigned)(DSP.NextInstr >> 32), DSP.PC);
    return;
   }
 
   if(drw & 0x4)
-   SS_DBG(SS_DBG_WARNING | SS_DBG_SCU, "[SCU] DSP DMA from 0x%08x to %s --- Instr=0x%08x, Next_Instr=0x%08x, PC=0x%02x\n", addr, ((drw == 0x4) ? "program RAM" : "unknown"), instr, (unsigned)(DSP.NextInstr >> 32), DSP.PC);
+   SS_DBG(SS_DBG_WARNING | SS_DBG_SCU | SS_DBG_SCU_DSP, "[SCU] DSP DMA from 0x%08x to %s --- Instr=0x%08x, Next_Instr=0x%08x, PC=0x%02x\n", addr, ((drw == 0x4) ? "program RAM" : "unknown"), instr, (unsigned)(DSP.NextInstr >> 32), DSP.PC);
 
   // Read from external bus, write to data RAM or program RAM
   do
@@ -1792,6 +1807,8 @@ static NO_INLINE NO_CLONE void DMAInstr(void)
    {
     DB = ne16_rbo_be<uint32>(WorkRAMH, addr & 0xFFFFF);
     DSP.T0_Until -= 2;
+
+    addr += addr_add_amount;
    }
    else if(ReadBus == 1)
    {
@@ -1802,11 +1819,15 @@ static NO_INLINE NO_CLONE void DMAInstr(void)
 
     BBusRW_DB<uint16, false, true>(addr | 2, &tmp, NULL, &DSP.T0_Until);
     DB |= tmp << 0;
+
+    addr += 4;
    }
    else if(ReadBus == 0)
+   {
     DB = ABus_Read(addr, NULL, &DSP.T0_Until);
 
-   addr += addr_add_amount;
+    addr += addr_add_amount;
+   }
 
    if(drw & 0x4)
    {
@@ -1827,10 +1848,283 @@ static NO_INLINE NO_CLONE void DMAInstr(void)
  }
 }
 
-void (*DSP_DMAFuncTable[2][8][8])(void) =
+extern void (*const DSP_DMAFuncTable[2][8][8])(void) =
 {
  #include "scu_dsp_dmatab.inc"
 };
+
+//
+//
+//
+
+static void SCU_Init(void)
+{
+ SCU_DMA_TimeCounter = 0;
+ SCU_DMA_RunUntil = 0;
+ IAsserted = 0;
+ HB_FromVDP2 = false;
+ VB_FromVDP2 = false;
+
+ DSP_Init();
+}
+
+void SCU_Reset(bool powering_up)
+{
+ ILevel = IVec = 0;
+ IMask = 0xBFFF;
+ IPending = 0;
+ ABusIProhibit = 0;
+ RSEL = 0;
+
+ if(powering_up)
+  memset(DMALevel, 0x00, sizeof(DMALevel));
+
+ for(auto& d : DMALevel)
+ {
+  d.ReadAdd = true;
+  d.WriteAdd = 0x1;
+
+  d.Enable = false;
+  d.GoGoGadget = false;
+  d.Active = false;
+
+  d.Indirect = false;
+  d.ReadUpdate = false;
+  d.WriteUpdate = false;
+  d.SF = 0;
+
+  d.WATable = &dma_write_tab[0][0][0][0][0];
+  d.ReadFunc = rftab[0];
+  d.TableReadFunc = NULL;
+ }
+ //SCU_DMA_CycleCounter = 0;
+ SCU_DMA_ReadOverhead = 0;
+
+ SCU_DMA_VDP1WriteIgnoreKludge = 0;
+
+ RecalcDMAHalt();
+
+ DSP_Reset(powering_up);
+
+ RecalcMasterIntOut();
+}
+
+static MDFN_COLD void SCU_StateAction(StateMem* sm, const unsigned load, const bool data_only)
+{
+ uint32 DSP_ProgRAM[256];
+ uint32 DSP_NextInstr;
+ bool DSP_NextInstrLooped;
+ uint32 DMALevel_WATable[3];	
+ uint8 DMALevel_ReadFunc[3];		// rftab, don't allow NULL
+ uint8 DMALevel_TableReadFunc[3];	// rftab, also allow NULL
+
+ SFORMAT StateRegs[] =
+ {
+  SFVAR(DSP.LastTS),
+  SFVAR(DSP.CycleCounter),
+  SFVAR(DSP.T0_Until),
+  SFVAR(DSP.State),
+
+  SFVAR(DSP_NextInstr),
+  SFVAR(DSP_NextInstrLooped),
+
+  SFVAR(DSP.PC),
+  SFVAR(DSP.RA),
+
+  SFVAR(DSP.FlagZ),
+  SFVAR(DSP.FlagS),
+  SFVAR(DSP.FlagV),
+  SFVAR(DSP.FlagC),
+
+  SFVAR(DSP.FlagEnd),
+
+  SFVAR(DSP.TOP),
+  SFVAR(DSP.LOP),
+
+  SFVAR(DSP.AC.T),
+  SFVAR(DSP.P.T),
+
+  SFARRAY(DSP.CT, 4),
+
+  SFVAR(DSP.RX),
+  SFVAR(DSP.RY),
+
+  SFVAR(DSP.RAO),
+  SFVAR(DSP.WAO),
+
+  SFARRAY32(&DSP.DataRAM[0][0], 4 * 64),
+
+  SFARRAY32(DSP_ProgRAM, 256),
+
+  SFVAR(DMALevel->StartReadAddr, 3, sizeof(DMALevelS)),
+  SFVAR(DMALevel->StartWriteAddr, 3, sizeof(DMALevelS)),
+  SFVAR(DMALevel->StartByteCount, 3, sizeof(DMALevelS)),
+  SFVAR(DMALevel->ReadAdd, 3, sizeof(DMALevelS)),
+  SFVAR(DMALevel->WriteAdd, 3, sizeof(DMALevelS)),
+  SFVAR(DMALevel->Enable, 3, sizeof(DMALevelS)),
+  SFVAR(DMALevel->Active, 3, sizeof(DMALevelS)),
+  SFVAR(DMALevel->GoGoGadget, 3, sizeof(DMALevelS)),
+  SFVAR(DMALevel->Indirect, 3, sizeof(DMALevelS)),
+  SFVAR(DMALevel->ReadUpdate, 3, sizeof(DMALevelS)),
+  SFVAR(DMALevel->WriteUpdate, 3, sizeof(DMALevelS)),
+  SFVAR(DMALevel->SF, 3, sizeof(DMALevelS)),
+  SFVAR(DMALevel->FinishTime, 3, sizeof(DMALevelS)),
+  SFVAR(DMALevel->WriteBus, 3, sizeof(DMALevelS)),
+  SFVAR(DMALevel->CurReadBase, 3, sizeof(DMALevelS)),
+  SFVAR(DMALevel->CurReadSub, 3, sizeof(DMALevelS)),
+  SFVAR(DMALevel->CurWriteAddr, 3, sizeof(DMALevelS)),
+  SFVAR(DMALevel->CurByteCount, 3, sizeof(DMALevelS)),
+  SFVAR(DMALevel->Buffer, 3, sizeof(DMALevelS)),
+  SFARRAY32(DMALevel_WATable, 3),
+  SFARRAY(DMALevel_ReadFunc, 3),
+  SFARRAY(DMALevel_TableReadFunc, 3),
+  SFVAR(DMALevel->CurTableAddr, 3, sizeof(DMALevelS)),
+  SFVAR(DMALevel->FinalTransfer, 3, sizeof(DMALevelS)),
+
+  SFVAR(SCU_DMA_TimeCounter),
+  SFVAR(SCU_DMA_RunUntil),
+  SFVAR(SCU_DMA_ReadOverhead),
+
+  SFVAR(SCU_DMA_VDP1WriteIgnoreKludge),
+
+  SFVAR(IAsserted),
+  SFVAR(IPending),
+  SFVAR(IMask),
+
+  SFVAR(ABusIProhibit),
+  SFVAR(RSEL),
+
+  SFVAR(ILevel),
+  SFVAR(IVec),
+
+  SFVAR(Timer0_Counter),
+  SFVAR(Timer0_Compare),
+  SFVAR(Timer0_Met),
+
+  SFVAR(Timer1_Reload),
+  SFVAR(Timer1_Counter),
+  SFVAR(Timer1_Mode),
+  SFVAR(Timer1_Met),
+
+  SFVAR(Timer_Enable),
+
+  SFVAR(HB_FromVDP2),
+  SFVAR(VB_FromVDP2),
+
+  SFEND
+ };
+
+ //
+ // Do unconditionally, and not just if !load(in case some vars are missing from save state).
+ //
+ for(unsigned i = 0; i < 256; i++)
+  DSP_ProgRAM[i] = DSP.ProgRAM[i] >> 32;
+
+ DSP_NextInstr = DSP.NextInstr >> 32;
+ DSP_NextInstrLooped = (DSP.NextInstr == DSP_DecodeInstruction<true>(DSP.NextInstr >> 32));
+ //
+ //
+ const DMAWriteTabS* const dwt_ptrs[2] = { (const DMAWriteTabS*)dma_write_tab, (const DMAWriteTabS*)dma_write_tab_aciv1 };
+ const size_t dwt_counts[2] = { sizeof(dma_write_tab) / sizeof(DMAWriteTabS), sizeof(dma_write_tab_aciv1) / sizeof(DMAWriteTabS) };
+
+ for(unsigned level = 0; level < 3; level++)
+ {
+  const auto& d = DMALevel[level];
+
+  if(d.WATable >= dwt_ptrs[0] && d.WATable < (dwt_ptrs[0] + dwt_counts[0]))
+   DMALevel_WATable[level] = d.WATable - dwt_ptrs[0];
+  else if(d.WATable >= dwt_ptrs[1] && d.WATable < (dwt_ptrs[1] + dwt_counts[1]))
+   DMALevel_WATable[level] = 0x80000000 | (d.WATable - dwt_ptrs[1]);
+  else
+  {
+   //printf("%016llx - %016llx %08zx, %016llx %08zx\n", (unsigned long long)d.WATable, (unsigned long long)dwt_ptrs[0], dwt_counts[0], (unsigned long long)dwt_ptrs[1], dwt_counts[1]);
+   abort();	// FIXME: NULL pointer on init...
+  }
+
+  for(unsigned rb = 0; rb < 3 + 1; rb++)
+  {
+   if(rb >= 3)
+    abort();
+
+   if(d.ReadFunc == rftab[rb])
+   {
+    DMALevel_ReadFunc[level] = rb;
+    break;
+   }
+  }
+
+  DMALevel_TableReadFunc[level] = 0xFF;
+  for(unsigned trb = 0; trb < 3; trb++)
+  {
+   if(d.TableReadFunc == rftab[trb])
+   {
+    DMALevel_ReadFunc[level] = trb;
+    break;
+   }
+  }
+ }
+ //
+ //
+ //
+
+ MDFNSS_StateAction(sm, load, data_only, StateRegs, "SCU");
+
+ if(load)
+ {
+  for(unsigned i = 0; i < 256; i++)
+   DSP.ProgRAM[i] = DSP_DecodeInstruction(DSP_ProgRAM[i]);
+
+  if(DSP_NextInstrLooped)
+   DSP.NextInstr = DSP_DecodeInstruction<true>(DSP_NextInstr);
+  else
+   DSP.NextInstr = DSP_DecodeInstruction(DSP_NextInstr);
+
+  for(unsigned i = 0; i < 4; i++)
+   DSP.CT[i] &= 0x3F;
+
+  DSP.LOP &= 0xFFF;
+
+  //
+  //
+  for(unsigned level = 0; level < 3; level++)
+  {
+   auto& d = DMALevel[level];
+
+   d.StartReadAddr &= 0x07FFFFFF;
+   d.StartWriteAddr &= 0x07FFFFFF;
+   d.StartByteCount &= level ? 0x00000FFF : 0x000FFFFF;
+
+   d.ReadAdd &= 0x1;
+   d.WriteAdd &= 0x7;
+   
+   //
+   //
+   {
+    bool which = DMALevel_WATable[level] >> 31;
+    uint32 index = DMALevel_WATable[level] & 0x7FFFFFFF;
+
+    if(index >= dwt_counts[which]) // || !dwt_ptrs[which][index].write_size)
+     printf("bad watable %08x %zu %08x\n", DMALevel_WATable[level], dwt_counts[which], dwt_ptrs[which][index].write_size);
+    else
+     d.WATable = dwt_ptrs[which] + index;
+   }
+
+   if(DMALevel_ReadFunc[level] >= 3)
+    printf("bad readfunc: %02x\n", DMALevel_ReadFunc[level]);
+   else
+    d.ReadFunc = rftab[DMALevel_ReadFunc[level]];
+
+   if(DMALevel_TableReadFunc[level] == 0xFF)
+    d.TableReadFunc = NULL;
+   else if(DMALevel_TableReadFunc[level] < 3)
+    d.TableReadFunc = rftab[DMALevel_TableReadFunc[level]];
+   else
+    printf("bad tablereadfunc: %02x\n", DMALevel_TableReadFunc[level]);
+  }
+ }
+}
+
+
 
 //
 //
@@ -1855,10 +2149,6 @@ uint32 SCU_GetRegister(const unsigned id, char* const special, const uint32 spec
 
   case SCU_GSREG_IVEC:
 	ret = IVec;
-	break;
-
-  case SCU_GSREG_ICLEARMASK:
-	ret = IClearMask;
 	break;
 
   case SCU_GSREG_IASSERTED:

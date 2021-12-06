@@ -3,6 +3,9 @@
 #include <mednafen/mednafen.h>
 #include "T6W28_Apu.h"
 
+#undef require
+#define require( expr ) assert( expr )
+
 /* Copyright (C) 2003-2006 Shay Green. This module is free software; you
 can redistribute it and/or modify it under the terms of the GNU Lesser
 General Public License as published by the Free Software Foundation; either
@@ -372,6 +375,7 @@ void T6W28_Apu::save_state(T6W28_ApuState *ret)
 {
  for(int x = 0; x < 4; x++)
  {
+  ret->delay[x] = oscs[x]->delay;
   ret->volume_left[x] = oscs[x]->volume_left;
   ret->volume_right[x] = oscs[x]->volume_right;
  }
@@ -400,6 +404,7 @@ void T6W28_Apu::load_state(const T6W28_ApuState *state)
 {
  for(int x = 0; x < 4; x++)
  {
+  oscs[x]->delay = state->delay[x];
   oscs[x]->volume_left = state->volume_left[x];
   oscs[x]->volume_right = state->volume_right[x];
  }

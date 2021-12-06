@@ -2,7 +2,7 @@
 /* Mednafen Sony PS1 Emulation Module                                         */
 /******************************************************************************/
 /* frontio.h:
-**  Copyright (C) 2011-2016 Mednafen Team
+**  Copyright (C) 2011-2017 Mednafen Team
 **
 ** This program is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU General Public License
@@ -22,8 +22,6 @@
 #ifndef __MDFN_PSX_FRONTIO_H
 #define __MDFN_PSX_FRONTIO_H
 
-#include <memory>
-
 namespace MDFN_IEN_PSX
 {
 
@@ -33,11 +31,13 @@ class InputDevice
 {
  public:
 
- InputDevice();
- virtual ~InputDevice();
+ InputDevice() MDFN_COLD;
+ virtual ~InputDevice() MDFN_COLD;
 
- virtual void Power(void);
+ virtual void Power(void) MDFN_COLD;
  virtual void UpdateInput(const void *data);
+ virtual void UpdateOutput(void* data);
+ virtual void TransformInput(void* data);
  virtual void StateAction(StateMem* sm, const unsigned load, const bool data_only, const char* sname_prefix);
 
  virtual bool RequireNoFrameskip(void);
@@ -52,7 +52,7 @@ class InputDevice
  //
  //
  //
- virtual void SetAMCT(bool enabled);
+ virtual void SetAMCT(bool enabled, uint16 compare);
  virtual void SetCrosshairsColor(uint32 color);
 
  //
@@ -87,10 +87,10 @@ class FrontIO
 {
  public:
 
- FrontIO();
- ~FrontIO();
+ FrontIO() MDFN_COLD;
+ ~FrontIO() MDFN_COLD;
 
- void Reset(bool powering_up);
+ void Reset(bool powering_up) MDFN_COLD;
  void Write(pscpu_timestamp_t timestamp, uint32 A, uint32 V);
  uint32 Read(pscpu_timestamp_t timestamp, uint32 A);
  pscpu_timestamp_t CalcNextEventTS(pscpu_timestamp_t timestamp, int32 next_event);
@@ -101,10 +101,12 @@ class FrontIO
  void GPULineHook(const pscpu_timestamp_t timestamp, const pscpu_timestamp_t line_timestamp, bool vsync, uint32 *pixels, const MDFN_PixelFormat* const format, const unsigned width, const unsigned pix_clock_offset, const unsigned pix_clock, const unsigned pix_clock_divider);
 
  void UpdateInput(void);
+ void TransformInput(void);
+ void UpdateOutput(void);
  void SetInput(unsigned int port, const char *type, uint8 *ptr);
  void SetMultitap(unsigned int pport, bool enabled);
  void SetMemcard(unsigned int port, bool enabled);
- void SetAMCT(bool enabled);
+ void SetAMCT(bool enabled, uint16 compare);
  void SetCrosshairsColor(unsigned port, uint32 color);
 
  uint64 GetMemcardDirtyCount(unsigned int which);
@@ -190,6 +192,7 @@ class FrontIO
  //
  //
  bool amct_enabled;
+ uint16 amct_compare;
  uint32 chair_colors[8];
 };
 

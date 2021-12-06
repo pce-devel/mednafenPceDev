@@ -2,7 +2,7 @@
 /* Mednafen Sega Saturn Emulation Module                                      */
 /******************************************************************************/
 /* scsp.inc - SCSP Emulation
-**  Copyright (C) 2015-2016 Mednafen Team
+**  Copyright (C) 2015-2017 Mednafen Team
 **
 ** This program is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU General Public License
@@ -98,12 +98,14 @@ void SS_SCSP::Reset(bool powering_up)
  memset(SlotRegs, 0, sizeof(SlotRegs));
  memset(Slots, 0, sizeof(Slots));
 
- // Some SSFs require this; TODO: test to see if this is correct for a reset,
- // and if not, move it into special SSF loading code.
  for(unsigned i = 0; i < 32; i++)
  {
+  // Some SSFs require this; TODO: test to see if this is correct for a reset,
+  // and if not, move it into special SSF loading code.
   Slots[i].EnvLevel = 0x3FF;
   Slots[i].EnvPhase = ENV_PHASE_RELEASE;
+
+  Slots[i].LFOTimeCounter = 1;
  }
 
  memset(SoundStack, 0, sizeof(SoundStack));
@@ -951,7 +953,7 @@ INLINE int SS_SCSP::GetPLFO(Slot* s)
 INLINE void SS_SCSP::RunLFO(Slot* s)
 {
  s->LFOTimeCounter--;
- if(s->LFOTimeCounter <= 0)
+ if(!s->LFOTimeCounter)
  {
   s->LFOCounter++;
   s->LFOTimeCounter = (((8 - (s->LFOFreq & 0x3)) << 7) >> (s->LFOFreq >> 2)) - 4;
@@ -1465,6 +1467,223 @@ INLINE void SS_SCSP::RunSample(int16* outlr)
  out_accum[0] = (out_accum[0] * MasterVolume) >> 8;
  out_accum[1] = (out_accum[1] * MasterVolume) >> 8;
 
- outlr[0] = std::min<int32>(32767, std::max<int32>(-32768, out_accum[0]));
- outlr[1] = std::min<int32>(32767, std::max<int32>(-32768, out_accum[1]));
+ out_accum[0] = std::min<int32>(32767, std::max<int32>(-32768, out_accum[0]));
+ out_accum[1] = std::min<int32>(32767, std::max<int32>(-32768, out_accum[1]));
+
+ if(DAC18bit)
+ {
+  // Doesn't seem to improve precision.  Remember
+  // to extend the outlr[] types if this SCSP emulator is used
+  // in a system that actually has an 18-bit DAC.
+  out_accum[0] = (uint32)out_accum[0] << 2;
+  out_accum[1] = (uint32)out_accum[1] << 2;
+ }
+
+ outlr[0] = out_accum[0];
+ outlr[1] = out_accum[1];
 }
+
+//
+//
+//
+void SS_SCSP::StateAction(StateMem* sm, const unsigned load, const bool data_only, const char* sname)
+{
+ SFORMAT StateRegs[] =
+ {
+  SFARRAY16N(&SlotRegs[0][0], 0x20 * 0x10, "SlotRegs"),
+
+  SFVAR(Slots->PhaseWhacker, 32, sizeof(Slot)),
+  SFVAR(Slots->CurrentAddr, 32, sizeof(Slot)),
+  SFVAR(Slots->InLoop, 32, sizeof(Slot)),
+  SFVAR(Slots->LoopSub, 32, sizeof(Slot)),
+  SFVAR(Slots->WFAllowAccess, 32, sizeof(Slot)),
+  SFVAR(Slots->EnvLevel, 32, sizeof(Slot)),
+  SFVAR(Slots->EnvPhase, 32, sizeof(Slot)),
+  SFVAR(Slots->EnvGCBTPrev, 32, sizeof(Slot)),
+  SFVAR(Slots->LFOCounter, 32, sizeof(Slot)),
+  SFVAR(Slots->LFOTimeCounter, 32, sizeof(Slot)),
+
+  SFARRAY16(EXTS, 2),
+
+  SFARRAY16(SoundStack, 0x40),
+  SFARRAY16(SoundStackDelayer, 4),
+
+  SFVAR(MasterVolume),
+  SFVAR(MVOL),
+  SFVAR(DAC18bit),
+  SFVAR(Mem4Mb),
+
+  SFVAR(SlotMonitorWhich),
+  SFVAR(SlotMonitorData),
+
+  SFVAR(KeyExecute),
+  SFVAR(LFSR),
+  SFVAR(GlobalCounter),
+
+  SFARRAY(MIDI.InputFIFO, 4),
+  SFVAR(MIDI.InputRP),
+  SFVAR(MIDI.InputWP),
+  SFVAR(MIDI.InputCount),
+  SFARRAY(MIDI.OutputFIFO, 4),
+  SFVAR(MIDI.OutputRP),
+  SFVAR(MIDI.OutputWP),
+  SFVAR(MIDI.OutputCount),
+  SFVAR(MIDI.Flags),
+ 
+  SFVAR(SCIEB),
+  SFVAR(SCIPD),
+
+  SFVAR(MCIEB),
+  SFVAR(MCIPD),
+
+  SFARRAY(SCILV, 3),
+
+  SFVAR(Timers->Control, 3, sizeof(*Timers)),
+  SFVAR(Timers->Counter, 3, sizeof(*Timers)),
+  SFVAR(Timers->PrevClockIn, 3, sizeof(*Timers)),
+  SFVAR(Timers->Reload, 3, sizeof(*Timers)),
+
+  SFVAR(DMEA),
+  SFVAR(DRGA),
+  SFVAR(DTLG),
+
+  SFVAR(DMA_Execute),
+  SFVAR(DMA_Direction),
+  SFVAR(DMA_Gate),
+
+  SFVAR(RBP),
+  SFVAR(RBL),
+
+  SFARRAY64(DSP.MPROG, 0x80),
+  SFARRAY32(DSP.TEMP, 0x80),
+  SFARRAY32(DSP.MEMS, 0x20),
+  SFARRAY16(DSP.COEF, 64),
+  SFARRAY16(DSP.MADRS, 32),
+  SFARRAY32(DSP.MIXS, 0x10),
+  SFARRAY16(DSP.EFREG, 0x10),
+
+  SFVAR(DSP.INPUTS),
+
+  SFVAR(DSP.Product),
+  SFVAR(DSP.SFT_REG),
+  SFVAR(DSP.FRC_REG),
+  SFVAR(DSP.Y_REG),
+  SFVAR(DSP.ADRS_REG),
+
+  SFVAR(DSP.MDEC_CT),
+
+  SFVAR(DSP.RWAddr),
+
+  SFVAR(DSP.WritePending),
+  SFVAR(DSP.WriteValue),
+
+  SFVAR(DSP.ReadPending),
+  SFVAR(DSP.ReadValue),
+  //
+  SFARRAY16(RAM, 262144),
+
+  SFEND
+ };
+
+ MDFNSS_StateAction(sm, load, data_only, StateRegs, "SCSP");
+
+ if(load)
+ {
+  for(auto& s : Slots)
+  {
+   s.EnvLevel &= 0x3FF;
+   s.EnvPhase &= 0x3;
+  }
+
+  SlotMonitorWhich &= 0x1F;
+
+  MIDI.InputRP &= 0x3;
+  MIDI.InputWP &= 0x3;
+
+  MIDI.OutputRP &= 0x3;
+  MIDI.OutputWP &= 0x3;
+
+  DMEA &= 0x7FFFF;
+  DRGA &= 0x7FF;
+  DTLG &= 0x7FF;
+
+  RBP &= 0x7F;
+  RBL &= 0x3;
+
+  DSP.RWAddr &= 0x7FFFF;
+
+  for(uint32 A = 0x100000; A < 0x100400; A += 2)
+  {
+   RW<uint16, true>(A, *(&SlotRegs[0][0] + ((A & 0x3FE) >> 1)));
+  }
+  RecalcSoundInt();
+  RecalcMainInt();
+ }
+
+}
+
+//
+//
+//
+uint32 SS_SCSP::GetRegister(const unsigned id, char* const special, const uint32 special_len)
+{
+ uint32 ret = 0xDEADBEEF;
+
+ switch(id)
+ {
+  case GSREG_MVOL:
+	ret = MVOL;
+	break;
+
+  case GSREG_DAC18B:
+	ret = DAC18bit;
+	break;
+
+  case GSREG_MEM4MB:
+	ret = Mem4Mb;
+	break;
+
+  case GSREG_RBP:
+	ret = RBP;
+	break;
+
+  case GSREG_RBL:
+	ret = RBL;
+	break;
+
+  case GSREG_MSLC:
+	ret = SlotMonitorWhich;
+	break;
+ }
+
+ return ret;
+}
+
+void SS_SCSP::SetRegister(const unsigned id, const uint32 value)
+{
+ switch(id)
+ {
+  //case GSREG_MVOL: MVOL = value & 0xF; // TODO cache
+
+  case GSREG_DAC18B:
+	DAC18bit = value & 1;
+	break;
+
+  case GSREG_MEM4MB:
+	Mem4Mb = value & 1;
+	break;
+
+  case GSREG_RBP:
+	RBP = value & 0x7F;
+	break;
+
+  case GSREG_RBL:
+	RBL = value & 0x3;
+	break;
+
+  case GSREG_MSLC:
+	SlotMonitorWhich = value & 0x1F;
+	break;
+ }
+}
+

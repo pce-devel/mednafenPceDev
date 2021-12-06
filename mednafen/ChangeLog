@@ -1,3 +1,411 @@
+-- 0.9.48: --
+
+September 16, 2017:
+	Set cheat's default endianness to that preferred by the system being emulated when manually adding a cheat that's not
+	a cheat device code nor the result of a cheat search.
+
+September 15, 2017:
+	SS: Fixed SCU DSP DMA from B-bus; fixes the periodic loud popping in Grandia's FMV.
+
+September 12, 2017:
+	SS: Added a hack/kludge to allow bypassing of data cache on reads(such that the timing benefits of partial cache emulation are preserved, without cache
+	coherency problems that partial cache emulation sometimes leads to with poorly programmed games), and added an internal database to enable it on select games;
+	fixes graphical glitches and/or hangs in "Area 51 (USA and Europe)", "Clockwork Knight 2 (USA)", "DeJig - Lassen Art Collection", "Father Christmas",
+	"Golden Axe The Duel", "Sega Saturn Choice Cuts", "Spot Goes to Hollywood (USA and Japan)", "Street Fighter Zero", "Street Fighter Zero 3",
+	"Super Puzzle Fighter II Turbo", and "Virtual Volleyball".
+
+	SS: Full cache emulation is now enabled for "Whizz"(by using an internal database), to resolve(or at least reduce) quasi-random hanging issues during startup. 
+
+September 11, 2017:
+	SS: Corrected an inaccuracy with CDB play repeat handling; fixes hang when trying to resume a suspended game in "Tactics Ogre".
+
+	SS: Initialize VDP1 clipping and local coordinate registers only on power-on, and not on reset.
+
+September 7, 2017:
+	SS: Fixed side-effect inaccuracies in the CDB Put Sector Data, Copy Sector Data, and Move Sector Data command emulation.
+
+September 6, 2017:
+	Added configure option "--with-external-trio", for distribution packagers.
+
+	SS: Added partial emulation of SH-2 external bus open bus behavior; fixes messed up colors in "Discworld 2".
+
+September 4, 2017:
+	SS: Improved CDB Initialize command emulation; fixes crash in "Tenchi Muyou! Ryououki Gokuraku" when it tries to play an opening movie during startup.
+
+August 28, 2017:
+	SS: Made CD seek overhead calculation less completely wrong; fixes graphics corruption in intro of "Batman Forever", and fixes hang in "Jung Rhythm" when
+	trying to retry a failed stage.
+
+-- 0.9.47: --
+
+August 25, 2017:
+	Lynx, MD, NGP, SMS: Added a few missing variables to save states.
+
+August 24, 2017:
+	SS: Added save state support.
+
+	Revamped save state helper macros and functions, to allow save-stating of variables in arrays of structs to be simpler.
+
+August 22, 2017:
+	SS: Fixed BCR1 write protect, and added stub emulation of the other BSC registers.
+
+	SS: Added incomplete stub Action Replay 4M Plus emulation(for experimentation); proper Action Replay support would require SH-2 UBC emulation, and that
+	may be too costly performance wise.
+
+August 21, 2017:
+	SS: Implemented very rough approximation of bus timing side effects when master SH-2 DMA is active(accurate handling of bus priorities and sharing would increase
+	CPU requirements noticeably, but it may ultimately be necessary as a database-driven option for some stubborn games in the future).  Fixes startup hangs in
+	"Device Reign", "Real Sound", "Resident Evil", "SD Gundam G Century S", "Super Tempo", "Tennis Arena", "Tilk", "Yuukyuu Gensoukyoku",
+	"Yuukyuu Gensoukyoku 2nd Album", "Yuukyuu Gensoukyoku ensemble", "Yuukyuu Gensoukyoku ensemble 2", "Yuukyuu no Kobako Official Collection", and "Zero4 Champ". 
+
+-- 0.9.46: --
+
+August 10, 2017:
+	Compile with explicit -fstrict-aliasing, for distributions/OSes that have configured gcc to not enable strict aliasing at -O2(and possibly other levels).
+
+	Fixed a bug that could, under certain conditions, cause emulator OSD elements to not be updated in the time after entering frame advance mode
+	and before a frame advance.
+
+August 7, 2017:
+	Use a sorted std::vector instead of std::multimap to store current settings, to reduce memory usage.
+
+August 6, 2017:
+	SS: Added ss.input.port*.3dpad.mode.defpos settings to control the default position of the digital/analog mode switch.
+
+August 5, 2017:
+	Allow addresses above FFFF to be entered as the logical watch address in the debugger.
+
+August 4, 2017:
+	SS: Added kludge to fix layer offset problem in "Daytona USA CCE".
+
+	NES: The functionality controlled by setting "nes.fnscan" now recognizes "(F)" and "(France)" as PAL.
+
+	NES: Added support for iNES mapper 40.
+
+July 11, 2017:
+	Utilize _byteswap_*() functions in endian.h when compiling with Microsoft's C++ compiler.
+
+June 22, 2017:
+	Fixed a couple of minor issues(log header formatting, and skipped logging of first instruction in step mode) with the debugger's undocumented trace log feature.
+
+	NES: Corrected the period of PAL noise channel frequency setting 0x1.
+
+June 21, 2017:
+	NES: Fixed a few square wave sound channel emulation bugs(wrong phase for duty setting 3, and failing to clock the period counter when the channel is silenced).
+
+-- 0.9.45.1: --
+
+June 5, 2017:
+	SNES: Fixed an instance of possibly-undefined behavior.
+
+	Silenced dumb warning spam relating to endian.h emitted by newer versions of gcc.
+
+June 4, 2017:
+	Fixed garbled audio with the exclusive-mode WASAPI sound driver on some higher-end sound cards(regression introduced in 0.9.45 due to a mistake in changing
+	the meaning of a macro field during development); may also fix garbled audio when using the new OpenBSD sound driver with certain sound cards.
+
+-- 0.9.45: --
+
+May 29, 2017:
+	Tweaked netplay sound buffer underrun kludge code.
+
+	The netplay server host and port being connected to are now printed to the netplay console at the beginning of a connection attempt.
+
+	Netplay connection attempts to servers are now non-blocking.
+
+May 25, 2017:
+	SS: Synchronize end of SMPC clock change commands to beginning of vsync instead of beginning of vblank, per tests on a SS.
+
+May 23, 2017:
+	SS: Reworked how the VDP2 rendering thread waits, to make Saturn emulation usable with the default OpenBSD kernel.
+
+	SS: Added emulation of the light gun("Stunner"/"Virtua Gun").
+
+April 28, 2017:
+	#include'd many commonly-used C and C++ standard library headers in types.h(and removed redundant #include statements from various header and source files), to
+	reduce the probability of portability problems(due to neglecting to explicitly include a header file) when different standard C/C++ libraries
+	behave differently in regards to what header files include what other header files.
+
+	Added a sound output driver for OpenBSD's /dev/audio.
+
+	Reworked the sound output format conversion code to be more versatile, 
+
+April 25, 2017:
+	NES: Wrote new "Barcode Battler II" emulation code to replace the old "Barcode World" code, based on quick testing with actual hardware(albeit the English version).
+
+April 24, 2017:
+	SSFPlay: Added save state support.
+
+-- 0.9.44.1: --
+
+April 21, 2017:
+	MD: Added a missing MDFN_FASTCALL, the absence of which broke 32-bit x86 builds(either at link time or run time).
+
+-- 0.9.44: --
+
+April 19, 2017:
+	PSX: Restructured the GPU emulation code and data a bit to get a minor performance boost.
+
+April 18, 2017:
+	VB, PCE, WonderSwan, MD, GBA: Use fastcall calling convention(on 32-bit x86) in a few (more) places where it makes sense.
+
+April 16, 2017:
+	SNES-Faust: Added setting "snes_faust.correct_aspect", default value of "1".
+
+	SNES-Faust: Added PAL support.
+
+April 14, 2017:
+	SNES-Faust: Made minor optimizations to the BG rendering code.
+
+April 9, 2017:
+	Added command-line option "-which_medium", to specify which CD to start with when using multi-CD M3U sets.
+
+April 5, 2017:
+	SNES: Fixed emulator hang when saving state in "Panic Bomber W".
+
+April 3, 2017:
+	Added some simple scripts to cross-compile and package Mednafen for Windows.
+
+	Added Windows cross-compiler toolchain setup notes.
+
+	32-bit Windows builds are now compiled with -march=i686 instead of -march=i586(shouldn't affect compatibility for official builds, since the toolchain
+	and libraries were already effectively being compiled with -march=i686, which was not intended, but since nobody apparently complained... ;p).
+
+March 25, 2017:
+	VB: Added support for custom palettes.
+
+	VB: Reworked how LED on-state duration is translated into RGB values and added setting "vb.ledonscale"; the default value of "vb.ledonscale" is
+	set such that the overall brightness will be lower than in previous versions of Mednafen, to reduce white crush, but the user can set it
+	to a value of "1.9921875" to approximate the old brightness level.
+
+March 20, 2017:
+	SNES: Made a couple of SDD1 registers readable; fixes "Tractor Beam" spell graphical glitches in "Star Ocean"(thanks to orbea).
+
+March 17, 2017:
+	SS: Added support for a 16MiB RAM cart mapped into the A-bus CS1 area(for "Heart of Darkness" and homebrew).
+
+March 15, 2017:
+	WonderSwan: Removed setting "wswan.rotateinput", and added a new device("gamepadraa") that can be selected on virtual input port 1 to
+	automatically rotate inputs when the display is rotated.
+
+March 14, 2017:
+	Reworked text drawing to not use an excessive number of potentially-large VLAs.
+
+	Moved statements with important side effects outside of assert()s in settings.cpp.
+
+	Replaced ancient Unicode conversion code with newly-developed code.
+
+March 7, 2017:
+	SS: Prioritize SMPC command execution over VBlank handler execution, per (limited) tests on a SS.  Fixes broken input in "Primal Rage"(a 0.9.43 regression).
+
+-- 0.9.43: --
+
+February 24, 2017:
+	Reworked how input grabbing is handled.  The new way uses only one key combo(CTRL+SHIFT+Menu), and will adapt its behavior based on any keyboards
+	being selected on any virtual input ports or not(refer to the documentation for full details).  A new setting is added, "command.toggle_grab", and
+	two settings were removed, "command.toggle_grab_input" and "command.toggle_cidisable".
+
+	Emulated keyboard(FKB, Tsushin, Saturn) key state is now only updated when input grabbing is toggled on.
+
+February 22, 2017:
+	SS: Fixed SMPC read handling of an empty input port.
+
+	SS: Implemented emulation of SMPC 0-byte port read mode.
+
+	PSX: Reduced rumble latency by 1 frame.
+
+February 20, 2017:
+	Reworked how keyboard key state is handled, to prevent extremely short button presses from being lost(like what can happen with the Pause key, or
+	other keys when slow-forwarding is active).
+
+	SS: Added 101-key US keyboard emulation.
+
+February 17, 2017:
+	SS: Allow SMPC commands to be dual-issued; fixes hang in "F1 Challenge", and hangs/missing sound in "Magic Knight Rayearth".
+
+	SS: Added emulation of the 6-Player Adaptor(multitap).
+
+February 15, 2017:
+	SS: Added emulation of the Mission Stick and Dual Mission Sticks.
+
+February 13, 2017:
+	SS: Added emulation of the steering wheel("Arcade Racer"), for use with "Virtua Racing", "High Velocity - Mountain Racing Challenge",
+	"The Need for Speed", and other Saturn racing games that apparently lack 3D pad support.
+
+-- 0.9.42: --
+
+February 7, 2017:
+	SS: Ignore lower bit of VDP1 sprite draw command texture base address when drawing using color mode 5, per tests on a SS; fixes some of the
+	graphical glitches in "All-Star Baseball 97".
+
+February 6, 2017:
+	SS: Ignore writes to VDP1 registers via SCU DMA under certain conditions to approximate what happens on a SS; fixes hang in "GunBlaze-S".
+
+	SS: Fixed handling of RSTCSR WOVF clearing, per tests on a SS.  Also changed the semantics of RSTCSRM a bit to simplify things, might want to change
+	WTCSRM, FTCSRM, etc. semantics too in the future for consistency...
+
+	SS: Fixed handling of WTCSR OVF clearing, per tests on a SS.
+
+	Updated tremor to revision 19427.
+
+	Updated libogg to version 1.3.2.
+
+	Fixed a bug that caused a crash if the user tried to select(via CTRL+SHIFT+[n]) a device on a non-existent virtual input port.
+
+February 5, 2017:
+	SNES-Faust: Added multitap support.
+
+February 3, 2017:
+	SS: Fixed a bug in the handling of M68K level 7 interrupts; fixes missing sound in "Arcade's Greatest Hits".
+
+February 1, 2017:
+	SS: Suspend VDP1 command processing while an SCU DMA from SDRAM to VDP1 VRAM is active, to approximate how a SS behaves.  Fixes FMV tearing
+	in "Johnny Bazookatone", and fubared graphics in "Virtua Cop" and "Virtua Cop 2".
+
+January 31, 2017:
+	SS: Fixed handling of clearing FTCSR bits, per tests on a SS.
+
+January 30, 2017:
+	SS: Improved instruction timing(though still far from perfect); fixes speed problems in "Pocket Fighter", reduces the size of the flickering
+	area in "Lunar"'s FMV, and fixes the crash that occurs immediately after gameplay starts in "Virtua Fighter" and "Virtua Fighter Remix".
+
+January 26, 2017:
+	NES: Added support for iNES mapper 190.
+
+January 25, 2017:
+	SS: Clear SCU internal pending interrupt bit upon the SCU's acceptance of the IRQ to send to the SH-2, instead of when the SH-2 fetches the vector, per
+	tests on a SS.
+
+-- 0.9.41: --
+
+January 21, 2017:
+	SS: Implemented disc change IRQ on disc eject.
+
+January 20, 2017:
+	Replaced usage of trio_snprintf() to a fixed-size buffer for path construction in general.cpp with manual concatenation of std::string strings.
+
+January 18, 2017:
+	Use _beginthreadex() instead of CreateThread() on Windows, to avoid a small memory leak.
+
+	Now explicitly use 64-bit walltime functions on 32-bit Windows builds.
+
+January 17, 2017:
+	PCE, PCE_FAST: Added a missing sound emulation variable to save states.
+
+January 16, 2017:
+	SNES: Added setting "snes.h_blend", default value of "0", that when set to "1" will enable a horizontal blend/blur filter.
+
+January 15, 2017:
+	PCE: Improved SuperGrafx window handling in 10MHz dot clock modes.
+
+	GBA: Modified RTC emulation to not use standard C library walltime functions during emulation.
+
+	Wrapped various time functions, and dropped the dependencies on SDL time functions, in Time.cpp/Time.h.
+
+January 14, 2017:
+	WonderSwan: Fixed off-by-1 bugs in window coordinate evaluation, per tip from trap15.
+
+	WonderSwan: Fixed copyright notice headers to not allow distribution under versions of the GPL other than version 2(an oversight from 
+	back when the Cygne code was added to Mednafen).
+
+	WonderSwan: Applied sound and DMA emulation fixes from trap15; fixes rain sound effect in "Star Hearts".  The changes did necessitate lowering
+	the overall WonderSwan sound emulation volume a bit to prevent excessive clipping, however.
+
+January 12, 2017:
+	SS: Fixed a logic error in the VDP2 rendering code; fixes battle scenes in "Grandia".
+
+January 10, 2017:
+	SS: Removed a few bad entries in the internal region-correction database that were breaking the Korean releases of some games.
+
+January 9, 2017:
+	PCE, PCE_FAST: Added support for auto-enabling SuperGrafx emulation with CDs when a mode 1 data track has the 16-byte magic
+	"4D 65 64 6E 61 66 65 6E 74 AB 90 19 42 62 7D E6" at offset 0x86A(assuming 2048 bytes per sector), for homebrew and translations.
+
+January 7, 2017:
+	SS: Added emulation of the SCSP 18-bit DAC enable bit; fixes low volume problem in "Daytona USA".
+
+	SS: Fixed some bugs that broke emulation on big-endian platforms.
+
+January 5, 2017:
+	Fixed an off-by-1 memory corruption bug in the debugger's memory editor relative bytestring search code.
+
+	VB: Finally commented out some debug printf()s.
+
+January 1, 2017:
+	Cleaned up code that passes video data from the game thread to the main thread, and replaced some volatile usage with atomics.
+
+December 31, 2016:
+	Fixed a large memory leak that occurred when saving screenshots with SHIFT+F9.
+
+	VB: Fixed a regression introduced in 0.9.39.2 that caused transient sound/note distortion on save state load.
+
+December 27, 2016:
+	Moved TCP/IP networking code into the core of Mednafen, and added support for non-blocking connects, so the Saturn emulation module can eventually use
+	it for modem emulation.
+
+December 25, 2016:
+	Modified configure script to (hopefully) compile in the Saturn emulation module when building for PPC64 and AArch64 architectures(in addition to x86_64).
+
+December 21, 2016:
+	Allow emulated digital button mappings to be used in AND mode(like command keys configured with SHIFT+F2) if the user manually
+	prefixes the "/&&\ " magic string to the mapping setting string in the configuration file.  Can be useful with emulated switches and mode toggle buttons,
+	but the in-emulator input configuration process will need to be revamped before enabling this mode for a mapping can be done in a sane and
+	more user-friendly manner.
+
+	Rewrote round_up_pow2() in math_ops.h to use MDFN_log2, which in turn uses MDFN_lzcount*(), since the major CPUs that Mednafen is going
+	to run on should have dedicated instructions to (at least indirectly) count leading zeroes.  Also changed the semantics to return 0 on overflow instead of 1.
+
+December 20, 2016:
+	SS: Now use leading-zero counting function from math_ops.h in the VDP2 rendering code, instead of using inline assembly.
+
+	Reorganized the leading/trailing bit counting functions in math_ops.h, added 32-bit and 64-bit trailing-bit counting functions, and added faster
+	variants where passing a 0 results in an undefined result.
+
+December 19, 2016:
+	Print out the game key used after a connection is established with netplay, when the game key is not empty.
+
+	SMS: Added settings "sms.slstart", "sms.slend", "sms.slstartp", and "sms.slendp".
+
+	Added some checks to help prevent a black screen when the scanlines effect is enabled via a <system>.scanlines setting and the effective Y scale is
+	too small(by forcing negative-value behavior in the case of interlaced video, or temporarily disabling the effect otherwise).
+
+December 18, 2016:
+	PSX: The functionality controlled by the "psx.input.analog_mode_ct" setting no longer interferes with netplay.
+
+	PSX: Added "psx.input.analog_mode_ct.compare" setting to control the combination of buttons used when the functionality controlled by the
+	"psx.input.analog_mode_ct" setting is enabled.
+
+	Modified build system to use $(localedir) instead of $(datadir)/locale for LOCALEDIR define.
+
+	Updated miniLZO to version 2.09.
+
+December 14, 2016:
+	SS: Added setting "ss.h_blend", default value of "0", that when set to "1" will enable a horizontal blend/blur filter(with a much noticeable effect on the
+	Saturn video modes with a higher horizontal resolution).
+
+December 10, 2016:
+	SS: Added setting "ss.h_overscan", default value of "1", to allow the user to show less of the screen on the left and right sides by setting it to "0".
+
+December 9, 2016:
+	SS: Added setting "ss.correct_aspect", default value of "1", to allow the user to disable aspect ratio correction(not recommended, but whatever~).
+
+	Added simple TV CRT-approximating OpenGL shader, "goat".
+
+December 8, 2016:
+	Renamed settings "*.pixshader" to "*.shader".
+
+December 7, 2016:
+	Check for and use -no-pie instead of just -nopie in the configure script, to fix build failures on at least one platform.
+
+December 6, 2016:
+	Fixed half-source-pixel image offset bug in the "autoip", "ipxnoty", and "ipynotx" pixel shaders.
+
+	Fixed altivec.h header detection regression in 0.9.39.
+
+October 7, 2016:
+	Fixed a bug that caused input movie recording to produce broken recordings when done during netplay with an emulation module
+	that uses mid-frame sync functionality.
+
 -- 0.9.39.2: --
 
 September 19, 2016:

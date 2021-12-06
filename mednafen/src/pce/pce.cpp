@@ -31,7 +31,6 @@
 #include <mednafen/hash/md5.h>
 #include <mednafen/FileStream.h>
 #include <mednafen/sound/OwlResampler.h>
-#include <math.h>
 
 #include <zlib.h>
 
@@ -352,7 +351,7 @@ static const struct
 	{ 0x3b13af61, "Battle Ace" },
 };
 
-static void Load(MDFNFILE *fp)
+static MDFN_COLD void Load(MDFNFILE *fp)
 {
  try
  {
@@ -408,7 +407,7 @@ static void Load(MDFNFILE *fp)
  }
 }
 
-static void LoadCommonPre(void)
+static MDFN_COLD void LoadCommonPre(void)
 {
  // Initialize sound buffers
  for(unsigned ch = 0; ch < 2; ch++)
@@ -429,7 +428,7 @@ static void LoadCommonPre(void)
  MDFNMP_Init(1024, (1 << 21) / 1024);
 }
 
-static int LoadCommon(void)
+static MDFN_COLD int LoadCommon(void)
 { 
  IsSGX |= MDFN_GetSettingB("pce.forcesgx") ? 1 : 0;
 
@@ -562,7 +561,7 @@ static bool TestMagicCD(std::vector<CDIF *> *CDInterfaces)
  CDIF *cdiface = (*CDInterfaces)[0];
  uint8 sector_buffer[2048];
  CDUtility::TOC toc;
- bool ret = FALSE;
+ bool ret = false;
 
  memset(sector_buffer, 0, sizeof(sector_buffer));
 
@@ -576,7 +575,7 @@ static bool TestMagicCD(std::vector<CDIF *> *CDInterfaces)
     break;
 
    if(!memcmp((char*)sector_buffer, (char *)magic_test, 0x20))
-    ret = TRUE;
+    ret = true;
 
    // PCE CD BIOS apparently only looks at the first data track.
    break;
@@ -603,7 +602,34 @@ static bool TestMagicCD(std::vector<CDIF *> *CDInterfaces)
  return(ret);
 }
 
-static void LoadCD(std::vector<CDIF *> *CDInterfaces)
+static MDFN_COLD bool DetectSGXCD(std::vector<CDIF*>* CDInterfaces)
+{
+ CDIF *cdiface = (*CDInterfaces)[0];
+ CDUtility::TOC toc;
+ uint8 sector_buffer[2048];
+ bool ret = false;
+
+ memset(sector_buffer, 0, sizeof(sector_buffer));
+
+ cdiface->ReadTOC(&toc);
+
+ // Check all data tracks for the 16-byte magic(4D 65 64 6E 61 66 65 6E 74 AB 90 19 42 62 7D E6) at offset 0x86A(assuming mode 1 sectors).
+ for(int32 track = toc.first_track; track <= toc.last_track; track++)
+ {
+  if(toc.tracks[track].control & 0x4)
+  {
+   if(cdiface->ReadSector(sector_buffer, toc.tracks[track].lba + 1, 1) != 0x1)
+    continue;
+
+   if(MDFN_de64msb(&sector_buffer[0x6A]) == 0x4D65646E6166656EULL && MDFN_de64msb(&sector_buffer[0x6A + 8]) == 0x74AB901942627DE6ULL)
+    ret = true;
+  }
+ }
+
+ return ret;
+}
+
+static MDFN_COLD void LoadCD(std::vector<CDIF *> *CDInterfaces)
 {
  try
  {
@@ -615,7 +641,7 @@ static void LoadCD(std::vector<CDIF *> *CDInterfaces)
    { NULL, NULL }
   };
   IsHES = 0;
-  IsSGX = 0;
+  IsSGX = DetectSGXCD(CDInterfaces);
 
   LoadCommonPre();
 
@@ -653,7 +679,7 @@ static void LoadCD(std::vector<CDIF *> *CDInterfaces)
  }
 }
 
-static void Cleanup(void)
+static MDFN_COLD void Cleanup(void)
 {
  #ifdef WANT_DEBUGGER
  PCEDBG_Kill();
@@ -711,7 +737,7 @@ static void Cleanup(void)
  }
 }
 
-static void CloseGame(void)
+static MDFN_COLD void CloseGame(void)
 {
  HuC_SaveNV();
  Cleanup();
@@ -1053,7 +1079,7 @@ static void DoSimpleCommand(int cmd)
  }
 }
 
-static MDFNSetting PCESettings[] = 
+static const MDFNSetting PCESettings[] = 
 {
   { "pce.input.multitap", MDFNSF_EMU_STATE | MDFNSF_UNTRUSTED_SAFE, gettext_noop("Enable multitap(TurboTap) emulation."), NULL, MDFNST_BOOL, "1" },
 
@@ -1159,13 +1185,13 @@ static bool SetSoundRate(double rate)
    HRRes->ResetBufResampState(HRBufs[i]);
  }
 
- return(TRUE);
+ return(true);
 }
 
 //MDFN_printf(_("Palette is missing the full set of 512 greyscale entries.  Strip-colorburst entries will be calculated.\n"));
 static const CustomPalette_Spec CPInfo[] =
 {
- { gettext_noop("PCE/TG16 9-bit RGB"), NULL, { 512, 1024, 0 } },
+ { gettext_noop("PCE/TG16 9-bit GRB.  If only 512 triplets are present, the remaining 512 greyscale colors will be calculated automatically."), NULL, { 512, 1024, 0 } },
 
  { NULL, NULL }
 };
@@ -1224,7 +1250,7 @@ MDFNGI EmulatedPCE =
  PCESettings,
  MDFN_MASTERCLOCK_FIXED(PCE_MASTER_CLOCK),
  0,
- TRUE,  // Multires possible?
+ true,  // Multires possible?
 
  0,   // lcm_width
  0,   // lcm_height

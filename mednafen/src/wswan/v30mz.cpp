@@ -69,10 +69,10 @@ typedef struct
 	uint8 TF, IF, DF;
 } v30mz_regs_t;
 
-static void (*cpu_writemem20)(uint32,uint8) = NULL;
-static uint8 (*cpu_readport)(uint32) = NULL;
-static void (*cpu_writeport)(uint32, uint8) = NULL;
-static uint8 (*cpu_readmem20)(uint32) = NULL;
+static void (MDFN_FASTCALL *cpu_writemem20)(uint32,uint8) = NULL;
+static uint8 (MDFN_FASTCALL *cpu_readport)(uint32) = NULL;
+static void (MDFN_FASTCALL *cpu_writeport)(uint32, uint8) = NULL;
+static uint8 (MDFN_FASTCALL *cpu_readmem20)(uint32) = NULL;
 
 static INLINE uint8 PhysRead8(uint32 addr)
 {
@@ -100,7 +100,7 @@ static v30mz_regs_t I;
 static bool InHLT;
 
 static uint32 prefix_base;	/* base address of the latest prefix segment */
-static char seg_prefix;		/* prefix segment indicator */
+static int8 seg_prefix;		/* prefix segment indicator */
 
 #ifdef WANT_DEBUGGER
 static void (*cpu_hook)(uint32) = NULL;
@@ -133,7 +133,7 @@ static INLINE void i_real_popf(void)
 
 /***************************************************************************/
 
-void v30mz_init(uint8 (*readmem20)(uint32), void (*writemem20)(uint32,uint8), uint8 (*readport)(uint32), void (*writeport)(uint32, uint8))
+void v30mz_init(uint8 (MDFN_FASTCALL *readmem20)(uint32), void (MDFN_FASTCALL *writemem20)(uint32,uint8), uint8 (MDFN_FASTCALL *readport)(uint32), void (MDFN_FASTCALL *writeport)(uint32, uint8))
 {
  cpu_readmem20 = readmem20;
  cpu_writemem20 = writemem20;
@@ -185,7 +185,7 @@ void v30mz_reset(void)
 
 void v30mz_int(uint32 vector, bool IgnoreIF)
 {
-	InHLT = FALSE; // This is correct!  Standby mode is always exited when there is an INT signal, regardless of whether interrupt are disabled.
+	InHLT = false; // This is correct!  Standby mode is always exited when there is an INT signal, regardless of whether interrupt are disabled.
 	if(I.IF || IgnoreIF)
 	{
 	        uint32 dest_seg, dest_off;
@@ -390,7 +390,7 @@ OP( 0x22, i_and_r8b  ) { DEF_r8b;	ANDB;	RegByte(ModRM)=dst;			CLKM(2,1);		} OP_E
 OP( 0x23, i_and_r16w ) { DEF_r16w;	ANDW;	RegWord(ModRM)=dst;			CLKM(2,1);	} OP_EPILOGUE;
 OP( 0x24, i_and_ald8 ) { DEF_ald8;	ANDB;	I.regs.b[AL]=dst;			CLK(1);				} OP_EPILOGUE;
 OP( 0x25, i_and_axd16) { DEF_axd16;	ANDW;	I.regs.w[AW]=dst;			CLK(1);	} OP_EPILOGUE;
-OP( 0x26, i_ds1      ) { seg_prefix=TRUE;	prefix_base=I.sregs[DS1]<<4;	CLK(1);		DoOP(FETCHOP);	seg_prefix=FALSE; } OP_EPILOGUE;
+OP( 0x26, i_ds1      ) { seg_prefix=true;	prefix_base=I.sregs[DS1]<<4;	CLK(1);		DoOP(FETCHOP);	seg_prefix=false; } OP_EPILOGUE;
 OP( 0x27, i_daa      ) { ADJ4(6,0x60);									CLK(10);	} OP_EPILOGUE;
 
 OP( 0x28, i_sub_br8  ) { DEF_br8;	SUBB;	PutbackRMByte(ModRM,dst);	CLKM(3,1); 		} OP_EPILOGUE;
@@ -399,7 +399,7 @@ OP( 0x2a, i_sub_r8b  ) { DEF_r8b;	SUBB;	RegByte(ModRM)=dst;			CLKM(2,1); 		} OP_
 OP( 0x2b, i_sub_r16w ) { DEF_r16w;	SUBW;	RegWord(ModRM)=dst;			CLKM(2,1);	} OP_EPILOGUE;
 OP( 0x2c, i_sub_ald8 ) { DEF_ald8;	SUBB;	I.regs.b[AL]=dst;			CLK(1); 	} OP_EPILOGUE;
 OP( 0x2d, i_sub_axd16) { DEF_axd16;	SUBW;	I.regs.w[AW]=dst;			CLK(1);		} OP_EPILOGUE;
-OP( 0x2e, i_ps       ) { seg_prefix=TRUE;	prefix_base=I.sregs[PS]<<4;	CLK(1);		DoOP(FETCHOP);	seg_prefix=FALSE; } OP_EPILOGUE;
+OP( 0x2e, i_ps       ) { seg_prefix=true;	prefix_base=I.sregs[PS]<<4;	CLK(1);		DoOP(FETCHOP);	seg_prefix=false; } OP_EPILOGUE;
 OP( 0x2f, i_das      ) { ADJ4(-6,-0x60);						CLK(10);	} OP_EPILOGUE;
 
 OP( 0x30, i_xor_br8  ) { DEF_br8;	XORB;	PutbackRMByte(ModRM,dst);	CLKM(3,1);		} OP_EPILOGUE;
@@ -408,7 +408,7 @@ OP( 0x32, i_xor_r8b  ) { DEF_r8b;	XORB;	RegByte(ModRM)=dst;			CLKM(2,1); 	} OP_E
 OP( 0x33, i_xor_r16w ) { DEF_r16w;	XORW;	RegWord(ModRM)=dst;			CLKM(2,1);	} OP_EPILOGUE;
 OP( 0x34, i_xor_ald8 ) { DEF_ald8;	XORB;	I.regs.b[AL]=dst;			CLK(1); 	} OP_EPILOGUE;
 OP( 0x35, i_xor_axd16) { DEF_axd16;	XORW;	I.regs.w[AW]=dst;			CLK(1);		} OP_EPILOGUE;
-OP( 0x36, i_ss       ) { seg_prefix=TRUE;	prefix_base=I.sregs[SS]<<4;	CLK(1);		DoOP(FETCHOP);	seg_prefix=FALSE; } OP_EPILOGUE;
+OP( 0x36, i_ss       ) { seg_prefix=true;	prefix_base=I.sregs[SS]<<4;	CLK(1);		DoOP(FETCHOP);	seg_prefix=false; } OP_EPILOGUE;
 OP( 0x37, i_aaa      ) { ADJB(6,1);						CLK(9);			} OP_EPILOGUE;
 
 OP( 0x38, i_cmp_br8  ) { DEF_br8;	SUBB;					CLKM(2,1); 		} OP_EPILOGUE;
@@ -417,7 +417,7 @@ OP( 0x3a, i_cmp_r8b  ) { DEF_r8b;	SUBB;					CLKM(2,1); 		} OP_EPILOGUE;
 OP( 0x3b, i_cmp_r16w ) { DEF_r16w;	SUBW;					CLKM(2,1); 		} OP_EPILOGUE;
 OP( 0x3c, i_cmp_ald8 ) { DEF_ald8;	SUBB;					CLK(1); 		} OP_EPILOGUE;
 OP( 0x3d, i_cmp_axd16) { DEF_axd16;	SUBW;					CLK(1);			} OP_EPILOGUE;
-OP( 0x3e, i_ds0      ) { seg_prefix=TRUE;	prefix_base=I.sregs[DS0]<<4;	CLK(1);		DoOP(FETCHOP);	seg_prefix=FALSE; } OP_EPILOGUE;
+OP( 0x3e, i_ds0      ) { seg_prefix=true;	prefix_base=I.sregs[DS0]<<4;	CLK(1);		DoOP(FETCHOP);	seg_prefix=false; } OP_EPILOGUE;
 OP( 0x3f, i_aas      ) { ADJB(-6,-1);						CLK(9);	} OP_EPILOGUE;
 
 OP( 0x40, i_inc_ax  ) { IncWordReg(AW);		CLK(1);	} OP_EPILOGUE;
@@ -842,10 +842,10 @@ OP( 0xf2, i_repne    )
  uint32 next = FETCHOP; 
 
     switch(next) { /* Segments */
-	    case 0x26:	seg_prefix=TRUE;	prefix_base=I.sregs[DS1]<<4;	next = FETCHOP;	CLK(2); break;
-	    case 0x2e:	seg_prefix=TRUE;	prefix_base=I.sregs[PS]<<4;	next = FETCHOP;	CLK(2); break;
-	    case 0x36:	seg_prefix=TRUE;	prefix_base=I.sregs[SS]<<4;	next = FETCHOP;	CLK(2); break;
-	    case 0x3e:	seg_prefix=TRUE;	prefix_base=I.sregs[DS0]<<4;	next = FETCHOP;	CLK(2); break;
+	    case 0x26:	seg_prefix=true;	prefix_base=I.sregs[DS1]<<4;	next = FETCHOP;	CLK(2); break;
+	    case 0x2e:	seg_prefix=true;	prefix_base=I.sregs[PS]<<4;	next = FETCHOP;	CLK(2); break;
+	    case 0x36:	seg_prefix=true;	prefix_base=I.sregs[SS]<<4;	next = FETCHOP;	CLK(2); break;
+	    case 0x3e:	seg_prefix=true;	prefix_base=I.sregs[DS0]<<4;	next = FETCHOP;	CLK(2); break;
 	}
 
     switch(next) {
@@ -865,7 +865,7 @@ OP( 0xf2, i_repne    )
 	    case 0xaf:	CLK(5); if (I.regs.w[CW]) do { i_real_scasw(); I.regs.w[CW]--; CHK_ICOUNT(I.regs.w[CW] && ZF == 0); } while (I.regs.w[CW]>0 && ZF==0); break;
 	    default: DoOP(next); break;
     }
-	seg_prefix=FALSE;
+	seg_prefix=false;
 } OP_EPILOGUE;
 
 OP( 0xf3, i_repe) 
@@ -873,10 +873,10 @@ OP( 0xf3, i_repe)
  uint32 next = FETCHOP;
 
     switch(next) { /* Segments */
-	    case 0x26:	seg_prefix=TRUE;	prefix_base=I.sregs[DS1]<<4;	next = FETCHOP;	CLK(2); break;
-	    case 0x2e:	seg_prefix=TRUE;	prefix_base=I.sregs[PS]<<4;	next = FETCHOP;	CLK(2); break;
-	    case 0x36:	seg_prefix=TRUE;	prefix_base=I.sregs[SS]<<4;	next = FETCHOP;	CLK(2); break;
-	    case 0x3e:	seg_prefix=TRUE;	prefix_base=I.sregs[DS0]<<4;	next = FETCHOP;	CLK(2); break;
+	    case 0x26:	seg_prefix=true;	prefix_base=I.sregs[DS1]<<4;	next = FETCHOP;	CLK(2); break;
+	    case 0x2e:	seg_prefix=true;	prefix_base=I.sregs[PS]<<4;	next = FETCHOP;	CLK(2); break;
+	    case 0x36:	seg_prefix=true;	prefix_base=I.sregs[SS]<<4;	next = FETCHOP;	CLK(2); break;
+	    case 0x3e:	seg_prefix=true;	prefix_base=I.sregs[DS0]<<4;	next = FETCHOP;	CLK(2); break;
 	}
     switch(next) {
 	    case 0x6c:	CLK(5); if (I.regs.w[CW]) do { i_real_insb();  I.regs.w[CW]--; CHK_ICOUNT(I.regs.w[CW]); } while (I.regs.w[CW]>0); break;
@@ -895,10 +895,10 @@ OP( 0xf3, i_repe)
 	    case 0xaf:	CLK(5); if (I.regs.w[CW]) do { i_real_scasw(); I.regs.w[CW]--; CHK_ICOUNT(I.regs.w[CW] && ZF == 1); } while (I.regs.w[CW]>0 && ZF==1); break;
 	    default: DoOP(next); break;
     }
-	seg_prefix=FALSE;
+	seg_prefix=false;
 } OP_EPILOGUE;
 
-OP( 0xf4, i_hlt ) { InHLT = TRUE; CheckInHLT(); } OP_EPILOGUE;
+OP( 0xf4, i_hlt ) { InHLT = true; CheckInHLT(); } OP_EPILOGUE;
 
 OP( 0xf5, i_cmc ) { I.CarryVal = !CF; CLK(4); } OP_EPILOGUE;
 OP( 0xf6, i_f6pre ) { uint32 tmp; uint32 uresult,uresult2; int32 result,result2;
@@ -1009,18 +1009,18 @@ void v30mz_set_reg(int regnum, unsigned val)
 }
 
 #ifdef WANT_DEBUGGER
-static void (*save_cpu_writemem20)(uint32,uint8);
-static uint8 (*save_cpu_readport)(uint32);
-static void (*save_cpu_writeport)(uint32, uint8);
-static uint8 (*save_cpu_readmem20)(uint32);
+static void (MDFN_FASTCALL *save_cpu_writemem20)(uint32,uint8);
+static uint8 (MDFN_FASTCALL *save_cpu_readport)(uint32);
+static void (MDFN_FASTCALL *save_cpu_writeport)(uint32, uint8);
+static uint8 (MDFN_FASTCALL *save_cpu_readmem20)(uint32);
 
-static void test_cpu_writemem20(uint32 A, uint8 V)
+static MDFN_FASTCALL void test_cpu_writemem20(uint32 A, uint8 V)
 {
  if(write_hook)
   write_hook(A, V);
 }
 
-static uint8 test_cpu_readmem20(uint32 A)
+static MDFN_FASTCALL uint8 test_cpu_readmem20(uint32 A)
 {
  if(read_hook)
   return(read_hook(A));
@@ -1028,13 +1028,13 @@ static uint8 test_cpu_readmem20(uint32 A)
   return(save_cpu_readmem20(A));
 }
 
-static void test_cpu_writeport(uint32 A, uint8 V)
+static MDFN_FASTCALL void test_cpu_writeport(uint32 A, uint8 V)
 {
  if(port_write_hook)
   port_write_hook(A, V);
 }
 
-static uint8 test_cpu_readport(uint32 A)
+static MDFN_FASTCALL uint8 test_cpu_readport(uint32 A)
 {
  if(port_read_hook)
   return(port_read_hook(A));
@@ -1106,7 +1106,7 @@ void v30mz_execute(int cycles)
    cpu_writemem20 = save_cpu_writemem20;
    cpu_readport = save_cpu_readport;
    cpu_writeport = save_cpu_writeport;
-   InHLT = FALSE;
+   InHLT = false;
   }
 
   if(cpu_hook)

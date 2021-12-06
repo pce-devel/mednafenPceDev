@@ -1,22 +1,22 @@
-/* Cygne
- *
- * Copyright notice for this file:
- *  Copyright (C) 2002 Dox dox@space.pl
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
+/******************************************************************************/
+/* Mednafen WonderSwan Emulation Module(based on Cygne)                       */
+/******************************************************************************/
+/* tcache.cpp:
+**  Copyright (C) 2002 Dox dox@space.pl
+**  Copyright (C) 2007-2017 Mednafen Team
+**
+** This program is free software; you can redistribute it and/or
+** modify it under the terms of the GNU General Public License version 2.
+**
+** This program is distributed in the hope that it will be useful,
+** but WITHOUT ANY WARRANTY; without even the implied warranty of
+** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+** GNU General Public License for more details.
+**
+** You should have received a copy of the GNU General Public License
+** along with this program; if not, write to the Free Software Foundation, Inc.,
+** 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+*/
 
 #include "wswan.h"
 #include "gfx.h"
@@ -40,23 +40,23 @@ void WSWan_TCacheInvalidByAddr(uint32 ws_offset)
 {
   if(wsVMode  && (ws_offset>=0x4000)&&(ws_offset<0x8000))
   {
-   wsTCacheUpdate[(ws_offset-0x4000)>>5]=FALSE; /*invalidate tile*/
+   wsTCacheUpdate[(ws_offset-0x4000)>>5]=false; /*invalidate tile*/
    return;
   }
   else if((ws_offset>=0x2000)&&(ws_offset<0x4000))
   {
-   wsTCacheUpdate[(ws_offset-0x2000)>>4]=FALSE; /*invalidate tile*/
+   wsTCacheUpdate[(ws_offset-0x2000)>>4]=false; /*invalidate tile*/
    return;
   }
 
   if(wsVMode  && (ws_offset>=0x8000)&&(ws_offset<0xc000))
   {
-   wsTCacheUpdate2[(ws_offset-0x8000)>>5]=FALSE; /*invalidate tile*/
+   wsTCacheUpdate2[(ws_offset-0x8000)>>5]=false; /*invalidate tile*/
    return;
   }
   else if((ws_offset>=0x4000)&&(ws_offset<0x6000))
   {
-   wsTCacheUpdate2[(ws_offset-0x4000)>>4]=FALSE; /*invalidate tile*/
+   wsTCacheUpdate2[(ws_offset-0x4000)>>4]=false; /*invalidate tile*/
    return;
   }
 }
@@ -208,12 +208,12 @@ void wsGetTile(uint32 number,uint32 line,int flipv,int fliph,int bank)
  {
 
 #ifdef TCACHE_OFF
- wsTCacheUpdate2[number]=FALSE;
+ wsTCacheUpdate2[number]=false;
 #endif
 	 
   if(!wsTCacheUpdate2[number])
   {
-   wsTCacheUpdate2[number]=TRUE;
+   wsTCacheUpdate2[number]=true;
    switch(wsVMode)
    {
 	case 7:

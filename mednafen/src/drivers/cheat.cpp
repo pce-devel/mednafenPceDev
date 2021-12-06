@@ -20,14 +20,13 @@
 #include <trio/trio.h>
 #include "console.h"
 #include "video.h"
-#include <mednafen/string/trim.h>
-#include <vector>
+#include <mednafen/string/string.h>
 
 static MDFN_Thread *CheatThread = NULL;
 static MDFN_Mutex *CheatMutex = NULL;
 static MDFN_Cond *CheatCond = NULL;
 static bool isactive = 0;
-static char * volatile pending_text = NULL;
+static char* pending_text = NULL;
 static bool volatile need_thread_exit;
 
 class CheatConsoleT : public MDFNConsole
@@ -565,7 +564,7 @@ static void AddCheatParam(uint32 A, uint64 V, unsigned int bytelen, bool bigendi
 
 static void AddCheat(void* data)
 {
- AddCheatParam(0, 0, 1, false);
+ AddCheatParam(0, 0, 1, CurGame->CheatInfo.BigEndian);
 }
 
 static int lid;

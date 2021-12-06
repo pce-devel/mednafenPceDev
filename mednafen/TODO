@@ -8,6 +8,11 @@ on game load for each emulated system.
 !!! Systems with RTC emulation: Fix code to NOT use localtime(), which has consistency issues due to relying on external state(IE time zones), at
 			    any time other than virtual power toggle/init.
 
+!!! Look into using jemalloc or similar on Windows builds due to poor handling of realloc() by the CRT/underlying Win32 API, which results in state rewinding with
+PS1 emulation causing address space exhaustion on 32-bit builds.
+
+Draw lightgun crosshairs driver-side.
+
 SF*() state variable macro overhaul; add macro/function for handling std::array and std::vector.
 
 Save state preview images should reflect the screen-rotation(ALT+O) state somehow, probably at time of creation.
@@ -18,8 +23,6 @@ game load; setting to control the time length of this display.
 Rework state rewinding code to run the XOR filter and compressor on small chunks instead of the whole save state, to improve performance due to better
 L1 cache utilization.
 
-Update minilzo.
-
 CTRL+SHIFT+1 intermediate disconnected state.
 
 Audit code to ensure proper handling of pointer variables when a constructor or new throws an exception(IE make sure cleanup code doesn't
@@ -27,10 +30,6 @@ delete an uninitialized pointer).
 
 Write StreamSpace(or StreamArchive?) class, write ZIPReader and GZReader, write MappedMemoryStream(derived from MemoryStream), and
 rewrite file.cpp and other code to use these instead of MDFNFILE.
-
-Switch hotkey/command key processing over to be event-based rather than instantaneous-state based?  Consider implications for ckdelay, hotkey
-logical AND mode.
-
 
 CD emulation/handling:
 	Stricter CUE and TOC sheet parsing.
@@ -49,13 +48,10 @@ Internationalization issues:
 
 	Filesystem character coding vs UTF8 internal encoding vs locale.
 
-	Replace string/ConvertUTF.cpp with iconv() usage.
-
 	Wrap iconv() in C++ classes.
 
 	Win32 Unicode:
-		MDFN_mkdir_T(), MDFN_stat(), MDFN_unlink(), MDFN_rename(), FileStream, GZFileStream, unzip code. GetCommandLineW, CommandLineToArgvW,
-		basic_string<uint16>(u16string might not be safe).
+		MDFN_mkdir_T(), MDFN_stat(), MDFN_unlink(), MDFN_rename(), FileStream, GZFileStream, unzip code. GetCommandLineW, CommandLineToArgvW
 		Use UTF-16<->UTF-8 conversion that permits lone/mismatched surrogates.  UTF-8 to UTF-16 conversion MUST error out(exception) on
 		overlong encodings, though.  Don't use MultiByteToWideChar(), as it's documented to simply delete such characters on Windows XP,
 		which could allow subversion of the crude unsafe file-include-path checking code.
@@ -94,6 +90,10 @@ Settings:
 	
 
 Video:
+	Have temporal blur feature occur after special scalers, driver-side.
+
+	Move deinterlacing driver-side.
+
 	Mixed-horizontal-resolution screens have Y coordinate precision issues in regards to rendering(in drivers/video.cpp), which
 	can cause vertical subscreen positioning to be off in the case of non-integer vertical scaling, which will cause parts of the
 	screen to jitter/bounce slightly in certain cases in some games(Seiken Densetsu 3 dialogue boxes are a good example).  ALSO, such screens highlight
@@ -117,9 +117,6 @@ Sound:
 Backup memory:
 	Create a backup of the non-volatile memory(save-RAM) file the first time it is overwritten/replaced since emulator
 	startup(incidentally, in cases other than for PSX, this first time will generally occur on emulator exit).
-
-SNES:
-	src/ppu/render/oam.cpp:161:40: runtime error: index 32 out of bounds for type 'unsigned char [32]'
 
 PCE_FAST:
 	Add padding to start of data mapped into HuC6280 for instruction reads to prevent a crash if a game does a negative relative branch to
@@ -198,7 +195,7 @@ Genesis:
 
 	Add Z80 IRQ ack hack which can be controlled by a setting.
 
-	Event system in C68K, fix possible problems with excessively long 68K instructions and the Z80 IRQ
+	Event system, fix possible problems with excessively long 68K instructions and the Z80 IRQ
 	not being handled.
 
 	Implement "Virtua Racing" SVP emulation via code supplied by notaz.
@@ -256,6 +253,8 @@ PC-FX:
 	Fix ADPCM crackling during save state rewinding.
 
 NES:
+	Fix/Check left/right screen edges wrt overscan color and artefacting.
+
 	Save/Load expansion sound chip state when utilizing save states in the NSF player.
 
 	Add some kind of protection against FDS corruption when exiting the emulator in the middle of a disk write.
@@ -269,12 +268,12 @@ NES:
 WonderSwan:
 	Fix V30MZ rep prefix emulation timing accuracy problems.
 
-	http://daifukkat.su/docs/wsman/#snd_specifics (REG_SND_VOICE_VOL fix in particular, and DMA loop mode for that one game with the rain)  and Tonpuusou, writing to frequency reg implicitly turns on timer?
+	Tonpuusou, writing to frequency reg implicitly turns on timer?
 
 Reexamine the code for choosing which emulation module to use.  Highest priority to file extension(as long as the extension is unique to a system,
 "bin" is not unique for example), and special magic test functions if that fails.
 
-Investigate reports of undefined symbols(in V810 FPU emulation code, and the WonderSwan x86 disassembler, and possibly other places).  There ARE references to
+Investigate reports of undefined symbols(in the WonderSwan x86 disassembler, and possibly other places).  There ARE references to
 undefined symbols, but the symbols that reference them are never referenced themselves.  We should probably fix this.
 
 Add dummy copy constructors to lots of our new classes.

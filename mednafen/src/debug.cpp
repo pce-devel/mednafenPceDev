@@ -21,7 +21,7 @@
 #ifdef WANT_DEBUGGER
 
 static std::vector<AddressSpaceType> AddressSpaces;
-static std::vector<RegGroupType*> RegGroups;
+static std::vector<const RegGroupType*> RegGroups;
 
 // Currently only called on emulator startup, not game load...
 void MDFNDBG_Init(void)
@@ -129,12 +129,12 @@ bool ASpace_Read(const int id, const uint32 address, const unsigned int size, co
  as = &AddressSpaces[id];
 
  if(pre_bpoint)
-  return(FALSE);
+  return(false);
  else
  {
   as->UsageReadMemUsed += IncUsageMap(&as->UsageMapRead, address);
  }
- return(FALSE);
+ return(false);
 }
 
 bool ASpace_Write(const int id, const uint32 address, const uint32 value, const unsigned int size, const bool pre_bpoint)
@@ -146,11 +146,11 @@ bool ASpace_Write(const int id, const uint32 address, const uint32 value, const 
  as = &AddressSpaces[id];
 
  if(pre_bpoint)
-  return(FALSE);
+  return(false);
  else
  {
   as->UsageWriteMemUsed += IncUsageMap(&as->UsageMapWrite, address);
-  return(FALSE);
+  return(false);
  }
 }
 
@@ -222,7 +222,7 @@ void MDFNDBG_ResetRegGroupsInfo(void)
  RegGroups.clear();
 }
 
-void MDFNDBG_AddRegGroup(RegGroupType *groupie)
+void MDFNDBG_AddRegGroup(const RegGroupType* groupie)
 {
  RegGroups.push_back(groupie);
 }
@@ -230,12 +230,6 @@ void MDFNDBG_AddRegGroup(RegGroupType *groupie)
 void ASpace_Reset(void)
 {
  AddressSpaces.clear();
-}
-
-
-RegType::~RegType()
-{
-
 }
 
 #endif

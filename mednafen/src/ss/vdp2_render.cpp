@@ -2,7 +2,7 @@
 /* Mednafen Sega Saturn Emulation Module                                      */
 /******************************************************************************/
 /* vdp2_render.cpp - VDP2 Rendering
-**  Copyright (C) 2016 Mednafen Team
+**  Copyright (C) 2016-2017 Mednafen Team
 **
 ** This program is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU General Public License
@@ -26,21 +26,24 @@
 
 #include "ss.h"
 #include <mednafen/mednafen.h>
+#include <mednafen/Time.h>
 #include "vdp2_common.h"
 #include "vdp2_render.h"
 
-#include <array>
 #include <atomic>
-#include <algorithm>
 
 namespace MDFN_IEN_SS
 {
+
 //uint8 vdp2rend_prepad_bss
 
 static EmulateSpecStruct* espec = NULL;
 static bool PAL;
+static bool CorrectAspect;
+static bool ShowHOverscan;
+static bool DoHBlend;
 static int LineVisFirst, LineVisLast;
-static uint32 OutLineCounter;
+static uint32 NextOutLine;
 static bool Clock28M;
 static unsigned VisibleLines;
 static VDP2Rend_LIB LIB[256];
@@ -1377,7 +1380,7 @@ static NO_INLINE void ApplyHMosaic(const unsigned layer, uint64* buf, const unsi
 
 static void FetchVCScroll(const unsigned w)
 {
- const bool vcon[2] = { (bool)(SCRCTL & BGON & !(MZCTL & 0x1)), (bool)((SCRCTL >> 8) & (BGON >> 1) & (!(MZCTL >> 1)) & 0x1) };
+ const bool vcon[2] = { (bool)(SCRCTL & BGON & !(MZCTL & 0x1)), (bool)((SCRCTL >> 8) & (BGON >> 1) & !(MZCTL & 0x2) & 0x1) };
  const unsigned max_cyc = (HRes & 0x6) ? 4 : 8;
  const unsigned tc = (w >> 3) + 1;
  uint32 tmp[2] = { VCLast[0], VCLast[1] };
@@ -1702,10 +1705,15 @@ static void T_DrawNBG23(const unsigned n, uint64* bgbuf, const unsigned w, const
  bgbuf -= xscr & 0x7;
  tx = xscr >> 3;
 
- //if(TA_bpp == 4 && n == 3)
- // printf("Goop: %d %d %02x, %016llx %016llx %016llx %016llx\n", n, TA_bpp, VRAM_Mode, MDFN_de64lsb(VCPRegs[0]), MDFN_de64lsb(VCPRegs[1]), MDFN_de64lsb(VCPRegs[2]), MDFN_de64lsb(VCPRegs[3]));
- // Kludge for Akumajou Dracula X
- if(MDFN_UNLIKELY(TA_bpp == 4 && n == 3 && VRAM_Mode == 0x2 && MDFN_de64lsb(VCPRegs[0]) == 0x0f0f070406060505ULL && MDFN_de64lsb(VCPRegs[2]) == 0x0f0f03000f0f0201ULL && MDFN_de64lsb(VCPRegs[3]) == 0x0f0f0f0f0f0f0f0fULL))
+ //
+ // Layer offset kludges
+ //
+ // Note: When/If adding new kludges, check that the NT and CG fetches for the layer each occur only in one bank, to safely handle other cases may require something more complex.
+ // printf("(TA_bpp == %d && n == %d && VRAM_Mode == 0x%01x && (HRes & 0x6) == 0x%01x && MDFN_de64lsb(VCPRegs[0]) == 0x%016llxULL && MDFN_de64lsb(VCPRegs[1]) == 0x%016llxULL && MDFN_de64lsb(VCPRegs[2]) == 0x%016llxULL && MDFN_de64lsb(VCPRegs[3]) == 0x%016llxULL) || \n", TA_bpp, n, VRAM_Mode, HRes & 0x6, (unsigned long long)MDFN_de64lsb(VCPRegs[0]), (unsigned long long)MDFN_de64lsb(VCPRegs[1]), (unsigned long long)MDFN_de64lsb(VCPRegs[2]), (unsigned long long)MDFN_de64lsb(VCPRegs[3]));
+ if(MDFN_UNLIKELY(
+  /* Akumajou Dracula X */ (TA_bpp == 4 && n == 3 && VRAM_Mode == 0x2 && (HRes & 0x6) == 0x0 && MDFN_de64lsb(VCPRegs[0]) == 0x0f0f070406060505ULL && MDFN_de64lsb(VCPRegs[1]) == 0x0f0f0f0f0f0f0f0fULL && MDFN_de64lsb(VCPRegs[2]) == 0x0f0f03000f0f0201ULL && MDFN_de64lsb(VCPRegs[3]) == 0x0f0f0f0f0f0f0f0fULL) ||
+  /* Daytona USA CCE    */ (TA_bpp == 4 && n == 2 && VRAM_Mode == 0x3 && (HRes & 0x6) == 0x0 && MDFN_de64lsb(VCPRegs[0]) == 0x0f0f0f0f00000404ULL && MDFN_de64lsb(VCPRegs[1]) == 0x0f0f0f060f0f0f0fULL && MDFN_de64lsb(VCPRegs[2]) == 0x0f0f0f0f0505070fULL && MDFN_de64lsb(VCPRegs[3]) == 0x0f0f03020f010f00ULL) ||
+  0))
  {
   for(unsigned i = 0; i < 8; i++)
    *bgbuf++ = 0;
@@ -2318,19 +2326,6 @@ static void (*DrawSpriteData[2][2][0x40])(const uint16* vdp1sb, const bool vdp1_
  }
 };
 
-static INLINE unsigned bsr64(uint64 val)
-{
- #ifdef _MSC_VER
- unsigned long ret;
- _BitScanReverse64(&ret, val);
- #else
- uint64 ret;
- asm("bsrq %1, %0\n\t" : "=r"(ret) : "r"(val) : "cc");
- #endif
-
- return ret;
-}
-
 // Don't change these constants without also updating the template variable
 // setup for the call into MixIt(and the contents of MixIt itself...).
 enum
@@ -2404,14 +2399,14 @@ static void T_MixIt(uint32* target, const unsigned vdp2_line, const unsigned w, 
   pt |= 0x20ULL << (uint8)(tmp_pix[5] >> PIX_PRIO_TEST_SHIFT);
   pt |= 0xC0ULL; // Back pixel(0x80) and null pixel(0x40)
 
-  st = bsr64(pt);
+  st = 63 ^ MDFN_lzcount64_0UD(pt);
   pt ^= 1ULL << st;
   pt |= 0x40;	// Restore the null!
   pix = tmp_pix[st & 0x7];
 
   if(pix & (1U << PIX_DOSHAD_SHIFT))
   {
-   st = bsr64(pt);
+   st = 63 ^ MDFN_lzcount64_0UD(pt);
    pt ^= 1ULL << st;
    pt |= 0x40;	// Restore the null!
    pix = tmp_pix[st & 0x7];
@@ -2435,12 +2430,12 @@ static void T_MixIt(uint32* target, const unsigned vdp2_line, const unsigned w, 
   {
    uint64 pix2, pix3;
 
-   st = bsr64(pt);
+   st = 63 ^ MDFN_lzcount64_0UD(pt);
    pt ^= 1ULL << st;
    pt |= 0x40;	// Restore the null!
    pix2 = tmp_pix[st & 0x7];
 
-   st = bsr64(pt);
+   st = 63 ^ MDFN_lzcount64_0UD(pt);
    pt ^= 1ULL << st;
    pt |= 0x40;	// Restore the null!
    pix3 = tmp_pix[st & 0x7];
@@ -2570,6 +2565,62 @@ static void (*MixIt[2][6][2][2])(uint32* target, const unsigned vdp2_line, const
  {  {  { T_MixIt<1, 0, 0, 0>, T_MixIt<1, 0, 0, 1>,  },  { T_MixIt<1, 0, 1, 0>, T_MixIt<1, 0, 1, 1>,  },  },  {  { T_MixIt<1, 1, 0, 0>, T_MixIt<1, 1, 0, 1>,  },  { T_MixIt<1, 1, 1, 0>, T_MixIt<1, 1, 1, 1>,  },  },  {  { T_MixIt<1, 2, 0, 0>, T_MixIt<1, 2, 0, 1>,  },  { T_MixIt<1, 2, 1, 0>, T_MixIt<1, 2, 1, 1>,  },  },  {  { T_MixIt<1, 3, 0, 0>, T_MixIt<1, 3, 0, 1>,  },  { T_MixIt<1, 3, 1, 0>, T_MixIt<1, 3, 1, 1>,  },  },  {  { T_MixIt<1, 4, 0, 0>, T_MixIt<1, 4, 0, 1>,  },  { T_MixIt<1, 4, 1, 0>, T_MixIt<1, 4, 1, 1>,  },  },  {  { T_MixIt<1, 5, 0, 0>, T_MixIt<1, 5, 0, 1>,  },  { T_MixIt<1, 5, 1, 0>, T_MixIt<1, 5, 1, 1>,  },  },  },
 };
 
+static int32 ApplyHBlend(uint32* const target, int32 w)
+{
+ #define BHALF(m, n) ((((uint64)(m) + (n)) - (((m) ^ (n)) & 0x01010101)) >> 1)
+
+ assert(w >= 4);
+
+#if 1
+ if(!(HRes & 0x2))
+ {
+  target[(w - 1) * 2 + 1] = target[w - 1];
+  target[(w - 1) * 2 + 0] = BHALF(BHALF(target[w - 2], target[w - 1]), target[w - 1]);
+
+  for(int32 x = w - 2; x > 0; x--)
+  {
+   uint32 ptxm1 = target[x - 1];
+   uint32 ptx = target[x];
+   uint32 ptxp1 = target[x + 1];
+   uint32 ptxm1_ptx = BHALF(ptxm1, ptx);
+   uint32 ptx_ptxp1 = BHALF(ptx, ptxp1);
+
+   target[x * 2 + 0] = BHALF(ptxm1_ptx, ptx);
+   target[x * 2 + 1] = BHALF(ptx_ptxp1, ptx);
+  }
+
+  target[1] = BHALF(BHALF(target[0], target[1]), target[0]);
+  target[0] = target[0];
+
+  return w << 1;
+ }
+ else
+#else
+ if(!(HRes & 0x2))
+ {
+  for(int32 x = w - 1; x >= 0; x--)
+   target[x * 2 + 0] = target[x * 2 + 1] = target[x];
+
+  w <<= 1;
+ }
+#endif
+ {
+  uint32 a = target[0];
+  for(int32 x = 0; x < w - 1; x++)
+  {
+   uint32 b = target[x];
+   uint32 c = target[x + 1];
+   uint32 ac = BHALF(a, c);
+   uint32 bac = BHALF(b, ac);
+
+   target[x] = bac;
+   a = b;
+  }
+  return w;
+ }
+ #undef BHALF
+}
+
 static void ReorderRGB(uint32* target, const unsigned w, const unsigned Rshift, const unsigned Gshift, const unsigned Bshift)
 {
  assert(!(w & 1));
@@ -2595,7 +2646,7 @@ static void ReorderRGB(uint32* target, const unsigned w, const unsigned Rshift, 
 static NO_INLINE void DrawLine(const uint16 out_line, const uint16 vdp2_line, const bool field)
 {
  uint32* target;
- const int32 tvdw = (Clock28M ? 352 : 330) << ((HRes & 0x2) >> 1);
+ const int32 tvdw = ((!CorrectAspect || Clock28M) ? 352 : 330) << ((HRes & 0x2) >> 1);
  const unsigned rbg_w = ((HRes & 0x1) ? 352 : 320);
  const unsigned w = ((HRes & 0x1) ? 352 : 320) << ((HRes & 0x2) >> 1);
  const int32 tvxo = std::max<int32>(0, (int32)(tvdw - w) >> 1);
@@ -2603,8 +2654,21 @@ static NO_INLINE void DrawLine(const uint16 out_line, const uint16 vdp2_line, co
  uint32 border_ncf;
 
  target = espec->surface->pixels + out_line * espec->surface->pitchinpix;
-
  espec->LineWidths[out_line] = tvdw;
+
+ if(!ShowHOverscan)
+ {
+  const int32 ntdw = tvdw * 1024 / 1056;
+  const int32 tadj = std::max<int32>(0, espec->DisplayRect.x - ((tvdw - ntdw) >> 1));
+
+  //if(out_line == 100)
+  // printf("tvdw=%d, ntdw=%d, tadj=%d --- tvdw+tadj=%d\n", tvdw, ntdw, tadj, tvdw + tadj);
+
+  assert((tvdw + tadj) <= 704);
+
+  target += tadj;
+  espec->LineWidths[out_line] = ntdw;
+ }
 
  //
  // FIXME: Timing
@@ -3058,6 +3122,17 @@ static NO_INLINE void DrawLine(const uint16 out_line, const uint16 vdp2_line, co
   else
    MosaicVCount++;
  }
+
+ //
+ //
+ //
+ if(DoHBlend)
+ {
+  espec->LineWidths[out_line] = ApplyHBlend(espec->surface->pixels + out_line * espec->surface->pitchinpix + espec->DisplayRect.x, espec->LineWidths[out_line]);
+
+  // Kind of late, but meh. ;p
+  assert((espec->DisplayRect.x + espec->LineWidths[out_line]) <= 704);
+ }
 }
 
 //
@@ -3073,6 +3148,9 @@ enum
  COMMAND_DRAW_LINE,
 
  COMMAND_SET_LEM,
+
+ COMMAND_SET_BUSYWAIT,
+
  COMMAND_RESET,
  COMMAND_EXIT
 };
@@ -3088,12 +3166,14 @@ static std::array<WQ_Entry, 0x80000> WQ;
 static size_t WQ_ReadPos, WQ_WritePos;
 static std::atomic_int_least32_t WQ_InCount;
 static std::atomic_int_least32_t DrawCounter;
-static int32 LastDrawnLine;
+static bool DoBusyWait;
+static MDFN_Sem* WakeupSem;
+static bool DoWakeupIfNecessary;
 
 static INLINE void WWQ(uint16 command, uint32 arg32 = 0, uint16 arg16 = 0)
 {
  while(MDFN_UNLIKELY(WQ_InCount.load(std::memory_order_acquire) == WQ.size()))
-  MDFND_Sleep(1);
+  Time::SleepMS(1);
 
  WQ_Entry* wqe = &WQ[WQ_WritePos];
 
@@ -3113,8 +3193,8 @@ static int RThreadEntry(void* data)
  {
   while(MDFN_UNLIKELY(WQ_InCount.load(std::memory_order_acquire) == 0))
   {
-   if(LastDrawnLine < 192) // || (LastDrawnLine == VisibleLines - 1))
-    MDFND_Sleep(1);
+   if(!DoBusyWait)
+    MDFND_WaitSemTimeout(WakeupSem, 1);
    else
    {
     for(int i = 1000; i; i--)
@@ -3146,7 +3226,6 @@ static int RThreadEntry(void* data)
 	//for(unsigned i = 0; i < 2; i++)
 	DrawLine((uint16)wqe->Arg32, wqe->Arg32 >> 16, wqe->Arg16);
 	//
-	LastDrawnLine = (uint16)wqe->Arg32;
 	DrawCounter.fetch_sub(1, std::memory_order_release);
 	break;
 
@@ -3156,6 +3235,10 @@ static int RThreadEntry(void* data)
 
    case COMMAND_SET_LEM:
 	UserLayerEnableMask = wqe->Arg32;
+	break;
+
+   case COMMAND_SET_BUSYWAIT:
+	DoBusyWait = wqe->Arg32;
 	break;
 
    case COMMAND_EXIT:
@@ -3178,11 +3261,9 @@ static int RThreadEntry(void* data)
 //
 //
 //
-void VDP2REND_Init(const bool IsPAL, const int sls, const int sle)
+void VDP2REND_Init(const bool IsPAL)
 {
  PAL = IsPAL;
- LineVisFirst = sls;
- LineVisLast = sle;
  VisibleLines = PAL ? 288 : 240;
  //
  UserLayerEnableMask = ~0U;
@@ -3192,28 +3273,66 @@ void VDP2REND_Init(const bool IsPAL, const int sls, const int sle)
  WQ_WritePos = 0;
  WQ_InCount.store(0, std::memory_order_release); 
  DrawCounter.store(0, std::memory_order_release);
+
+ WakeupSem = MDFND_CreateSem();
  RThread = MDFND_CreateThread(RThreadEntry, NULL);
 }
 
-void VDP2REND_FillVideoParams(MDFNGI* gi)
+// Needed for ss.correct_aspect == 0
+void VDP2REND_GetGunXTranslation(const bool clock28m, float* scale, float* offs)
 {
+ *scale = 1.0;
+ *offs = 0.0;
+
+ if(!CorrectAspect && !clock28m)
+ {
+  *scale = 65.0 / 61.0;
+  *offs = -(21472 - (21472.0 / 65 * 61)) * 0.5;
+ }
+}
+
+void VDP2REND_SetGetVideoParams(MDFNGI* gi, const bool caspect, const int sls, const int sle, const bool show_h_overscan, const bool dohblend)
+{
+ CorrectAspect = caspect;
+ ShowHOverscan = show_h_overscan;
+ DoHBlend = dohblend;
+ LineVisFirst = sls;
+ LineVisLast = sle;
+ //
+ //
+ //
  gi->fb_width = 704;
 
  if(PAL)
  {
-  gi->nominal_width = 365;
+  gi->nominal_width = (ShowHOverscan ? 365 : 354);
   gi->fb_height = 576;
  }
  else
  {
-  gi->nominal_width = 302;
+  gi->nominal_width = (ShowHOverscan ? 302 : 292);
   gi->fb_height = 480;
  }
  gi->nominal_height = LineVisLast + 1 - LineVisFirst;
 
-
- gi->lcm_width = 10560;
+ gi->lcm_width = (ShowHOverscan? 10560 : 10240);
  gi->lcm_height = (LineVisLast + 1 - LineVisFirst) * 2;
+
+ gi->mouse_scale_x = (float)(ShowHOverscan? 21472 : 20821) / gi->nominal_width;
+ gi->mouse_offs_x = (float)(ShowHOverscan? 0 : 651) / 2;
+ gi->mouse_scale_y = 1.0;
+ gi->mouse_offs_y = LineVisFirst;
+ //
+ //
+ //
+ if(!CorrectAspect)
+ {
+  gi->nominal_width = (ShowHOverscan ? 352 : 341);
+  gi->lcm_width = gi->nominal_width * 2;
+
+  gi->mouse_scale_x = (float)(ShowHOverscan? 21472 : 20821) / gi->nominal_width;
+  gi->mouse_offs_x = (float)(ShowHOverscan? 0 : 651) / 2;
+ }
 }
 
 void VDP2REND_Kill(void)
@@ -3223,11 +3342,17 @@ void VDP2REND_Kill(void)
   WWQ(COMMAND_EXIT);
   MDFND_WaitThread(RThread, NULL);
  }
+
+ if(WakeupSem != NULL)
+ {
+  MDFND_DestroySem(WakeupSem);
+  WakeupSem = NULL;
+ }
 }
 
 void VDP2REND_StartFrame(EmulateSpecStruct* espec_arg, const bool clock28m, const int SurfInterlaceField)
 {
- OutLineCounter = 0;
+ NextOutLine = 0;
  Clock28M = clock28m;
 
  espec = espec_arg;
@@ -3241,7 +3366,7 @@ void VDP2REND_StartFrame(EmulateSpecStruct* espec_arg, const bool clock28m, cons
  else
   espec->InterlaceOn = false;
 
- espec->DisplayRect.x = 0;
+ espec->DisplayRect.x = (ShowHOverscan ? 0 : 10);
  espec->DisplayRect.y = LineVisFirst << espec->InterlaceOn;
  espec->DisplayRect.w = 0;
  espec->DisplayRect.h = (LineVisLast + 1 - LineVisFirst) << espec->InterlaceOn;
@@ -3252,15 +3377,17 @@ void VDP2REND_EndFrame(void)
  while(MDFN_UNLIKELY(DrawCounter.load(std::memory_order_acquire) != 0))
  {
   //fprintf(stderr, "SLEEEEP\n");
-  //MDFND_Sleep(1);
+  //Time::SleepMS(1);
  }
 
- if(OutLineCounter < VisibleLines)
+ WWQ(COMMAND_SET_BUSYWAIT, false);
+
+ if(NextOutLine < VisibleLines)
  {
   //printf("OutLineCounter(%d) < VisibleLines(%d)\n", OutLineCounter, VisibleLines);
   do
   {
-   uint16 out_line = OutLineCounter;
+   uint16 out_line = NextOutLine;
    uint32* target;
 
    if(espec->InterlaceOn)
@@ -3269,7 +3396,7 @@ void VDP2REND_EndFrame(void)
    target = espec->surface->pixels + out_line * espec->surface->pitchinpix;
    target[0] = target[1] = target[2] = target[3] = espec->surface->MakeColor(0, 0, 0);
    espec->LineWidths[out_line] = 4;
-  } while(++OutLineCounter < VisibleLines);
+  } while(++NextOutLine < VisibleLines);
  }
 
  espec = NULL;
@@ -3282,18 +3409,39 @@ VDP2Rend_LIB* VDP2REND_GetLIB(unsigned line)
  return &LIB[line];
 }
 
-void VDP2REND_DrawLine(int vdp2_line, const bool field)
+void VDP2REND_DrawLine(const int vdp2_line, const uint32 crt_line, const bool field)
 {
- if(MDFN_LIKELY(OutLineCounter < VisibleLines))
+ const unsigned bwthresh = VisibleLines - 48;
+
+ if(MDFN_LIKELY(crt_line < VisibleLines))
  {
-  uint16 out_line = OutLineCounter;
+  uint16 out_line = crt_line;
 
   if(espec->InterlaceOn)
    out_line = (out_line << 1) | espec->InterlaceField;
 
-  DrawCounter.fetch_add(1, std::memory_order_release);
+  auto wdcq = DrawCounter.fetch_add(1, std::memory_order_release);
   WWQ(COMMAND_DRAW_LINE, ((uint16)vdp2_line << 16) | out_line, field);
-  OutLineCounter++;
+  //
+  //
+  if(crt_line == bwthresh)
+  {
+   WWQ(COMMAND_SET_BUSYWAIT, true);
+   MDFND_PostSem(WakeupSem);
+  }
+  else if(crt_line < bwthresh)
+  {
+   if(wdcq == 0)
+    DoWakeupIfNecessary = true;
+   else if((wdcq + 1) >= 64 && DoWakeupIfNecessary)
+   {
+    //printf("Post Wakeup: %3d --- crt_line=%3d\n", wdcq + 1, crt_line);
+    MDFND_PostSem(WakeupSem);
+    DoWakeupIfNecessary = false;
+   }
+  }
+
+  NextOutLine = crt_line + 1;
  }
 }
 
@@ -3321,6 +3469,69 @@ void VDP2REND_Write16_DB(uint32 A, uint16 DB)
   WWQ(COMMAND_WRITE16, A, DB);
  //else
  // MemW<uint16>(A, DB);
+}
+
+void VDP2REND_StateAction(StateMem* sm, const unsigned load, const bool data_only, uint16 (&rr)[0x100], uint16 (&cr)[2048], uint16 (&vr)[262144])
+{
+ while(MDFN_UNLIKELY(WQ_InCount.load(std::memory_order_acquire) != 0))
+  Time::SleepMS(1);
+ //
+ //
+ //
+ SFORMAT StateRegs[] =
+ {
+  SFVAR(Clock28M),	// DUBIOUS
+
+  SFVAR(MosaicVCount),
+
+  SFARRAY32(VCLast, 2),
+
+  SFARRAY32(YCoordAccum, 2),
+  SFARRAY32(MosEff_YCoordAccum, 2),
+
+  SFARRAY32(CurXScrollIF, 2),
+  SFARRAY32(CurYScrollIF, 2),
+  SFARRAY16(CurXCoordInc, 2),
+  SFARRAY32(CurLSA, 2),
+
+  SFARRAY16(NBG23_YCounter, 2),
+  SFARRAY16(MosEff_NBG23_YCounter, 2),
+
+  SFVAR(CurBackTabAddr),
+  SFVAR(CurBackColor),
+
+  SFVAR(CurLCTabAddr),
+  SFVAR(CurLCColor),
+
+  // XStart and XEnd can be modified by line window processing.
+  SFVAR(Window->XStart, 2, sizeof(*Window)),
+  SFVAR(Window->XEnd, 2, sizeof(*Window)),
+  SFVAR(Window->YMet, 2, sizeof(*Window)),
+  SFVAR(Window->CurXStart, 2, sizeof(*Window)),
+  SFVAR(Window->CurXEnd, 2, sizeof(*Window)),
+  SFVAR(Window->CurLineWinAddr, 2, sizeof(*Window)),
+
+  SFEND
+ };
+
+ // Calls to RegsWrite() should go before MDFNSS_StateAction(), and before memcpy() to VRAM and CRAM.
+ if(load)
+ {
+  for(unsigned i = 0; i < 0x100; i++)
+  {
+   RegsWrite(i << 1, rr[i]);
+  }
+ }
+
+ MDFNSS_StateAction(sm, load, data_only, StateRegs, "VDP2REND");
+
+ if(load)
+ {
+  memcpy(VRAM, vr, sizeof(VRAM));
+  memcpy(CRAM, cr, sizeof(CRAM));
+
+  RecalcColorCache();
+ }
 }
 
 }

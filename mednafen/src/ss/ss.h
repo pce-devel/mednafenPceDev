@@ -2,7 +2,7 @@
 /* Mednafen Sega Saturn Emulation Module                                      */
 /******************************************************************************/
 /* ss.h:
-**  Copyright (C) 2015-2016 Mednafen Team
+**  Copyright (C) 2015-2017 Mednafen Team
 **
 ** This program is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU General Public License
@@ -23,9 +23,6 @@
 #define __MDFN_SS_SS_H
 
 #include <mednafen/types.h>
-#include <mednafen/math_ops.h>
-#include <stdint.h>
-#include <stdarg.h>
 
 #include <trio/trio.h>
 
@@ -33,31 +30,35 @@ namespace MDFN_IEN_SS
 {
  enum
  {
-  SS_DBG_ERROR     = 0x00001,
-  SS_DBG_WARNING   = 0x00002,
+  SS_DBG_ERROR     = (1U << 0),
+  SS_DBG_WARNING   = (1U << 1),
 
-  SS_DBG_M68K 	   = 0x00004,
+  SS_DBG_M68K 	   = (1U << 2),
 
-  SS_DBG_SH2  	   = 0x00010,
-  SS_DBG_SH2_REGW  = 0x00020,
+  SS_DBG_SH2  	   = (1U << 4),
+  SS_DBG_SH2_REGW  = (1U << 5),
+  SS_DBG_SH2_CACHE = (1U << 6),
 
-  SS_DBG_SCU  	   = 0x00040,
-  SS_DBG_SCU_REGW  = 0x00080,
+  SS_DBG_SCU  	   = (1U << 8),
+  SS_DBG_SCU_REGW  = (1U << 9),
+  SS_DBG_SCU_INT   = (1U << 10),
+  SS_DBG_SCU_DSP   = (1U << 11),
 
-  SS_DBG_SMPC 	   = 0x00100,
-  SS_DBG_SMPC_REGW = 0x00200,
+  SS_DBG_SMPC 	   = (1U << 12),
+  SS_DBG_SMPC_REGW = (1U << 13),
 
-  SS_DBG_CDB  	   = 0x00400,
-  SS_DBG_CDB_REGW  = 0x00800,
+  SS_DBG_CDB  	   = (1U << 16),
+  SS_DBG_CDB_REGW  = (1U << 17),
 
-  SS_DBG_VDP1 	   = 0x01000,
-  SS_DBG_VDP1_REGW = 0x02000,
+  SS_DBG_VDP1 	   = (1U << 20),
+  SS_DBG_VDP1_REGW = (1U << 21),
+  SS_DBG_VDP1_VRAMW= (1U << 22),
 
-  SS_DBG_VDP2 	   = 0x04000,
-  SS_DBG_VDP2_REGW = 0x08000,
+  SS_DBG_VDP2 	   = (1U << 24),
+  SS_DBG_VDP2_REGW = (1U << 25),
 
-  SS_DBG_SCSP 	   = 0x10000,
-  SS_DBG_SCSP_REGW = 0x20000,
+  SS_DBG_SCSP 	   = (1U << 28),
+  SS_DBG_SCSP_REGW = (1U << 29),
  };
 #ifdef MDFN_SS_DEV_BUILD
  extern uint32 ss_dbg_mask;
@@ -66,8 +67,8 @@ namespace MDFN_IEN_SS
 #endif
 
  static INLINE void SS_DBG_Dummy(const char* format, ...) { }
- #define SS_DBG(which, format, ...) ((MDFN_UNLIKELY(ss_dbg_mask & (which))) ? (void)trio_printf(format, ## __VA_ARGS__) : SS_DBG_Dummy(format, ## __VA_ARGS__))
- #define SS_DBGTI(which, format, ...) SS_DBG(which, format " @Line=0x%03x, HPos=0x%03x\n", ## __VA_ARGS__, VDP2::PeekLine(), VDP2::PeekHPos())
+ #define SS_DBG(which, ...) ((MDFN_UNLIKELY(ss_dbg_mask & (which))) ? (void)trio_printf(__VA_ARGS__) : SS_DBG_Dummy(__VA_ARGS__))
+ #define SS_DBGTI(which, ...) ((MDFN_UNLIKELY(ss_dbg_mask & (which))) ? ((void)trio_printf(__VA_ARGS__), (void)trio_printf(" @Line=0x%03x, HPos=0x%03x, memts=%d\n", VDP2::PeekLine(), VDP2::PeekHPos(), SH7095_mem_timestamp)) : SS_DBG_Dummy(__VA_ARGS__))
 
  template<unsigned which>
  static void SS_DBG_Wrap(const char* format, ...) noexcept
@@ -114,18 +115,22 @@ namespace MDFN_IEN_SS
 
   SS_EVENT_SOUND,
 
+  SS_EVENT_CART,
+
   SS_EVENT_MIDSYNC,
 
   SS_EVENT__SYNLAST,
   SS_EVENT__COUNT,
  };
 
+ typedef sscpu_timestamp_t (*ss_event_handler)(const sscpu_timestamp_t timestamp);
+
  struct event_list_entry
  {
   sscpu_timestamp_t event_time;
   event_list_entry *prev;
   event_list_entry *next;
-  sscpu_timestamp_t (*event_handler)(const sscpu_timestamp_t timestamp);
+  ss_event_handler event_handler;
  };
 
  extern event_list_entry events[SS_EVENT__COUNT];

@@ -2,7 +2,7 @@
 /* Mednafen Sega Saturn Emulation Module                                      */
 /******************************************************************************/
 /* vdp2.cpp - VDP2 Emulation
-**  Copyright (C) 2015-2016 Mednafen Team
+**  Copyright (C) 2015-2017 Mednafen Team
 **
 ** This program is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU General Public License
@@ -51,7 +51,7 @@ static uint16 RawRegs[0x100];	// For debugging
 
 static bool DisplayOn;
 static bool BorderMode;
-static bool ExLatchEnable;
+bool ExLatchEnable;
 static bool ExSyncEnable;
 static bool ExBGEnable;
 static bool DispAreaSelect;
@@ -208,6 +208,9 @@ static uint32 VPhase;
 /*static*/ int32 VCounter;
 static bool InternalVB;
 static bool Odd;
+
+static uint32 CRTLineCounter;
+static bool Clock28M;
 //
 static int SurfInterlaceField;
 //
@@ -302,6 +305,8 @@ static uint32 HPhase;
 
 static uint16 Latched_VCNT, Latched_HCNT;
 static bool HVIsExLatched;
+bool ExLatchIn;
+bool ExLatchPending;
 
 static void LatchHV(void)
 {
@@ -323,15 +328,21 @@ static void LatchHV(void)
   Latched_HCNT = (HCounter + (0x200 - HTimings[HRes & 1][HPHASE__COUNT - 1])) << 1;
  else
   Latched_HCNT = HCounter << 1;
-
- //HVIsLatched = true; // Only on external signal-induced latching?
 }
+
 //
 //
+void GetGunXTranslation(const bool clock28m, float* scale, float* offs)
+{
+ VDP2REND_GetGunXTranslation(clock28m, scale, offs);
+}
+
 void StartFrame(EmulateSpecStruct* espec, const bool clock28m)
 {
+ Clock28M = clock28m;
  //printf("StartFrame: %d\n", SurfInterlaceField);
  VDP2REND_StartFrame(espec, clock28m, SurfInterlaceField);
+ CRTLineCounter = 0;
 }
 
 //
@@ -380,6 +391,10 @@ static INLINE void IncVCounter(const sscpu_timestamp_t event_timestamp)
    InternalVB = true;
    Out_VB = true;
   }
+  else if(VPhase == VPHASE_BOTTOM_BLANKING)
+  {
+   CRTLineCounter = 0x80000000U;
+  }
   else if(VPhase == VPHASE_VSYNC)
   {
    if(InterlaceMode)
@@ -398,7 +413,7 @@ static INLINE void IncVCounter(const sscpu_timestamp_t event_timestamp)
 
  RecalcVRAMPenalty();
 
- SMPC_SetVB(event_timestamp, Out_VB);
+ SMPC_SetVBVS(event_timestamp, Out_VB, VPhase == VPHASE_VSYNC);
 }
 
 static INLINE int32 AddHCounter(const sscpu_timestamp_t event_timestamp, int32 count)
@@ -422,6 +437,13 @@ static INLINE int32 AddHCounter(const sscpu_timestamp_t event_timestamp, int32 c
   //
   if(HPhase == HPHASE_ACTIVE)
   {
+   {
+    const int32 div = Clock28M ? 61 : 65;
+    const int32 coord_adj = 6832 - 80 * div;
+
+    SMPC_LineHook(event_timestamp, CRTLineCounter, div, coord_adj);
+   }
+
    if(VPhase == VPHASE_ACTIVE)
    {
     VDP2Rend_LIB* lib = VDP2REND_GetLIB(VCounter);
@@ -471,10 +493,14 @@ static INLINE int32 AddHCounter(const sscpu_timestamp_t event_timestamp, int32 c
     //printf("%d, 0x%08x(%f) 0x%08x(%f)\n", VCounter, RotParams[0].KAstAccum >> 10, (int32)RotParams[0].DKAst / 1024.0, RotParams[1].KAstAccum >> 10, (int32)RotParams[1].DKAst / 1024.0);
     //printf("DL: %d\n", VCounter);
     lib->vdp1_hires8 = VDP1::GetLine(VCounter, lib->vdp1_line, (HRes & 1) ? 352 : 320, (int32)RotParams[0].XstAccum >> 1, (int32)RotParams[0].YstAccum >> 1, (int32)RotParams[0].DX >> 1, (int32)RotParams[0].DY >> 1); // Always call, has side effects.
-    VDP2REND_DrawLine(InternalVB ? -1 : VCounter, !Odd);
+    VDP2REND_DrawLine(InternalVB ? -1 : VCounter, CRTLineCounter, !Odd);
+    CRTLineCounter++;
    }
    else if(VPhase == VPHASE_TOP_BORDER || VPhase == VPHASE_BOTTOM_BORDER)
-    VDP2REND_DrawLine(-1, !Odd);
+   {
+    VDP2REND_DrawLine(-1, CRTLineCounter, !Odd);
+    CRTLineCounter++;
+   }
   }
   else if(HPhase == HPHASE_HSYNC)
   {
@@ -506,6 +532,17 @@ sscpu_timestamp_t Update(sscpu_timestamp_t timestamp)
  tmp = SCU_SetHBVB(clocks, HPhase > HPHASE_ACTIVE, Out_VB);
  if(tmp < ne)
   ne = tmp;
+
+ //
+ //
+ //
+ if(MDFN_UNLIKELY(ExLatchPending))
+ {
+  LatchHV();
+  HVIsExLatched = true;
+  ExLatchPending = false;
+  //printf("ExLatch: %04x %04x\n", Latched_VCNT, Latched_HCNT);
+ }
 
  return lastts + (ne << 2);
 }
@@ -785,7 +822,7 @@ void AdjustTS(const int32 delta)
 }
 
 
-void Init(const bool IsPAL, const int sls, const int sle)
+void Init(const bool IsPAL)
 {
  SurfInterlaceField = -1;
  PAL = IsPAL;
@@ -793,17 +830,19 @@ void Init(const bool IsPAL, const int sls, const int sle)
 
  SS_SetPhysMemMap(0x05E00000, 0x05EFFFFF, VRAM, 0x80000, true);
 
- VDP2REND_Init(IsPAL, sls, sle);
+ ExLatchIn = false;
+
+ VDP2REND_Init(IsPAL);
 }
 
-void FillVideoParams(MDFNGI* gi)
+void SetGetVideoParams(MDFNGI* gi, const bool caspect, const int sls, const int sle, const bool show_h_overscan, const bool dohblend)
 {
  if(PAL)
   gi->fps = 65536 * 256 * (1734687500.0 / 61 / 4 / 455 / ((313 + 312.5) / 2.0));
  else
   gi->fps = 65536 * 256 * (1746818181.8 / 61 / 4 / 455 / ((263 + 262.5) / 2.0));
 
- VDP2REND_FillVideoParams(gi);
+ VDP2REND_SetGetVideoParams(gi, caspect, sls, sle, show_h_overscan, dohblend);
 }
 
 void Kill(void)
@@ -811,6 +850,9 @@ void Kill(void)
  VDP2REND_Kill();
 }
 
+//
+// TODO: Check reset versus power on values.
+//
 void Reset(bool powering_up)
 {
  DisplayOn = false;
@@ -845,7 +887,19 @@ void Reset(bool powering_up)
  }
  RPTA = 0;
  memset(RotParams, 0, sizeof(RotParams));
+ //
+ //
+ //
+ if(powering_up)
+ {
+  HPhase = 0;
+  HCounter = 0;
 
+  Latched_VCNT = 0;
+  Latched_HCNT = 0;
+  HVIsExLatched = false;
+  ExLatchPending = false;
+ }
  //
  // FIXME(init values), also in VDP2REND.
  if(powering_up)
@@ -917,6 +971,99 @@ void PokeVRAM(const uint32 addr, const uint8 val)
 void SetLayerEnableMask(uint64 mask)
 {
  VDP2REND_SetLayerEnableMask(mask);
+}
+
+void StateAction(StateMem* sm, const unsigned load, const bool data_only)
+{
+ SFORMAT StateRegs[] =
+ {
+  SFVAR(lastts),
+
+  SFARRAY16(RawRegs, 0x100),
+  SFVAR(DisplayOn),
+  SFVAR(BorderMode),
+  SFVAR(ExLatchEnable),
+  SFVAR(ExSyncEnable),
+  SFVAR(ExBGEnable),
+  SFVAR(DispAreaSelect),
+
+  SFVAR(VRAMSize),
+
+  SFVAR(HRes),
+  SFVAR(VRes),
+  SFVAR(InterlaceMode),
+
+  SFVAR(RAMCTL_Raw),
+  SFVAR(CRAM_Mode),
+
+  SFVAR(BGON),
+  SFARRAY(&VCPRegs[0][0], 4 * 8),
+  SFARRAY32(VRAMPenalty, 4),
+
+  SFVAR(RPTA),
+  SFARRAY(RPRCTL, 2),
+  SFARRAY(KTAOF, 2),
+
+  SFARRAY16(VRAM, 262144),
+  SFARRAY16(CRAM, 2048),
+
+  SFVAR(RotParams->Xst, 2, sizeof(*RotParams)),
+  SFVAR(RotParams->Yst, 2, sizeof(*RotParams)),
+  SFVAR(RotParams->Zst, 2, sizeof(*RotParams)),
+  SFVAR(RotParams->DXst, 2, sizeof(*RotParams)),
+  SFVAR(RotParams->DYst, 2, sizeof(*RotParams)),
+  SFVAR(RotParams->DX, 2, sizeof(*RotParams)),
+  SFVAR(RotParams->DY, 2, sizeof(*RotParams)),
+  SFARRAY32(RotParams->RotMatrix, 6, 2, sizeof(*RotParams)),
+  SFVAR(RotParams->Px, 2, sizeof(*RotParams)),
+  SFVAR(RotParams->Py, 2, sizeof(*RotParams)),
+  SFVAR(RotParams->Pz, 2, sizeof(*RotParams)),
+  SFVAR(RotParams->Cx, 2, sizeof(*RotParams)),
+  SFVAR(RotParams->Cy, 2, sizeof(*RotParams)),
+  SFVAR(RotParams->Cz, 2, sizeof(*RotParams)),
+  SFVAR(RotParams->Mx, 2, sizeof(*RotParams)),
+  SFVAR(RotParams->My, 2, sizeof(*RotParams)),
+  SFVAR(RotParams->kx, 2, sizeof(*RotParams)),
+  SFVAR(RotParams->ky, 2, sizeof(*RotParams)),
+  SFVAR(RotParams->KAst, 2, sizeof(*RotParams)),
+  SFVAR(RotParams->DKAst, 2, sizeof(*RotParams)),
+  SFVAR(RotParams->DKAx, 2, sizeof(*RotParams)),
+  SFVAR(RotParams->XstAccum, 2, sizeof(*RotParams)),
+  SFVAR(RotParams->YstAccum, 2, sizeof(*RotParams)),
+  SFVAR(RotParams->KAstAccum, 2, sizeof(*RotParams)),
+
+  SFVAR(Out_VB),
+
+  SFVAR(VPhase),
+  SFVAR(VCounter),
+  SFVAR(InternalVB),
+  SFVAR(Odd),
+
+  SFVAR(CRTLineCounter),
+  SFVAR(Clock28M),
+//
+  SFVAR(SurfInterlaceField),
+
+  SFVAR(HPhase),
+  SFVAR(HCounter),
+
+  SFVAR(Latched_VCNT),
+  SFVAR(Latched_HCNT),
+  SFVAR(HVIsExLatched),
+  SFVAR(ExLatchIn),
+  SFVAR(ExLatchPending),
+
+  SFEND
+ };
+
+ MDFNSS_StateAction(sm, load, data_only, StateRegs, "VDP2");
+
+ if(load)
+ {
+
+ }
+
+ VDP2REND_StateAction(sm, load, data_only, RawRegs, CRAM, VRAM);
 }
 
 void MakeDump(const std::string& path)

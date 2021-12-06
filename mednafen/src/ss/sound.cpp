@@ -2,7 +2,7 @@
 /* Mednafen Sega Saturn Emulation Module                                      */
 /******************************************************************************/
 /* sound.cpp - Sound Emulation
-**  Copyright (C) 2015-2016 Mednafen Team
+**  Copyright (C) 2015-2017 Mednafen Team
 **
 ** This program is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU General Public License
@@ -75,16 +75,16 @@ static INLINE void SCSP_MainIntChanged(bool state)
 //
 //
 template<typename T>
-static T SoundCPU_BusRead(uint32 A);
+static MDFN_FASTCALL T SoundCPU_BusRead(uint32 A);
 
-static uint16 SoundCPU_BusReadInstr(uint32 A);
+static MDFN_FASTCALL uint16 SoundCPU_BusReadInstr(uint32 A);
 
 template<typename T>
-static INLINE void SoundCPU_BusWrite(uint32 A, T V);
+static MDFN_FASTCALL void SoundCPU_BusWrite(uint32 A, T V);
 
-static void SoundCPU_BusRMW(uint32 A, uint8 (*cb)(M68K*, uint8));
-static unsigned SoundCPU_BusIntAck(uint8 level);
-static void SoundCPU_BusRESET(bool state);
+static MDFN_FASTCALL void SoundCPU_BusRMW(uint32 A, uint8 (MDFN_FASTCALL *cb)(M68K*, uint8));
+static MDFN_FASTCALL unsigned SoundCPU_BusIntAck(uint8 level);
+static MDFN_FASTCALL void SoundCPU_BusRESET(bool state);
 //
 //
 
@@ -311,10 +311,28 @@ int32 SOUND_FlushOutput(int16* SoundBuf, const int32 SoundBufMaxSize, const bool
  }
 }
 
-void SOUND_StateAction(StateMem *sm, const unsigned load, const bool data_only)
+void SOUND_StateAction(StateMem* sm, const unsigned load, const bool data_only)
 {
+ SFORMAT StateRegs[] =
+ {
+  SFVAR(next_scsp_time),
+  SFVAR(run_until_time),
 
+  SFEND
+ };
 
+ //
+ next_scsp_time -= SoundCPU.timestamp;
+ run_until_time -= (int64)SoundCPU.timestamp << 32;
+
+ MDFNSS_StateAction(sm, load, data_only, StateRegs, "SOUND");
+
+ next_scsp_time += SoundCPU.timestamp;
+ run_until_time += (int64)SoundCPU.timestamp << 32;
+ //
+
+ SoundCPU.StateAction(sm, load, data_only, "M68K");
+ SCSP.StateAction(sm, load, data_only, "SCSP");
 }
 
 //
@@ -322,7 +340,7 @@ void SOUND_StateAction(StateMem *sm, const unsigned load, const bool data_only)
 // TODO: test masks.
 //
 template<typename T>
-static T SoundCPU_BusRead(uint32 A)
+static MDFN_FASTCALL T SoundCPU_BusRead(uint32 A)
 {
  T ret;
 
@@ -338,7 +356,7 @@ static T SoundCPU_BusRead(uint32 A)
  return ret;
 }
 
-static uint16 SoundCPU_BusReadInstr(uint32 A)
+static MDFN_FASTCALL uint16 SoundCPU_BusReadInstr(uint32 A)
 {
  uint16 ret;
 
@@ -355,7 +373,7 @@ static uint16 SoundCPU_BusReadInstr(uint32 A)
 }
 
 template<typename T>
-static INLINE void SoundCPU_BusWrite(uint32 A, T V)
+static MDFN_FASTCALL void SoundCPU_BusWrite(uint32 A, T V)
 {
  if(MDFN_UNLIKELY(SoundCPU.timestamp >= next_scsp_time))
   RunSCSP();
@@ -366,7 +384,7 @@ static INLINE void SoundCPU_BusWrite(uint32 A, T V)
 }
 
 
-static void SoundCPU_BusRMW(uint32 A, uint8 (*cb)(M68K*, uint8))
+static MDFN_FASTCALL void SoundCPU_BusRMW(uint32 A, uint8 (MDFN_FASTCALL *cb)(M68K*, uint8))
 {
  uint8 tmp;
 
@@ -386,12 +404,12 @@ static void SoundCPU_BusRMW(uint32 A, uint8 (*cb)(M68K*, uint8))
  SoundCPU.timestamp += 2;
 }
 
-static unsigned SoundCPU_BusIntAck(uint8 level)
+static MDFN_FASTCALL unsigned SoundCPU_BusIntAck(uint8 level)
 {
  return M68K::BUS_INT_ACK_AUTO;
 }
 
-static void SoundCPU_BusRESET(bool state)
+static MDFN_FASTCALL void SoundCPU_BusRESET(bool state)
 {
  //SS_DBG(SS_DBG_WARNING, "[M68K] RESET: %d @ time %d\n", state, SoundCPU.timestamp);
  if(state)
@@ -399,6 +417,17 @@ static void SoundCPU_BusRESET(bool state)
   SoundCPU.Reset(false);
  }
 }
+
+uint32 SOUND_GetSCSPRegister(const unsigned id, char* const special, const uint32 special_len)
+{
+ return SCSP.GetRegister(id, special, special_len);
+}
+
+void SOUND_SetSCSPRegister(const unsigned id, const uint32 value)
+{
+ SCSP.SetRegister(id, value);
+}
+
 
 }
 

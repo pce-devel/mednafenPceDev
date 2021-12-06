@@ -25,7 +25,6 @@
 
 #include "pce.h"
 #include "huc.h"
-#include <math.h>
 #include <mednafen/video.h>
 #include "vce.h"
 #include <mednafen/hw_video/huc6270/vdc.h>
@@ -38,7 +37,7 @@ namespace MDFN_IEN_PCE
 
 static const int vce_ratios[4] = { 4, 3, 2, 2 };
 
-static NO_INLINE int32 Sync(const int32 timestamp);
+static MDFN_FASTCALL NO_INLINE int32 Sync(const int32 timestamp);
 
 static void IRQChange_Hook(bool newstatus)
 {
@@ -70,7 +69,7 @@ bool VCE::WS_Hook(int32 vdc_cycles)
   if(to_steal < 0)
    to_steal = 0;
 
-  ret = FALSE;
+  ret = false;
  }
 
  if(to_steal > 0)
@@ -455,11 +454,7 @@ INLINE void VCE::SyncSub(int32 clocks)
    {
     if(sgfx)
     {
-     int add = 0;
-     if(dot_clock & 2)
-      add = 8 + 96;
-     else
-      add = 8 + (dot_clock ? 38 : 24);
+     int add = 8 + ((dot_clock == 1) ? 38 : 24);
      window_counter[0] = winwidths[0] + add;
      window_counter[1] = winwidths[1] + add;
     }
@@ -491,7 +486,7 @@ INLINE void VCE::SyncSub(int32 clocks)
 #endif
 
     pixel_offset = 0;
-    NeedSLReset = FALSE;
+    NeedSLReset = false;
 
     if(!skipframe)
     {
@@ -547,7 +542,7 @@ INLINE void VCE::SyncSub(int32 clocks)
 
    if(!vblank)
    {
-    NeedSLReset = TRUE;
+    NeedSLReset = true;
    }
 
    child_event[0] = vdc[0].VSync(vblank);
@@ -582,7 +577,7 @@ INLINE int32 VCE::SyncReal(const int32 timestamp)
  return(ret);
 }
 
-static NO_INLINE int32 Sync(const int32 timestamp)
+static MDFN_FASTCALL NO_INLINE int32 Sync(const int32 timestamp)
 {
  extern VCE *vce; //HORRIBLE
  return vce->SyncReal(timestamp);
@@ -629,18 +624,7 @@ void VCE::SetVCECR(uint8 V)
 
  lc263 = (V & 0x04);
 
- #if 0
- int new_dot_clock = V & 1;
- if(V & 2)
-  new_dot_clock = 2;
-
- dot_clock = new_dot_clock;
- #endif
-
  dot_clock = V & 0x3;
- if(dot_clock == 3)	// Remove this once we determine any relevant differences between 2 and 3.
-  dot_clock = 2;
-
  dot_clock_ratio = vce_ratios[dot_clock];
 
  CR = V;

@@ -2,7 +2,7 @@
 /* Mednafen Sega Saturn Emulation Module                                      */
 /******************************************************************************/
 /* smpc.h:
-**  Copyright (C) 2015-2016 Mednafen Team
+**  Copyright (C) 2015-2017 Mednafen Team
 **
 ** This program is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU General Public License
@@ -59,6 +59,7 @@ bool SMPC_IsSlaveOn(void);
 void SMPC_Reset(bool powering_up) MDFN_COLD;
 void SMPC_LoadNV(Stream* s) MDFN_COLD;
 void SMPC_SaveNV(Stream* s) MDFN_COLD;
+void SMPC_StateAction(StateMem* sm, const unsigned load, const bool data_only) MDFN_COLD;
 
 void SMPC_SetRTC(const struct tm* ht, const uint8 lang) MDFN_COLD;
 
@@ -69,23 +70,17 @@ sscpu_timestamp_t SMPC_Update(sscpu_timestamp_t timestamp);
 void SMPC_ResetTS(void);
 
 int32 SMPC_StartFrame(EmulateSpecStruct* espec);
-void SMPC_UpdateInput(void);
+void SMPC_EndFrame(EmulateSpecStruct* espec, sscpu_timestamp_t timestamp);
+void SMPC_TransformInput(void);
+void SMPC_UpdateInput(const int32 time_elapsed);
+void SMPC_UpdateOutput(void);
 void SMPC_SetInput(unsigned port, const char* type, uint8* ptr) MDFN_COLD;
+void SMPC_SetMultitap(unsigned sport, bool enabled) MDFN_COLD;
+void SMPC_SetCrosshairsColor(unsigned port, uint32 color) MDFN_COLD;
 
-void SMPC_SetVB(sscpu_timestamp_t event_timestamp, bool vb_status);
+void SMPC_SetVBVS(sscpu_timestamp_t event_timestamp, bool vb_status, bool vsync_status);
 
-class IODevice
-{
- public:
-
- IODevice();
- virtual ~IODevice();
-
- virtual void Power(void);
- virtual void UpdateInput(const uint8* data);
- virtual void StateAction(StateMem* sm, const unsigned load, const bool data_only, const char* sname_prefix);
- virtual uint8 UpdateBus(const uint8 smpc_out, const uint8 smpc_out_asserted);
-};
+void SMPC_LineHook(sscpu_timestamp_t event_timestamp, int32 out_line, int32 div, int32 coord_adj);
 
 extern const std::vector<InputPortInfoStruct> SMPC_PortInfo;
 

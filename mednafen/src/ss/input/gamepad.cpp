@@ -2,7 +2,7 @@
 /* Mednafen Sega Saturn Emulation Module                                      */
 /******************************************************************************/
 /* gamepad.cpp - Digital Gamepad Emulation
-**  Copyright (C) 2015-2016 Mednafen Team
+**  Copyright (C) 2015-2017 Mednafen Team
 **
 ** This program is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU General Public License
@@ -25,7 +25,7 @@
 namespace MDFN_IEN_SS
 {
 
-IODevice_Gamepad::IODevice_Gamepad() : buttons(~3)
+IODevice_Gamepad::IODevice_Gamepad() : buttons(0xCFFF)
 {
 
 }
@@ -40,7 +40,7 @@ void IODevice_Gamepad::Power(void)
 
 }
 
-void IODevice_Gamepad::UpdateInput(const uint8* data)
+void IODevice_Gamepad::UpdateInput(const uint8* data, const int32 time_elapsed)
 {
  buttons = (~(data[0] | (data[1] << 8))) &~ 0x3000;
 }
@@ -58,10 +58,10 @@ void IODevice_Gamepad::StateAction(StateMem* sm, const unsigned load, const bool
  if(!MDFNSS_StateAction(sm, load, data_only, StateRegs, section_name, true) && load)
   Power();
  else if(load)
-  buttons &= ~3;
+  buttons = (buttons | 0x4000) &~ 0x3000;
 }
 
-uint8 IODevice_Gamepad::UpdateBus(const uint8 smpc_out, const uint8 smpc_out_asserted)
+uint8 IODevice_Gamepad::UpdateBus(const sscpu_timestamp_t timestamp, const uint8 smpc_out, const uint8 smpc_out_asserted)
 {
  uint8 tmp;
 

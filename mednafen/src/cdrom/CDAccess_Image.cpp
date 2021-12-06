@@ -28,21 +28,16 @@
 	it will be added onto the implicit default 00:02:00 of pregap.
 */
 
-#include "../mednafen.h"
+#include <mednafen/mednafen.h>
 
 #include <sys/types.h>
 
-#include <string.h>
-#include <errno.h>
-#include <time.h>
 #include <trio/trio.h>
-#include <memory>
 
-#include "../general.h"
-#include "../string/trim.h"
-#include "../endian.h"
-#include "../FileStream.h"
-#include "../MemoryStream.h"
+#include <mednafen/general.h>
+#include <mednafen/string/string.h>
+#include <mednafen/FileStream.h>
+#include <mednafen/MemoryStream.h>
 
 #include "CDAccess.h"
 #include "CDAccess_Image.h"
@@ -397,7 +392,7 @@ void CDAccess_Image::ImageOpen(const std::string& path, bool image_memcache)
  static const unsigned max_args = 4;
  std::string linebuf;
  std::string cmdbuf, args[max_args];
- bool IsTOC = FALSE;
+ bool IsTOC = false;
  int32 active_track = -1;
  int32 AutoTrackInc = 1; // For TOC
  CDRFILE_TRACK_INFO TmpTrack;
@@ -512,7 +507,7 @@ void CDAccess_Image::ImageOpen(const std::string& path, bool image_memcache)
      }
 
      if(TmpTrack.DIFormat == DI_FORMAT_AUDIO)
-      TmpTrack.RawAudioMSBFirst = TRUE; // Silly cdrdao...
+      TmpTrack.RawAudioMSBFirst = true; // Silly cdrdao...
 
      if(!strcasecmp(args[1].c_str(), "RW"))
      {

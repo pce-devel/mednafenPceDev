@@ -113,7 +113,7 @@ namespace MDFN_IEN_PSX
  void PSX_GPULineHook(const pscpu_timestamp_t timestamp, const pscpu_timestamp_t line_timestamp, bool vsync, uint32 *pixels, const MDFN_PixelFormat* const format, const unsigned width, const unsigned pix_clock_offset, const unsigned pix_clock, const unsigned pix_clock_divider);
 
  uint32 PSX_GetRandU32(uint32 mina, uint32 maxa);
-};
+}
 
 
 #include "dis.h"
@@ -130,11 +130,10 @@ namespace MDFN_IEN_PSX
  class PS_SPU;
 
  extern PS_CPU *CPU;
- extern PS_GPU *GPU;
  extern PS_CDC *CDC;
  extern PS_SPU *SPU;
  extern MultiAccessSizeMem<2048 * 1024, false> MainRAM;
-};
+}
 
 
 #endif

@@ -17,17 +17,16 @@ enum
 
 struct RegType
 {
-	~RegType();
 	const unsigned int id;
-        std::string name;
-	std::string long_name;
-        unsigned int bsize; // Byte size, 1, 2, 4
+	const char* name;
+	const char* long_name;
+	unsigned int bsize; // Byte size, 1, 2, 4
 };
 
 struct RegGroupType
 {
  const char *name;
- RegType *Regs;
+ const RegType* Regs;
 
  // GetRegister() should modify the string at special if special is non-NULL, to provide
  // more details about the register.
@@ -177,7 +176,7 @@ typedef struct
 
  // Game emulation code shouldn't touch these directly.
  std::vector<AddressSpaceType> *AddressSpaces;
- std::vector<RegGroupType*> *RegGroups;
+ std::vector<const RegGroupType*> *RegGroups;
 } DebuggerInfoStruct;
 
 // ASpace_Add() functions return an ID that should be used with with MDFNDBG_ASpace_Read()
@@ -193,14 +192,14 @@ int ASpace_Add(const AddressSpaceType &);
 // Removes all registered address spaces.
 void ASpace_Reset(void);
 
-// pre_bpoint should be TRUE if these are "estimated" read/writes that will occur when the current instruction
+// pre_bpoint should be true if these are "estimated" read/writes that will occur when the current instruction
 // is actually executed/committed.
 // size is the size of the read/write(ex: 1 byte, 2 bytes, 4 bytes), defaulting to 1 byte.
 //
-// The return value is always FALSE if pre_bpoint is FALSE.  If pre_bpoint is TRUE, the return value will be
-// TRUE if the "estimated" read/write matches a registered breakpoint.
-bool ASpace_Read(const int id, const uint32 address, const unsigned int size = 1, const bool pre_bpoint = FALSE);
-bool ASpace_Write(const int id, const uint32 address, const uint32 value, const unsigned int size = 1, const bool pre_bpoint = FALSE);
+// The return value is always false if pre_bpoint is false.  If pre_bpoint is true, the return value will be
+// true if the "estimated" read/write matches a registered breakpoint.
+bool ASpace_Read(const int id, const uint32 address, const unsigned int size = 1, const bool pre_bpoint = false);
+bool ASpace_Write(const int id, const uint32 address, const uint32 value, const unsigned int size = 1, const bool pre_bpoint = false);
 
 // Clears read/write usage maps.
 void ASpace_ClearReadMap(const int id);
@@ -211,13 +210,13 @@ void ASpace_AddBreakPoint(const int id, const int type, const uint32 A1, const u
 void ASpace_FlushBreakPoints(const int id);
 
 
-void MDFNDBG_ResetRegGroupsInfo(void);
-void MDFNDBG_AddRegGroup(RegGroupType *groupie);
+void MDFNDBG_ResetRegGroupsInfo(void) MDFN_COLD;
+void MDFNDBG_AddRegGroup(const RegGroupType* groupie) MDFN_COLD;
 
 
-void MDFNDBG_Init(void);
-void MDFNDBG_PostGameLoad(void);
-void MDFNDBG_Kill(void);
+void MDFNDBG_Init(void) MDFN_COLD;
+void MDFNDBG_PostGameLoad(void) MDFN_COLD;
+void MDFNDBG_Kill(void) MDFN_COLD;
 
 #endif
 

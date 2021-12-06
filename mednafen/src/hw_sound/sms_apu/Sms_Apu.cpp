@@ -3,6 +3,9 @@
 #include <mednafen/mednafen.h>
 #include "Sms_Apu.h"
 
+#undef require
+#define require( expr ) assert( expr )
+
 /* Copyright (C) 2003-2006 Shay Green. This module is free software; you
 can redistribute it and/or modify it under the terms of the GNU Lesser
 General Public License as published by the Free Software Foundation; either
@@ -332,11 +335,13 @@ void Sms_Apu::save_state(Sms_ApuState *ret)
 {
  memset(ret, 0, sizeof(Sms_ApuState));
 
+ ret->latch = latch;
  ret->ggstereo = ggstereo_save;
 
  for(int x = 0; x < 4; x++)
  {
   ret->volume[x] = oscs[x]->volume;
+  ret->delay[x] = oscs[x]->delay;
  }
 
  for(int x = 0; x < 3; x++)
@@ -359,9 +364,12 @@ void Sms_Apu::save_state(Sms_ApuState *ret)
 
 void Sms_Apu::load_state(const Sms_ApuState *state)
 {
+ latch = state->latch;
+
  for(int x = 0; x < 4; x++)
  {
   oscs[x]->volume = state->volume[x];
+  oscs[x]->delay = state->delay[x];
  }
 
  for(int x = 0; x < 3; x++)

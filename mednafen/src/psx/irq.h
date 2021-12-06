@@ -43,8 +43,8 @@ enum
 void IRQ_Power(void) MDFN_COLD;
 void IRQ_Assert(int which, bool asserted);
 
-void IRQ_Write(uint32 A, uint32 V);
-uint32 IRQ_Read(uint32 A);
+MDFN_FASTCALL void IRQ_Write(uint32 A, uint32 V);
+MDFN_FASTCALL uint32 IRQ_Read(uint32 A);
 
 
 enum
@@ -58,7 +58,7 @@ uint32 IRQ_GetRegister(unsigned int which, char *special, const uint32 special_l
 void IRQ_SetRegister(unsigned int which, uint32 value);
 
 void IRQ_StateAction(StateMem *sm, const unsigned load, const bool data_only);
-};
+}
 
 
 #endif

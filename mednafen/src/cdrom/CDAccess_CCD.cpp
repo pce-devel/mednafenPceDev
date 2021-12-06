@@ -21,13 +21,11 @@
 
 #include <mednafen/mednafen.h>
 #include <mednafen/general.h>
-#include <mednafen/string/trim.h>
+#include <mednafen/string/string.h>
 
 #include "CDAccess_CCD.h"
 #include <trio/trio.h>
 
-#include <limits>
-#include <limits.h>
 #include <map>
 
 using namespace CDUtility;

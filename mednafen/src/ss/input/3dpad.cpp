@@ -2,7 +2,7 @@
 /* Mednafen Sega Saturn Emulation Module                                      */
 /******************************************************************************/
 /* 3dpad.cpp:
-**  Copyright (C) 2016 Mednafen Team
+**  Copyright (C) 2016-2017 Mednafen Team
 **
 ** This program is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU General Public License
@@ -42,7 +42,7 @@ void IODevice_3DPad::Power(void)
  data_out = 0x01;
 }
 
-void IODevice_3DPad::UpdateInput(const uint8* data)
+void IODevice_3DPad::UpdateInput(const uint8* data, const int32 time_elapsed)
 {
  const uint16 dtmp = MDFN_de16lsb(&data[0]);
 
@@ -103,7 +103,7 @@ void IODevice_3DPad::StateAction(StateMem* sm, const unsigned load, const bool d
  }
 }
 
-uint8 IODevice_3DPad::UpdateBus(const uint8 smpc_out, const uint8 smpc_out_asserted)
+uint8 IODevice_3DPad::UpdateBus(const sscpu_timestamp_t timestamp, const uint8 smpc_out, const uint8 smpc_out_asserted)
 {
  uint8 tmp;
 
@@ -167,10 +167,10 @@ uint8 IODevice_3DPad::UpdateBus(const uint8 smpc_out, const uint8 smpc_out_asser
  return (smpc_out & (smpc_out_asserted | 0xE0)) | (tmp &~ smpc_out_asserted);
 }
 
-static const char* ModeSwitchPositions[] =
+static const IDIIS_SwitchPos ModeSwitchPositions[] =
 {
- gettext_noop("Digital(+)"),
- gettext_noop("Analog(○)"),
+ { "digital", gettext_noop("Digital(+)") },
+ { "analog", gettext_noop("Analog(○)"), gettext_noop("Analog mode is not compatible with all games.  For some compatible games, analog mode reportedly must be enabled before the game boots up for the game to recognize it properly.") },
 };
 
 IDIISG IODevice_3DPad_IDII =
@@ -190,7 +190,7 @@ IDIISG IODevice_3DPad_IDII =
  { "x", "X", 8, IDIT_BUTTON },
  { NULL, "empty", 0, IDIT_BUTTON },
 
- IDIIS_Switch("mode", "Mode", 17, ModeSwitchPositions, sizeof(ModeSwitchPositions) / sizeof(ModeSwitchPositions[0])),
+ IDIIS_Switch("mode", "Mode", 17, ModeSwitchPositions, sizeof(ModeSwitchPositions) / sizeof(ModeSwitchPositions[0]), false),
 
  { "analog_left", "Analog LEFT ←", 15, IDIT_BUTTON_ANALOG },
  { "analog_right", "Analog RIGHT →", 16, IDIT_BUTTON_ANALOG },

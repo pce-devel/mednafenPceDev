@@ -26,9 +26,6 @@
 #include <signal.h>
 #include <sys/time.h>
 #include <sys/stat.h>
-#include <string.h>
-#include <strings.h>
-#include <errno.h>
 #include <trio/trio.h>
 #include <locale.h>
 
@@ -40,7 +37,7 @@
 #include <iconv.h>
 #endif
 
-#include <algorithm>
+#include <atomic>
 
 #include "input.h"
 #include "Joystick.h"
@@ -58,7 +55,12 @@
 #include "ers.h"
 #include "rmdui.h"
 #include <mednafen/qtrecord.h>
-#include <math.h>
+#include <mednafen/tests.h>
+#include <mednafen/MemoryStream.h>
+#include <mednafen/file.h>
+
+static int StateSLSTest = false;
+static int StateRCTest = false;	// Rewind consistency
 
 JoystickManager *joy_manager = NULL;
 bool MDFNDHaveFocus;
@@ -67,12 +69,13 @@ bool pending_save_state, pending_snapshot, pending_ssnapshot, pending_save_movie
 static uint32 volatile MainThreadID = 0;
 static bool ffnosound;
 
-static MDFNSetting_EnumList SDriver_List[] =
+static const MDFNSetting_EnumList SDriver_List[] =
 {
  { "default", -1, "Default", gettext_noop("Selects the default sound driver.") },
 
  { "alsa", -1, "ALSA", gettext_noop("The default for Linux(if available).") },
- { "oss", -1, "Open Sound System", gettext_noop("The default for non-Linux UN*X/POSIX/BSD systems, or anywhere ALSA is unavailable. If the ALSA driver gives you problems, you can try using this one instead.\n\nIf you are using OSSv4 or newer, you should edit \"/usr/lib/oss/conf/osscore.conf\", uncomment the max_intrate= line, and change the value from 100(default) to 1000(or higher if you know what you're doing), and restart OSS. Otherwise, performance will be poor, and the sound buffer size in Mednafen will be orders of magnitude larger than specified.\n\nIf the sound buffer size is still excessively larger than what is specified via the \"sound.buffer_time\" setting, you can try setting \"sound.period_time\" to 2666, and as a last resort, 5333, to work around a design flaw/limitation/choice in the OSS API and OSS implementation.") },
+ { "openbsd", -1, "OpenBSD Audio", gettext_noop("The default for OpenBSD.") },
+ { "oss", -1, "Open Sound System", gettext_noop("The default for non-Linux UN*X/POSIX/BSD(other than OpenBSD) systems, or anywhere ALSA is unavailable. If the ALSA driver gives you problems, you can try using this one instead.\n\nIf you are using OSSv4 or newer, you should edit \"/usr/lib/oss/conf/osscore.conf\", uncomment the max_intrate= line, and change the value from 100(default) to 1000(or higher if you know what you're doing), and restart OSS. Otherwise, performance will be poor, and the sound buffer size in Mednafen will be orders of magnitude larger than specified.\n\nIf the sound buffer size is still excessively larger than what is specified via the \"sound.buffer_time\" setting, you can try setting \"sound.period_time\" to 2666, and as a last resort, 5333, to work around a design flaw/limitation/choice in the OSS API and OSS implementation.") },
 
  { "wasapish", -1, "WASAPI(Shared Mode)", gettext_noop("The default when it's available(running on Microsoft Windows Vista and newer).") },
 
@@ -115,7 +118,7 @@ static const MDFNSetting_EnumList FontSize_List[] =
 
 
 static std::vector <MDFNSetting> NeoDriverSettings;
-static MDFNSetting DriverSettings[] =
+static const MDFNSetting DriverSettings[] =
 {
   { "input.joystick.global_focus", MDFNSF_NOFLAGS, gettext_noop("Update physical joystick(s) internal state in Mednafen even when Mednafen lacks OS focus."), NULL, MDFNST_BOOL, "1" },
   { "input.joystick.axis_threshold", MDFNSF_NOFLAGS, gettext_noop("Analog axis binary press detection threshold."), gettext_noop("Threshold for detecting a digital-like \"button\" press on analog axis, in percent."), MDFNST_FLOAT, "75", "0", "100" },
@@ -209,20 +212,29 @@ void MakeDebugSettings(std::vector <MDFNSetting> &settings)
 }
 
 static MDFN_Thread* GameThread;
-static MDFN_Surface *VTBuffer[2] = { NULL, NULL };
-static int32 *VTLineWidths[2] = { NULL, NULL };
 
-static int volatile VTSSnapshot = 0;
-static int volatile VTBackBuffer = 0;
+static struct
+{
+ std::unique_ptr<MDFN_Surface> surface = nullptr;
+ MDFN_Rect rect;
+ std::unique_ptr<int32[]> lw = nullptr;
+ int field = -1;
+} SoftFB[2];
+
+static bool SoftFB_BackBuffer = false;
+
+static std::atomic_int VTReady;
+static bool VTSSnapshot = false;
+static MDFN_Sem* VTWakeupSem;
 static MDFN_Mutex *VTMutex = NULL, *EVMutex = NULL;
 static MDFN_Mutex *StdoutMutex = NULL;
 
-static MDFN_Sem* VTWakeupSem;
-static MDFN_Surface * volatile VTReady;
-static int32 * volatile VTLWReady;
-static MDFN_Rect * volatile VTDRReady;
-static int volatile VTInterlaceField;
-static MDFN_Rect VTDisplayRects[2];
+//
+//
+//
+//
+//
+
 static bool sc_blit_timesync;
 
 static char *soundrecfn=0;	/* File name of sound recording. */
@@ -275,7 +287,7 @@ void MDFND_Message(const char *s)
 
 static void CreateDirs(void)
 {
- static const char *subs[] = { "mcs", "mcm", "snaps", "palettes", "sav", "cheats", "firmware", "pgconfig" };
+ static const char* const subs[] = { "mcs", "mcm", "snaps", "palettes", "sav", "cheats", "firmware", "pgconfig" };
 
  try
  {
@@ -448,56 +460,78 @@ static void Stream64Test(const char* path)
 {
  try
  {
- {
-  FileStream fp(path, FileStream::MODE_WRITE_SAFE);
+  {
+   FileStream fp(path, FileStream::MODE_WRITE_SAFE);
 
-  assert(fp.tell() == 0);
-  assert(fp.size() == 0);
-  fp.put_BE<uint32>(0xDEADBEEF);
-  assert(fp.tell() == 4);
-  assert(fp.size() == 4);
+   assert(fp.tell() == 0);
+   assert(fp.size() == 0);
+   fp.put_BE<uint32>(0xDEADBEEF);
+   assert(fp.tell() == 4);
+   assert(fp.size() == 4);
 
-  fp.seek((uint64)8192 * 1024 * 1024, SEEK_SET);
-  fp.put_BE<uint32>(0xCAFEBABE);
-  assert(fp.tell() == (uint64)8192 * 1024 * 1024 + 4);
-  assert(fp.size() == (uint64)8192 * 1024 * 1024 + 4);
+   fp.seek(0x7FFFFFFFU, SEEK_SET);
+   assert(fp.tell() == 0x7FFFFFFFU);
+   fp.truncate(0x7FFFFFFFU);
+   assert(fp.size() == 0x7FFFFFFFU);
+   fp.put_LE<uint8>(0xB0);
+   assert(fp.tell() == 0x80000000U);
+   assert(fp.size() == 0x80000000U);
+   fp.put_LE<uint8>(0x0F);
+   assert(fp.tell() == 0x80000001U);
+   assert(fp.size() == 0x80000001U);
 
-  fp.put_BE<uint32>(0xAAAAAAAA);
-  assert(fp.tell() == (uint64)8192 * 1024 * 1024 + 8);
-  assert(fp.size() == (uint64)8192 * 1024 * 1024 + 8);
+   fp.seek(0xFFFFFFFFU, SEEK_SET);
+   assert(fp.tell() == 0xFFFFFFFFU);
+   fp.truncate(0xFFFFFFFFU);
+   assert(fp.size() == 0xFFFFFFFFU);
+   fp.put_LE<uint8>(0xCA);
+   assert(fp.tell() == 0x100000000ULL);
+   assert(fp.size() == 0x100000000ULL);
+   fp.put_LE<uint8>(0xAD);
+   assert(fp.tell() == 0x100000001ULL);
+   assert(fp.size() == 0x100000001ULL);
 
-  fp.truncate((uint64)8192 * 1024 * 1024 + 4);
-  assert(fp.size() == (uint64)8192 * 1024 * 1024 + 4);
+   fp.seek((uint64)8192 * 1024 * 1024, SEEK_SET);
+   fp.put_BE<uint32>(0xCAFEBABE);
+   assert(fp.tell() == (uint64)8192 * 1024 * 1024 + 4);
+   assert(fp.size() == (uint64)8192 * 1024 * 1024 + 4);
 
-  fp.seek(-((uint64)8192 * 1024 * 1024 + 8), SEEK_CUR);
-  assert(fp.tell() == 0);
-  fp.seek((uint64)-4, SEEK_END);
-  assert(fp.tell() == (uint64)8192 * 1024 * 1024);
- }
+   fp.put_BE<uint32>(0xAAAAAAAA);
+   assert(fp.tell() == (uint64)8192 * 1024 * 1024 + 8);
+   assert(fp.size() == (uint64)8192 * 1024 * 1024 + 8);
 
- {
-  FileStream fp(path, FileStream::MODE_READ);
-  uint32 tmp;
+   fp.truncate((uint64)8192 * 1024 * 1024 + 4);
+   assert(fp.size() == (uint64)8192 * 1024 * 1024 + 4);
 
-  assert(fp.size() == (uint64)8192 * 1024 * 1024 + 4);
-  tmp = fp.get_LE<uint32>();
-  assert(tmp == 0xEFBEADDE);
-  fp.seek((uint64)8192 * 1024 * 1024 - 4, SEEK_CUR);
-  tmp = fp.get_LE<uint32>(); 
-  assert(tmp == 0xBEBAFECA);
- }
+   fp.seek(-((uint64)8192 * 1024 * 1024 + 8), SEEK_CUR);
+   assert(fp.tell() == 0);
+   fp.seek((uint64)-4, SEEK_END);
+   assert(fp.tell() == (uint64)8192 * 1024 * 1024);
+  }
 
- {
-  GZFileStream fp(path, GZFileStream::MODE::READ);
-  uint32 tmp;
+  {
+   FileStream fp(path, FileStream::MODE_READ);
+   uint32 tmp;
 
-  tmp = fp.get_LE<uint32>();
-  assert(tmp == 0xEFBEADDE);
-  fp.seek((uint64)8192 * 1024 * 1024 - 4, SEEK_CUR);
-  tmp = fp.get_LE<uint32>(); 
-  assert(tmp == 0xBEBAFECA);  
-  assert(fp.tell() == (uint64)8192 * 1024 * 1024 + 4);
- }
+   assert(fp.size() == (uint64)8192 * 1024 * 1024 + 4);
+   tmp = fp.get_LE<uint32>();
+   assert(tmp == 0xEFBEADDE);
+   fp.seek((uint64)8192 * 1024 * 1024 - 4, SEEK_CUR);
+   tmp = fp.get_LE<uint32>(); 
+   assert(tmp == 0xBEBAFECA);
+  }
+
+  {
+   GZFileStream fp(path, GZFileStream::MODE::READ);
+   uint32 tmp;
+
+   tmp = fp.get_LE<uint32>();
+   assert(tmp == 0xEFBEADDE);
+   fp.seek((uint64)8192 * 1024 * 1024 - 4, SEEK_CUR);
+   tmp = fp.get_LE<uint32>(); 
+   assert(tmp == 0xBEBAFECA);  
+   assert(fp.tell() == (uint64)8192 * 1024 * 1024 + 4);
+  }
  }
  catch(std::exception& e)
  {
@@ -599,8 +633,8 @@ static void DeleteInternalArgs(void)
 
 static void MakeMednafenArgsStruct(void)
 {
- const std::multimap <uint32, MDFNCS> *settings;
- std::multimap <uint32, MDFNCS>::const_iterator sit;
+ const std::vector<MDFNCS>* settings;
+ std::vector<MDFNCS>::const_iterator sit;
 
  settings = MDFNI_GetSettings();
 
@@ -610,8 +644,8 @@ static void MakeMednafenArgsStruct(void)
 
  for(sit = settings->begin(); sit != settings->end(); sit++)
  {
-  MDFN_Internal_Args[x].name = strdup(sit->second.name);
-  MDFN_Internal_Args[x].description = sit->second.desc->description ? _(sit->second.desc->description) : NULL;
+  MDFN_Internal_Args[x].name = strdup(sit->name);
+  MDFN_Internal_Args[x].description = sit->desc->description ? _(sit->desc->description) : NULL;
   MDFN_Internal_Args[x].var = NULL;
   MDFN_Internal_Args[x].subs = (void *)HokeyPokeyFallDown;
   MDFN_Internal_Args[x].substype = SUBSTYPE_FUNCTION;
@@ -624,6 +658,7 @@ static void MakeMednafenArgsStruct(void)
 
 static int netconnect = 0;
 static char* loadcd = NULL;	// Deprecated
+static int which_medium = -2;
 
 static char * force_module_arg = NULL;
 static int DoArgs(int argc, char *argv[], char **filename)
@@ -635,6 +670,7 @@ static int DoArgs(int argc, char *argv[], char **filename)
 	char *dummy_remote = NULL;
 	char *stream64testpath = NULL;
 	char *cdtestpath = NULL;
+	int mtetest = 0;
 
         ARGPSTRUCT MDFNArgs[] = 
 	{
@@ -643,6 +679,8 @@ static int DoArgs(int argc, char *argv[], char **filename)
 
 	 // -loadcd is deprecated and only still supported because it's been around for yeaaaars.
 	 { "loadcd", NULL/*_("Load and boot a CD for the specified system.")*/, 0, &loadcd, SUBSTYPE_STRING_ALLOC },
+
+	 { "which_medium", _("Start with specified disk/CD(numbered from 0) inserted."), 0, &which_medium, SUBSTYPE_INTEGER },
 
 	 { "force_module", _("Force usage of specified emulation module."), 0, &force_module_arg, SUBSTYPE_STRING_ALLOC },
 
@@ -660,6 +698,11 @@ static int DoArgs(int argc, char *argv[], char **filename)
 	 { "stream64test", NULL, 0, &stream64testpath, SUBSTYPE_STRING_ALLOC },
 
 	 { "cdtest", NULL, 0, &cdtestpath, SUBSTYPE_STRING_ALLOC },
+
+	 { "mtetest", NULL, &mtetest, 0, 0 },
+
+	 { "stateslstest", NULL, &StateSLSTest, 0, 0 },
+	 { "staterctest", NULL, &StateRCTest, 0, 0 },
 
 	 { 0, 0, 0, 0 }
         };
@@ -694,6 +737,9 @@ static int DoArgs(int argc, char *argv[], char **filename)
 	  printf("\n");
 	  return(0);
 	 }
+
+	 if(mtetest)
+	  MDFN_RunExceptionTests(4, 30000);
 
 	 if(stream64testpath)
 	 {
@@ -730,7 +776,7 @@ static int DoArgs(int argc, char *argv[], char **filename)
 static int volatile NeedVideoChange = 0;
 int GameLoop(void *arg);
 int volatile GameThreadRun = 0;
-bool MDFND_Update(MDFN_Surface *surface, MDFN_Rect *rect, int32 *lw, int InterlaceField, int16 *Buffer, int Count);
+static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count);
 
 bool sound_active;	// true if sound is enabled and initialized
 
@@ -743,10 +789,10 @@ static int LoadGame(const char *force_module, const char *path)
 
 	CloseGame();
 
-	pending_save_state = 0;
-	pending_save_movie = 0;
-	pending_snapshot = 0;
-	pending_ssnapshot = 0;
+	pending_save_state = false;
+	pending_save_movie = false;
+	pending_snapshot = false;
+	pending_ssnapshot = false;
 
 	if(loadcd)	// Deprecated
 	{
@@ -762,7 +808,7 @@ static int LoadGame(const char *force_module, const char *path)
 	CurGame = tmp;
 	InitGameInput(tmp);
 	InitCommandInput(tmp);
-	RMDUI_Init(tmp);
+	RMDUI_Init(tmp, which_medium);
 
         RefreshThrottleFPS(1);
 
@@ -775,7 +821,7 @@ static int LoadGame(const char *force_module, const char *path)
 	 MDFND_PostSem(VTWakeupSem);
          while(NeedVideoChange)
 	 {
-          SDL_Delay(2);
+          Time::SleepMS(2);
 	 }
         }
 	sound_active = 0;
@@ -789,7 +835,7 @@ static int LoadGame(const char *force_module, const char *path)
 	 MDFNI_LoadState(NULL, "mca");
 
 	if(netconnect)
-	 MDFND_NetworkConnect();
+	 MDFNI_NetplayConnect();
 
 	ers.SetEmuClock(CurGame->MasterClock >> 32);
 
@@ -853,7 +899,7 @@ int CloseGame(void)
 	if(MDFN_GetSettingB("autosave"))
 	 MDFNI_SaveState(NULL, "mca", NULL, NULL, NULL);
 
-	MDFND_NetworkClose();
+	MDFNI_NetplayDisconnect();
 
 	Debugger_Kill();
 
@@ -878,7 +924,7 @@ void MainRequestExit(void)
  NeedExitNow = 1;
 }
 
-bool MainExitPending(void)	// Called from netplay code, so we can break out of blocking loops after receiving a signal.
+bool MDFND_CheckNeedExit(void)	// Called from netplay code, so we can break out of blocking loops after receiving a signal.
 {
  return (bool)NeedExitNow;
 }
@@ -907,52 +953,20 @@ static int GameLoopPaused = 0;
 
 void DebuggerFudge(void)
 {
-	  MDFND_Update((MDFN_Surface *)VTBuffer[VTBackBuffer ^ 1], (MDFN_Rect*)&VTDisplayRects[VTBackBuffer ^ 1], (int32*)VTLineWidths[VTBackBuffer ^ 1], VTInterlaceField, NULL, 0);
+ const uint32 WaitMS = 10;
+ uint32 wt = Time::MonoMS() + WaitMS;
 
-	  if(sound_active)
-	   Sound_WriteSilence(10);
-	  else
-	   SDL_Delay(10);
-}
+ MDFND_Update(SoftFB_BackBuffer ^ 1, nullptr, 0);
 
-int64 Time64(void)
-{
- static bool cgt_fail_warning = 0;
+ wt -= Time::MonoMS();
 
- #if HAVE_CLOCK_GETTIME && ( _POSIX_MONOTONIC_CLOCK > 0 || defined(CLOCK_MONOTONIC))
- struct timespec tp;
-
- if(clock_gettime(CLOCK_MONOTONIC, &tp) == -1)
+ if(wt > 0 && wt <= WaitMS)
  {
-  if(!cgt_fail_warning)
-   fprintf(stderr, "clock_gettime() failed: %s\n", strerror(errno));
-  cgt_fail_warning = 1;
+  if(sound_active)
+   Sound_WriteSilence(wt);
+  else
+   Time::SleepMS(wt);
  }
- else
-  return((int64)tp.tv_sec * 1000000 + tp.tv_nsec / 1000);
-
- #else
-   #warning "clock_gettime() with CLOCK_MONOTONIC not available"
- #endif
-
-
- #if HAVE_GETTIMEOFDAY
- // Warning: gettimeofday() is not guaranteed to be monotonic!!
- struct timeval tv;
-
- if(gettimeofday(&tv, NULL) == -1)
- {
-  fprintf(stderr, "gettimeofday() error");
-  return(0);
- }
-
- return((int64)tv.tv_sec * 1000000 + tv.tv_usec);
- #else
-  #warning "gettimeofday() not available!!!"
- #endif
-
- // Yeaaah, this isn't going to work so well.
- return((int64)time(NULL) * 1000000);
 }
 
 int GameLoop(void *arg)
@@ -961,14 +975,14 @@ int GameLoop(void *arg)
 	{
          int16 *sound;
          int32 ssize;
-         int fskip;
+         bool fskip;
         
 	 /* If we requested a new video mode, wait until it's set before calling the emulation code again.
 	 */
 	 while(NeedVideoChange)
 	 {
 	  if(!GameThreadRun) return(1);	// Might happen if video initialization failed
-	  SDL_Delay(2);
+	  Time::SleepMS(2);
 	 }
 
 	 if(Sound_NeedReInit())
@@ -976,23 +990,19 @@ int GameLoop(void *arg)
 
 	 if(MDFNDnetplay && !(NoWaiting & 0x2))	// TODO: Hacky, clean up.
 	  ers.SetETtoRT();
-
+	 //
+	 //
 	 fskip = ers.NeedFrameSkip();
-	
-	 if(!MDFN_GetSettingB("video.frameskip"))
-	  fskip = 0;
+	 fskip &= MDFN_GetSettingB("video.frameskip");
+	 fskip &= !(pending_ssnapshot || pending_snapshot || pending_save_state || pending_save_movie || NeedFrameAdvance);
+	 fskip |= (bool)NoWaiting;
 
-	 if(pending_ssnapshot || pending_snapshot || pending_save_state || pending_save_movie || NeedFrameAdvance)
-	  fskip = 0;
+	 //printf("fskip %d; NeedFrameAdvance=%d\n", fskip, NeedFrameAdvance);
 
- 	 NeedFrameAdvance = 0;
-
-         if(NoWaiting)
-	  fskip = 1;
-
-	 VTLineWidths[VTBackBuffer][0] = ~0;
-
-	 int ThisBackBuffer = VTBackBuffer;
+	 NeedFrameAdvance = false;
+	 //
+	 //
+	 SoftFB[SoftFB_BackBuffer].lw[0] = ~0;
 
 	 //
 	 //
@@ -1001,8 +1011,8 @@ int GameLoop(void *arg)
 
  	 memset(&espec, 0, sizeof(EmulateSpecStruct));
 
-         espec.surface = (MDFN_Surface *)VTBuffer[VTBackBuffer];
-         espec.LineWidths = (int32 *)VTLineWidths[VTBackBuffer];
+         espec.surface = SoftFB[SoftFB_BackBuffer].surface.get();
+         espec.LineWidths = SoftFB[SoftFB_BackBuffer].lw.get();
 	 espec.skip = fskip;
 	 espec.soundmultiplier = CurGameSpeed;
 	 espec.NeedRewind = DNeedRewind;
@@ -1011,12 +1021,69 @@ int GameLoop(void *arg)
 	 espec.SoundBuf = Sound_GetEmuModBuffer(&espec.SoundBufMaxSize);
  	 espec.SoundVolume = (double)MDFN_GetSettingUI("sound.volume") / 100;
 
-         MDFNI_Emulate(&espec);
+	 if(MDFN_UNLIKELY(StateRCTest))
+	 {
+	  // Note: Won't work correctly with modules that do mid-sync.
+	  EmulateSpecStruct estmp = espec;
+
+	  MemoryStream state0(524288);
+	  MemoryStream state1(524288);
+	  MemoryStream state2(524288);
+
+	  MDFNSS_SaveSM(&state0);
+	  MDFNI_Emulate(&espec);
+	  espec = estmp;
+
+	  MDFNSS_SaveSM(&state1);
+	  state0.rewind();
+	  MDFNSS_LoadSM(&state0);
+	  MDFNI_Emulate(&espec);
+	  MDFNSS_SaveSM(&state2);
+
+	  if(!(state1.map_size() == state2.map_size() && !memcmp(state1.map() + 32, state2.map() + 32, state1.map_size() - 32)))
+	  {
+	   FileStream sd0("/tmp/sdump0", FileStream::MODE_WRITE);
+	   FileStream sd1("/tmp/sdump1", FileStream::MODE_WRITE);
+
+	   sd0.write(state1.map(), state1.map_size());
+	   sd1.write(state2.map(), state2.map_size());
+	   sd0.close();
+	   sd1.close();
+	   //assert(orig_state.map_size() == new_state.map_size() && !memcmp(orig_state.map() + 32, new_state.map() + 32, orig_state.map_size() - 32));
+	   abort();
+	  }
+	 }
+	 else
+          MDFNI_Emulate(&espec);
+
+	 if(MDFN_UNLIKELY(StateSLSTest))
+	 {
+	  MemoryStream orig_state(524288);
+	  MemoryStream new_state(524288);
+
+	  MDFNSS_SaveSM(&orig_state);
+	  orig_state.rewind();
+	  MDFNSS_LoadSM(&orig_state);
+	  MDFNSS_SaveSM(&new_state);
+
+	  if(!(orig_state.map_size() == new_state.map_size() && !memcmp(orig_state.map() + 32, new_state.map() + 32, orig_state.map_size() - 32)))
+	  {
+	   FileStream sd0("/tmp/sdump0", FileStream::MODE_WRITE);
+	   FileStream sd1("/tmp/sdump1", FileStream::MODE_WRITE);
+
+	   sd0.write(orig_state.map(), orig_state.map_size());
+	   sd1.write(new_state.map(), new_state.map_size());
+	   sd0.close();
+	   sd1.close();
+	   //assert(orig_state.map_size() == new_state.map_size() && !memcmp(orig_state.map() + 32, new_state.map() + 32, orig_state.map_size() - 32));
+	   abort();
+	  }
+	 }
 
 	 ers.AddEmuTime((espec.MasterCycles - espec.MasterCyclesALMS) / CurGameSpeed);
 
-
-	 VTDisplayRects[VTBackBuffer] = espec.DisplayRect;
+	 SoftFB[SoftFB_BackBuffer].rect = espec.DisplayRect;
+	 SoftFB[SoftFB_BackBuffer].field = espec.InterlaceOn ? espec.InterlaceField : -1;
 
 	 sound = espec.SoundBuf + (espec.SoundBufSizeALMS * CurGame->soundchan);
 	 ssize = espec.SoundBufSize - espec.SoundBufSizeALMS;
@@ -1029,39 +1096,42 @@ int GameLoop(void *arg)
 	  FPS_IncDrawn();
 
 
-	 do
 	 {
-	  VTBackBuffer = ThisBackBuffer;
+	  bool do_flip = false;
 
- 	  if(fskip && GameLoopPaused)
+	  do
 	  {
-	   // If this frame was skipped, and the game loop is paused(IE cheat interface is active), just blit the previous "successful" frame so the cheat
-	   // interface actually gets drawn.
-	   //
-	   // Needless to say, do not do "VTBackBuffer ^= 1;" here.
-	   //
-	   // Possible problems with this kludgery:
-	   //	Will fail spectacularly if there is no previous successful frame.  BOOOOOOM.  (But there always should be, especially since we initialize some
-  	   //   of the video buffer and rect structures during startup)
-	   //
-           MDFND_Update((MDFN_Surface *)VTBuffer[VTBackBuffer ^ 1], (MDFN_Rect*)&VTDisplayRects[VTBackBuffer ^ 1], (int32*)VTLineWidths[VTBackBuffer ^ 1], VTInterlaceField, sound, ssize);
-	  }
-	  else
-	  {
-           if(MDFND_Update(fskip ? NULL : (MDFN_Surface *)VTBuffer[VTBackBuffer], (MDFN_Rect*)&VTDisplayRects[VTBackBuffer], (int32*)VTLineWidths[VTBackBuffer], espec.InterlaceOn ? espec.InterlaceField : -1, sound, ssize))
-	    VTBackBuffer ^= 1;
-	  }
+ 	   if(fskip && ((InFrameAdvance && !NeedFrameAdvance) || GameLoopPaused))
+	   {
+	    // If this frame was skipped, and the game loop is paused(IE cheat interface is active) or we're in frame advance, just blit the last
+	    // drawn, non-skipped frame so the OSD elements actually get drawn.
+	    //
+	    // Needless to say, do not allow do_flip to be set to true here.
+	    //
+	    // Possible problems with this kludgery:
+	    //	Will fail spectacularly if there is no previous successful frame.  BOOOOOOM.  (But there always should be, especially since we initialize some
+  	    //   of the video buffer and rect structures during startup)
+	    //
+            MDFND_Update(SoftFB_BackBuffer ^ 1, sound, ssize);
+	   }
+	   else
+            do_flip = MDFND_Update(fskip ? -1 : SoftFB_BackBuffer, sound, ssize);
 
-	  FPS_UpdateCalc();
+	   FPS_UpdateCalc();
 
-          if((InFrameAdvance && !NeedFrameAdvance) || GameLoopPaused)
-	  {
-           if(ssize)
-	    for(int x = 0; x < CurGame->soundchan * ssize; x++)
-	     sound[x] = 0;
-	  }
-	 } while(((InFrameAdvance && !NeedFrameAdvance) || GameLoopPaused) && GameThreadRun);
+	   Netplay_GT_CheckPendingLine();
+
+           if((InFrameAdvance && !NeedFrameAdvance) || GameLoopPaused)
+	   {
+            if(ssize)
+	     for(int x = 0; x < CurGame->soundchan * ssize; x++)
+	      sound[x] = 0;
+	   }
+	  } while(((InFrameAdvance && !NeedFrameAdvance) || GameLoopPaused) && GameThreadRun);
+	  SoftFB_BackBuffer ^= do_flip;
+	 }
 	}
+
 	return(1);
 }   
 
@@ -1128,6 +1198,10 @@ static volatile int gte_read = 0;
 static volatile int gte_write = 0;
 
 /* This function may also be called by the main thread if a game is not loaded. */
+/*
+ This function may be called from MDFND_MidSync(), so make sure that it doesn't call directly nor indirectly
+ any MDFNI_* functions that shouldn't be called.
+*/
 static void GameThread_HandleEvents(void)
 {
  SDL_Event gtevents_temp[gtevents_size];
@@ -1164,8 +1238,6 @@ static void GameThread_HandleEvents(void)
 
   if(Debugger_IsActive())
    Debugger_GT_Event(event);
-
-  NetplayEventHook_GT(event);
  }
 }
 
@@ -1223,7 +1295,7 @@ void GT_ToggleFS(void)
   MDFND_PostSem(VTWakeupSem);
   while(NeedVideoChange)
   {
-   SDL_Delay(2);
+   Time::SleepMS(2);
   }
  }
 }
@@ -1239,7 +1311,7 @@ bool GT_ReinitVideo(void)
   MDFND_PostSem(VTWakeupSem);
   while(NeedVideoChange)
   {
-   SDL_Delay(2);
+   Time::SleepMS(2);
   }
  }
 
@@ -1505,7 +1577,7 @@ static volatile unsigned am3000_milk = 0;
 
 static int CowEntry(void*)
 {
- uint32 start_time = SDL_GetTicks();
+ uint32 start_time = Time::MonoMS();
 
  for(unsigned i = 0; i < 1000 * 1000; i++)
  {
@@ -1520,7 +1592,7 @@ static int CowEntry(void*)
 
  while(cow_milk != 0);
 
- return(SDL_GetTicks() - start_time);
+ return(Time::MonoMS() - start_time);
 }
 
 static int FarmerEntry(void*)
@@ -1640,7 +1712,7 @@ int main(int argc, char *argv[])
 	if(argc == 3 && !strcmp(argv[1], "-joy_config_helper"))
 	{
 	 int fd = atoi(argv[2]);
-	 int64 ltime = MDFND_GetTime();
+	 int64 ltime = Time::MonoMS();
 
 	 if(SDL_Init(0))
 	 {
@@ -1666,7 +1738,7 @@ int main(int argc, char *argv[])
 	  }
 
 
-	  while((MDFND_GetTime() - ltime) < 15)
+	  while((Time::MonoMS() - ltime) < 15)
 	   MDFND_Sleep(1);
 	  ltime += 15;
 	 }
@@ -1677,6 +1749,10 @@ int main(int argc, char *argv[])
 	}
 #endif
 	char *needie = NULL;
+
+        // Place before calls to SDL_Init()
+	putenv(strdup("SDL_DISABLE_LOCK_KEYS=1"));
+        //
 
 	MDFNDHaveFocus = false;
 
@@ -1799,22 +1875,19 @@ for(int zgi = 1; zgi < argc; zgi++)// start game load test loop
  needie = argv[zgi];
 #endif
 
-	VTReady = NULL;
-	VTDRReady = NULL;
-	VTLWReady = NULL;
-
+	VTReady.store(-1, std::memory_order_release);
 	NeedVideoChange = -1;
 
 	NeedExitNow = 0;
 
 	#if 0
 	{
-	 long start_ticks = SDL_GetTicks();
+	 long start_ticks = Time::MonoMS();
 
 	 for(int i = 0; i < 65536; i++)
 	  MDFN_GetSettingB("gg.forcemono");
 
-	 printf("%ld\n", SDL_GetTicks() - start_ticks);
+	 printf("%ld\n", Time::MonoMS() - start_ticks);
 	}
 	#endif
 
@@ -1824,21 +1897,19 @@ for(int zgi = 1; zgi < argc; zgi++)// start game load test loop
 	 //uint32 pitch32 = round_up_pow2(CurGame->fb_width);
 	 MDFN_PixelFormat nf(MDFN_COLORSPACE_RGB, 0, 8, 16, 24);
 
-	 VTBuffer[0] = new MDFN_Surface(NULL, CurGame->fb_width, CurGame->fb_height, pitch32, nf);
-         VTBuffer[1] = new MDFN_Surface(NULL, CurGame->fb_width, CurGame->fb_height, pitch32, nf);
-         VTLineWidths[0] = (int32 *)calloc(CurGame->fb_height, sizeof(int32));
-         VTLineWidths[1] = (int32 *)calloc(CurGame->fb_height, sizeof(int32));
-
          for(int i = 0; i < 2; i++)
 	 {
-          ((MDFN_Surface *)VTBuffer[i])->Fill(0, 0, 0, 0);
+	  SoftFB[i].surface.reset(new MDFN_Surface(NULL, CurGame->fb_width, CurGame->fb_height, pitch32, nf));
+          SoftFB[i].lw.reset(new int32[CurGame->fb_height]);
+
+	  SoftFB[i].surface->Fill(0, 0, 0, 0);
 
 	  //
-	  // Debugger step mode, and cheat interface, rely on the previous backbuffer being valid in certain situations.  Initialize some stuff here so that
+	  // Debugger step mode, cheat interface, and frame advance mode rely on the previous backbuffer being valid in certain situations.  Initialize some stuff here so that
 	  // reliance will still work even immediately after startup.
-	  VTDisplayRects[i].w = std::min<int32>(16, VTBuffer[i]->w);
-	  VTDisplayRects[i].h = std::min<int32>(16, VTBuffer[i]->h);
-	  VTLineWidths[i][0] = ~0;
+	  SoftFB[i].rect.w = std::min<int32>(16, SoftFB[i].surface->w);
+	  SoftFB[i].rect.h = std::min<int32>(16, SoftFB[i].surface->h);
+	  SoftFB[i].lw[0] = ~0;
 	 }
 
          NeedVideoChange = -1;
@@ -1873,19 +1944,25 @@ for(int zgi = 1; zgi < argc; zgi++)// start game load test loop
           NeedVideoChange = 0;
          }
 
-         if(VTReady)
-         {
-	  //static int last_time;
-	  //int curtime;
+	 {
+	  const int vtr = VTReady.load(std::memory_order_acquire);
 
-          BlitScreen(VTReady, VTDRReady, VTLWReady, VTInterlaceField, VTSSnapshot);
+          if(vtr >= 0)
+          {
+	   //static int last_time;
+	   //int curtime;
 
-          //curtime = SDL_GetTicks();
-          //printf("%d\n", curtime - last_time);
-          //last_time = curtime;
+           BlitScreen(SoftFB[vtr].surface.get(), &SoftFB[vtr].rect, SoftFB[vtr].lw.get(), SoftFB[vtr].field, VTSSnapshot);
 
-          VTReady = NULL;	// Set to NULL after we're done blitting everything(including on-screen display stuff), and NOT just the emulated system's video surface.
-         }
+           //curtime = Time::MonoMS();
+           //printf("%d\n", curtime - last_time);
+           //last_time = curtime;
+
+	   //
+	   //
+           VTReady.store(-1, std::memory_order_release);	// Set to -1 after we're done blitting everything(including on-screen display stuff), and NOT just the emulated system's video surface.
+          }
+	 }
 
 	 PumpWrap();
 	 if(DidVideoChange)	// Do it after PumpWrap() in case there are stale SDL_ActiveEvent in the SDL event queue.
@@ -1898,19 +1975,10 @@ for(int zgi = 1; zgi < argc; zgi++)// start game load test loop
 
 	CloseGame();
 
-	for(int x = 0; x < 2; x++)
+	for(int i = 0; i < 2; i++)
 	{
-	 if(VTBuffer[x])
-	 {
-	  delete VTBuffer[x];
-	  VTBuffer[x] = NULL;
-	 }
-
-	 if(VTLineWidths[x])
-	 {
-	  free(VTLineWidths[x]);
-	  VTLineWidths[x] = NULL;
-	 }
+	 SoftFB[i].surface.reset(nullptr);
+	 SoftFB[i].lw.reset(nullptr);
 	}
 #if 0
 } // end game load test loop
@@ -1941,57 +2009,59 @@ for(int zgi = 1; zgi < argc; zgi++)// start game load test loop
 }
 
 
-
 static uint32 last_btime = 0;
-static void UpdateSoundSync(int16 *Buffer, int Count)
+static void UpdateSoundSync(int16 *Buffer, uint32 Count)
 {
  if(Count)
  {
   if(ffnosound && CurGameSpeed != 1)
   {
-   for(int x = 0; x < Count * CurGame->soundchan; x++)
+   for(uint32 x = 0; x < Count * CurGame->soundchan; x++)
     Buffer[x] = 0;
   }
-  int32 max = Sound_CanWrite();
-  if(Count > max)
+  //
+  //
+  //
+  const uint32 cw = Sound_CanWrite();
+  bool NeedETtoRT = (Count >= (cw * 0.95));
+
+  if(NoWaiting && Count > cw)
   {
-   if(NoWaiting) 
-   {
-    //printf("NW C to M; count=%d, max=%d\n", Count, max);
-    Count = max;
-   }
+   //printf("NW C to M; count=%d, max=%d\n", Count, max);
+   Count = cw;
   }
-  if(Count >= (max * 0.95))
+  else if(MDFNDnetplay)
   {
-   ers.SetETtoRT();
+   //
+   // Cheap code to fix sound buffer underruns due to accumulation of time error during netplay.
+   //
+   uint32 dw = 0;
+
+   if(cw >= (Count * 7 / 4)) // || cw >= Sound_BufferSize())
+    dw = cw - std::min<uint32>(cw, Count);
+
+   if(dw)
+   {
+    int16 zbuf[128 * 2];	// *2 for stereo case.
+
+    //printf("DW: %u\n", dw);
+
+    memset(zbuf, 0, sizeof(zbuf));
+
+    while(dw != 0)
+    {
+     uint32 wti = std::min<int>(128, dw);
+     Sound_Write(zbuf, wti);
+     dw -= wti;
+    }
+    NeedETtoRT = true;
+   }
   }
 
   Sound_Write(Buffer, Count);
 
-  //printf("%u\n", Sound_CanWrite());
-
-  //
-  // Cheap code to fix sound buffer underruns due to accumulation of time error during netplay.
-  //
-  if(MDFNDnetplay)
-  {
-   int cw = Sound_CanWrite();
-
-   if(cw >= Count * 1.00)
-   {
-    int16 zbuf[128 * 2];	// *2 for stereo case.
-
-    //printf("SNOO: %d %d\n", cw, Count);
-    memset(zbuf, 0, sizeof(zbuf));
-
-    while(cw > 0)
-    {
-     Sound_Write(zbuf, std::min<int>(128, cw));
-     cw -= 128;
-    }
-    ers.SetETtoRT();
-   }
-  }
+  if(NeedETtoRT)
+   ers.SetETtoRT();
  }
  else
  {
@@ -2008,64 +2078,91 @@ void MDFND_MidSync(const EmulateSpecStruct *espec)
 
  UpdateSoundSync(espec->SoundBuf + (espec->SoundBufSizeALMS * CurGame->soundchan), espec->SoundBufSize - espec->SoundBufSizeALMS);
 
- // TODO(once we can ensure it's safe): GameThread_HandleEvents();
+ GameThread_HandleEvents(); // Should be safe, but be careful about future changes.
  MDFND_UpdateInput(true, false);
 }
 
-static bool PassBlit(MDFN_Surface *surface, MDFN_Rect *rect, int32 *lw, int InterlaceField)
+static bool PassBlit(const int WhichVideoBuffer)
 {
- bool ret = false;
+ if(WhichVideoBuffer < 0)
+  return false;
 
-  /* If it's been >= 100ms since the last blit, assume that the blit
+ while(VTReady.load(std::memory_order_acquire) >= 0)
+ {
+  /* If it's been > 100ms since the last blit, assume that the blit
      thread is being time-slice starved, and let it run.  This is especially necessary
      for fast-forwarding to respond well(since keyboard updates are
      handled in the main thread) on slower systems or when using a higher fast-forwarding speed ratio.
   */
- if(surface)
- {
-  if((last_btime + 100) < SDL_GetTicks() || pending_ssnapshot)
-  {
-   //puts("Eep");
-   while(VTReady && GameThreadRun) SDL_Delay(1);
-  }
-
-  if(!VTReady)
-  {
-   Debugger_GTR_PassBlit();	// Call before the VTReady = surface
-
-   VTSSnapshot = pending_ssnapshot;
-   VTInterlaceField = InterlaceField;
-   VTLWReady = lw;
-   VTDRReady = rect;
-   VTReady = surface;
-   ret = true;
-
-   pending_ssnapshot = 0;
-   last_btime = SDL_GetTicks();
-   FPS_IncBlitted();
-
-   MDFND_PostSem(VTWakeupSem);
-  }
+  if(!GameThreadRun || ((last_btime + 100) >= Time::MonoMS() && !pending_ssnapshot))
+   return false;
+  else
+   Time::SleepMS(1);
  }
 
- return(ret);
+ Debugger_GTR_PassBlit();	// Call before the VTReady = WhichVideoBuffer
+
+ VTSSnapshot = pending_ssnapshot;
+ //
+ VTReady.store(WhichVideoBuffer, std::memory_order_release);
+ //
+ //
+ //
+ pending_ssnapshot = false;
+ last_btime = Time::MonoMS();
+ FPS_IncBlitted();
+
+ MDFND_PostSem(VTWakeupSem);
+
+ return true;
 }
 
 
 //
-// Called from game thread.
+// Called from game thread.  Pass -1 for WhichVideoBuffer when the frame is skipped.
 //
-bool MDFND_Update(MDFN_Surface *surface, MDFN_Rect *rect, int32 *lw, int InterlaceField, int16 *Buffer, int Count)
+static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
 {
  bool ret = false;
 
- if(surface)
+ if(WhichVideoBuffer >= 0)
+ {
   Debugger_GT_Draw();
+
+#if 0
+  // Wait if we're re-blitting an already blitted frame, such as done while in frame advance or debugger step mode.
+  while(VTReady.load(std::memory_order_acquire) == WhichVideoBuffer)
+  {
+   puts("Reblit Wait");
+   Time::SleepMS(1);
+   if(!GameThreadRun)
+    return false;
+  }
+#endif
+
+  //
+  // Save any pending screen snapshots, save states, and movies before any potential calls to PassBlit().
+  //
+  MDFN_Surface* surface = SoftFB[WhichVideoBuffer].surface.get();
+  MDFN_Rect* rect = &SoftFB[WhichVideoBuffer].rect;
+  int32* lw = SoftFB[WhichVideoBuffer].lw.get();
+
+  if(pending_snapshot)
+   MDFNI_SaveSnapshot(surface, rect, lw);
+
+  if(pending_save_state)
+   MDFNI_SaveState(NULL, NULL, surface, rect, lw);
+
+  if(pending_save_movie)
+   MDFNI_SaveMovie(NULL, surface, rect, lw);
+
+  pending_save_movie = pending_snapshot = pending_save_state = false;
+ }
 
  if(false == sc_blit_timesync)
  {
   //puts("ABBYNORMAL");
-  ret |= PassBlit(surface, rect, lw, InterlaceField);
+  ret |= PassBlit(WhichVideoBuffer);
  }
 
  UpdateSoundSync(Buffer, Count);
@@ -2076,24 +2173,10 @@ bool MDFND_Update(MDFN_Surface *surface, MDFN_Rect *rect, int32 *lw, int Interla
  if(RemoteOn)
   CheckForSTDIOMessages();	// Note: This function may change settings, and disable sound.
 
- if(surface)
- {
-  if(pending_snapshot)
-   MDFNI_SaveSnapshot(surface, rect, lw);
-
-  if(pending_save_state)
-   MDFNI_SaveState(NULL, NULL, surface, rect, lw);
-
-  if(pending_save_movie)
-   MDFNI_SaveMovie(NULL, surface, rect, lw);
-
-  pending_save_movie = pending_snapshot = pending_save_state = 0;
- }
-
  if(true == sc_blit_timesync)
  {
   //puts("NORMAL");
-  ret |= PassBlit(surface, rect, lw, InterlaceField);
+  ret |= PassBlit(WhichVideoBuffer);
  }
 
  return(ret);
@@ -2112,15 +2195,5 @@ void MDFND_SetStateStatus(StateStatusStruct *status) noexcept
 void MDFND_SetMovieStatus(StateStatusStruct *status) noexcept
 {
  SendCEvent(CEVT_SET_MOVIE_STATUS, status, NULL);
-}
-
-uint32 MDFND_GetTime(void)
-{
- return(SDL_GetTicks());
-}
-
-void MDFND_Sleep(uint32 ms)
-{
- SDL_Delay(ms);
 }
 

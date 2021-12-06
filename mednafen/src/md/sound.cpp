@@ -114,7 +114,7 @@ static void RedoVolume(void)
 bool MDSound_SetSoundRate(uint32 rate)
 {
  zebuf.set_sample_rate(rate ?rate : 44100, 60);
- return(TRUE);
+ return(true);
 }
 
 int32 MDSound_Flush(int16 *SoundBuf, const int32 MaxSoundFrames)
@@ -177,6 +177,7 @@ void MDSound_StateAction(StateMem *sm, const unsigned load, const bool data_only
   SFARRAYN(&fm_slizer[0], fm_slizer.size(), "FMState"),
 
   SFARRAY32N(sn_state.volume, 4, "Volume"),
+  SFARRAY32N(sn_state.delay, 4, "Delay"),
   SFARRAY32N(sn_state.sq_period, 3, "SQPeriod"),
   SFARRAY32N(sn_state.sq_phase, 3, "SQPhase"),
   SFVARN(sn_state.noise_period, "NPeriod"),

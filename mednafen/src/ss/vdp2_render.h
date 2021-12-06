@@ -2,7 +2,7 @@
 /* Mednafen Sega Saturn Emulation Module                                      */
 /******************************************************************************/
 /* vdp2_render.h:
-**  Copyright (C) 2016 Mednafen Team
+**  Copyright (C) 2016-2017 Mednafen Team
 **
 ** This program is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU General Public License
@@ -25,13 +25,16 @@
 namespace MDFN_IEN_SS
 {
 
-void VDP2REND_Init(const bool IsPAL, const int sls, const int sle) MDFN_COLD;
-void VDP2REND_FillVideoParams(MDFNGI* gi) MDFN_COLD;
+void VDP2REND_Init(const bool IsPAL) MDFN_COLD;
+void VDP2REND_SetGetVideoParams(MDFNGI* gi, const bool caspect, const int sls, const int sle, const bool show_h_overscan, const bool dohblend) MDFN_COLD;
 void VDP2REND_Kill(void) MDFN_COLD;
+void VDP2REND_GetGunXTranslation(const bool clock28m, float* scale, float* offs);
 void VDP2REND_StartFrame(EmulateSpecStruct* espec, const bool clock28m, const int SurfInterlaceField);
 void VDP2REND_EndFrame(void);
 void VDP2REND_Reset(bool powering_up) MDFN_COLD;
 void VDP2REND_SetLayerEnableMask(uint64 mask) MDFN_COLD;
+
+void VDP2REND_StateAction(StateMem* sm, const unsigned load, const bool data_only, uint16 (&rr)[0x100], uint16 (&cr)[2048], uint16 (&vr)[262144]) MDFN_COLD;
 
 struct VDP2Rend_LIB
 {
@@ -49,7 +52,7 @@ struct VDP2Rend_LIB
 };
 
 VDP2Rend_LIB* VDP2REND_GetLIB(unsigned line);
-void VDP2REND_DrawLine(int vdp2_line, const bool field);
+void VDP2REND_DrawLine(int vdp2_line, const uint32 crt_line, const bool field);
 
 void VDP2REND_Write8_DB(uint32 A, uint16 DB);
 void VDP2REND_Write16_DB(uint32 A, uint16 DB);

@@ -6,11 +6,10 @@ AC_CONFIG_MACRO_DIR([m4])
 #
 # Avoid trailing and leading zeroes in the decimal version components to avoid confusing not-so-learned people.
 #
-MEDNAFEN_VERSION='0.9.39.2'
-MEDNAFEN_VERSION_NUMERIC=0x00093902
+MEDNAFEN_VERSION='0.9.48'
+MEDNAFEN_VERSION_NUMERIC=0x00094800
 
 AC_CANONICAL_HOST
-AC_CANONICAL_TARGET
 AM_INIT_AUTOMAKE([mednafen], $MEDNAFEN_VERSION)
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES])
 AC_CONFIG_HEADERS([include/config.h:include/config.h.in])
@@ -31,7 +30,6 @@ CPP="$CPP -std=gnu99"
 AX_CFLAGS_GCC_OPTION([-fsigned-char], CC)
 AX_CXXFLAGS_GCC_OPTION([-fsigned-char], CXX)
 
-AM_PROG_LIBTOOL
 AC_PROG_INSTALL
 
 gl_VISIBILITY
@@ -59,7 +57,18 @@ AC_CHECK_SIZEOF(size_t)
 AC_CHECK_SIZEOF(ptrdiff_t)
 AC_CHECK_SIZEOF(off_t)
 AC_C_CONST
-AC_CHECK_FUNCS(memcmp memcpy memmove memset mmap munmap madvise signal sigaction fork pipe dup2 fcntl getenv putenv setenv gettimeofday getpwuid getuid nanosleep usleep strerror strerror_r ftello fopen64 fseeko64 ftello64 fstat64 ftruncate64 __mingw_get_crt_info)
+AC_CHECK_FUNCS(memcmp memcpy memmove memset mmap munmap madvise signal sigaction fork pipe dup2 fcntl getenv putenv setenv gettimeofday getpwuid getuid strerror strerror_r ftello fopen64 fseeko64 ftello64 fstat64 ftruncate64 __mingw_get_crt_info)
+
+AC_SEARCH_LIBS(fmodl, [m])
+
+#
+# Check for any libraries that need to be linked against for clock_gettime().
+#
+# (posix4 is apparently used by much older versions of Solaris according to tar, pre-7, so maybe it's not necessary
+#  for Mednafen?)
+AC_SEARCH_LIBS(clock_gettime, [rt posix4])
+AC_CHECK_FUNCS(clock_gettime nanosleep usleep localtime_r gmtime_r)
+
 AC_CHECK_HEADERS(fcntl.h)
 AC_CHECK_HEADERS(stdint.h inttypes.h)
 AC_FUNC_MKDIR
@@ -68,13 +77,6 @@ PKG_PROG_PKG_CONFIG
 AC_CHECK_FUNCS(round nearbyint nearbyintf rint rintf)
 AC_CHECK_HEADERS(fenv.h)
 
-#
-# Check for any libraries that need to be linked against for clock_gettime().
-#
-# (posix4 is apparently used by much older versions of Solaris according to tar, pre-7, so maybe it's not necessary
-#  for Mednafen?)
-AC_SEARCH_LIBS(clock_gettime, [rt posix4])
-AC_CHECK_FUNCS(clock_gettime)
 
 AC_DEFINE(MINILZO_HAVE_CONFIG_H, [1], [Define if config.h is present])
 
@@ -85,8 +87,8 @@ AC_SUBST(LIBICONV)
 AC_SUBST(LIBINTL)
 
 dnl Check for zlib
-AC_CHECK_LIB([z], [zlibVersion],[], AC_MSG_ERROR([*** zlib not found!]))
-AC_SUBST([ZLIB_LIBS], [-lz])
+AC_CHECK_LIB([z], [zlibVersion], ZLIB_LIBS="-lz", AC_MSG_ERROR([*** zlib not found!]))
+AC_SUBST([ZLIB_LIBS])
 
 dnl -fno-fast-math and -fno-unsafe-math-optimizations to make sure it's disabled, as the fast-math feature on certain older
 dnl versions of gcc produces horribly broken code(and even when it's working correctly, it can have somewhat unpredictable effects).
@@ -96,12 +98,16 @@ dnl in Mednafen that would cause problems.
 dnl
 dnl -fomit-frame-pointer is required for some x86 inline assembly to compile.
 dnl
+dnl -fstrict-aliasing for OpenBSD
+dnl
 OPTIMIZER_FLAGS=""
 AX_CFLAGS_GCC_OPTION([-fno-fast-math], OPTIMIZER_FLAGS)
 AX_CFLAGS_GCC_OPTION([-fno-unsafe-math-optimizations], OPTIMIZER_FLAGS)
 AX_CFLAGS_GCC_OPTION([-fno-aggressive-loop-optimizations], OPTIMIZER_FLAGS)
 AX_CFLAGS_GCC_OPTION([-fno-ipa-icf], OPTIMIZER_FLAGS)
+AX_CFLAGS_GCC_OPTION([-fno-printf-return-value], OPTIMIZER_FLAGS)
 AX_CFLAGS_GCC_OPTION([-fomit-frame-pointer], OPTIMIZER_FLAGS)
+AX_CFLAGS_GCC_OPTION([-fstrict-aliasing], OPTIMIZER_FLAGS)
 
 dnl
 dnl Aggressively try to disable PIC and PIE, as it has a significant performance overhead and will
@@ -115,6 +121,7 @@ AX_CFLAGS_GCC_OPTION([-fno-pie], CODEGEN_FLAGS)
 AX_CFLAGS_GCC_OPTION([-fno-PIC], CODEGEN_FLAGS)
 AX_CFLAGS_GCC_OPTION([-fno-PIE], CODEGEN_FLAGS)
 AX_CFLAGS_GCC_OPTION([-nopie], CODEGEN_FLAGS)
+AX_CFLAGS_GCC_OPTION([-no-pie], CODEGEN_FLAGS)
 AX_CFLAGS_GCC_OPTION([-fwrapv],  CODEGEN_FLAGS)
 AX_CFLAGS_GCC_OPTION([-fjump-tables], CODEGEN_FLAGS)
 
@@ -142,6 +149,11 @@ AX_CFLAGS_GCC_OPTION([-fno-stack-protector], NO_STACK_PROTECTOR_FLAGS)
 AX_CFLAGS_GCC_OPTION([-fno-stack-protector-all], NO_STACK_PROTECTOR_FLAGS)
 AX_CFLAGS_GCC_OPTION([-fno-stack-protector-strong], NO_STACK_PROTECTOR_FLAGS)
 AC_SUBST(NO_STACK_PROTECTOR_FLAGS)
+
+# Used for ngp and quicklz
+NO_STRICT_ALIASING_FLAGS=""
+AX_CFLAGS_GCC_OPTION([-fno-strict-aliasing], NO_STRICT_ALIASING_FLAGS)
+AC_SUBST(NO_STRICT_ALIASING_FLAGS)
 
 # -----------------------------------
 # Begin snes flags
@@ -377,18 +389,11 @@ if test x$enable_snes_faust = xyes; then
 fi
 
 AC_ARG_ENABLE(ss,
- AC_HELP_STRING([--enable-ss], [build with Sega Saturn emulation [[default=x86_64]]]),
-                  , enable_ss=x86_64)
+ AC_HELP_STRING([--enable-ss], [build with Sega Saturn emulation [[default=x86_64 amd64 aarch64* arm64* ppc64* powerpc64*]]]),
+                  , [enable_ss="x86_64 amd64 aarch64* arm64* ppc64* powerpc64*"])
+for i in $enable_ss; do case $host_cpu in $i) enable_ss=yes ;; esac; done
 
-case "$target_cpu" in
-	x86_64|amd64)
-		if test x$enable_ss = xx86_64; then
-			enable_ss=yes
-		fi
-		;;
-esac
-
-if test x$enable_ss = xyes; then
+if test "x$enable_ss" = "xyes"; then
                 AC_DEFINE([WANT_SS_EMU], [1], [Define if we are compiling with Sega Saturn emulation.])
                 AM_CONDITIONAL(WANT_SS_EMU, true)
 		AM_CONDITIONAL(NEED_68K_EMU, true)
@@ -424,65 +429,73 @@ if test x$enable_wswan = xyes; then
                 AM_CONDITIONAL(WANT_WSWAN_EMU, true)
 fi
 
-AM_CONDITIONAL(HAVE_OSSDSP, false)
+##
+## ALSA and JACK checking code ripped from SDL's autoconf file, with heavy modifications
+##
+#
+# ALSA
+#
 AM_CONDITIONAL(HAVE_ALSA, false)
-AM_CONDITIONAL(HAVE_DIRECTSOUND, false)
-AM_CONDITIONAL(HAVE_WASAPI, false)
-AM_CONDITIONAL(HAVE_SDL, false)
-AM_CONDITIONAL(HAVE_JACK, false)
+AC_ARG_ENABLE(alsa, AC_HELP_STRING([--enable-alsa], [support the ALSA audio API [[default=yes]]]),
+	[],
+	[enable_alsa=yes])
+if test x$enable_alsa = xyes; then
+	AM_PATH_ALSA(1.0.0, have_alsa=yes, have_alsa=no)
 
-dnl Check* functions ripped from SDL's autoconf file, with heavy modifications
-dnl See if the ALSA audio interface is supported
+	# Restore all flags from before the ALSA detection runs
+	CFLAGS="$alsa_save_CFLAGS"
+	LDFLAGS="$alsa_save_LDFLAGS"
+	LIBS="$alsa_save_LIBS"
 
-CheckALSA()
-{
-    AC_ARG_ENABLE(alsa,
-AC_HELP_STRING([--enable-alsa], [support the ALSA audio API [[default=yes]]]),
-                  , enable_alsa=yes)
-    if test x$enable_alsa = xyes; then
-        AM_PATH_ALSA(1.0.0, have_alsa=yes, have_alsa=no)
-
-        # Restore all flags from before the ALSA detection runs
-        CFLAGS="$alsa_save_CFLAGS"
-        LDFLAGS="$alsa_save_LDFLAGS"
-        LIBS="$alsa_save_LIBS"
-
-        if test x$have_alsa = xyes; then
+	if test x$have_alsa = xyes; then
 		AM_CONDITIONAL(HAVE_ALSA, true)
 		AC_DEFINE([HAVE_ALSA], [1], [Define if we are compiling with ALSA support.])
 	fi
-    fi
+fi
+AC_SUBST([ALSA_LIBS])
+AC_SUBST([ALSA_CFLAGS])
 
- AC_SUBST([ALSA_LIBS])
- AC_SUBST([ALSA_CFLAGS])
-}
 
-CheckJACK()
-{
-    AC_ARG_ENABLE(jack,
-AC_HELP_STRING([--enable-jack], [support the JACK audio API [[default=yes]]]),
-                  , enable_jack=yes)
-    if test x$enable_jack = xyes; then
-        PKG_CHECK_MODULES(JACK, jack, [have_jack=yes], [have_jack=no])
+#
+# JACK
+#
+AM_CONDITIONAL(HAVE_JACK, false)
+AC_ARG_ENABLE(jack, AC_HELP_STRING([--enable-jack], [support the JACK audio API [[default=yes]]]),
+	[],
+	[enable_jack=yes])
+if test x$enable_jack = xyes; then
+	PKG_CHECK_MODULES(JACK, jack, [have_jack=yes], [have_jack=no])
 
-        if test x$have_jack = xyes; then
-                AM_CONDITIONAL(HAVE_JACK, true)
-                AC_DEFINE([HAVE_JACK], [1], [Define if we are compiling with JACK support.])
-        fi
-    fi
+	if test x$have_jack = xyes; then
+		AM_CONDITIONAL(HAVE_JACK, true)
+		AC_DEFINE([HAVE_JACK], [1], [Define if we are compiling with JACK support.])
+	fi
+fi
+AC_SUBST([JACK_LIBS])
+AC_SUBST([JACK_CFLAGS])
 
- AC_SUBST([JACK_LIBS])
- AC_SUBST([JACK_CFLAGS])
-}
 
-CheckALSA
-CheckJACK
-
-AC_ARG_WITH([libsndfile],
-            [AS_HELP_STRING([--with-libsndfile],
-              [support various sound file formats in ripped CD images @<:@default=yes@:>@])],
-            [],
-            [with_libsndfile=yes])
+#
+# OpenBSD Audio
+#
+AM_CONDITIONAL(HAVE_OPENBSD_AUDIO, false)
+AC_MSG_CHECKING([for OpenBSD audio])
+AC_TRY_COMPILE([
+	#include <sys/types.h>
+	#include <sys/ioctl.h>
+	#include <sys/audioio.h>
+	#include <string.h>
+	],
+	[
+	struct audio_swpar par;
+	struct audio_pos pos;
+	struct audio_status status;
+	AUDIO_INITPAR(&par);
+	],
+	[AC_MSG_RESULT([yes])
+	 AM_CONDITIONAL(HAVE_OPENBSD_AUDIO, true)
+	 AC_DEFINE([HAVE_OPENBSD_AUDIO], [1], [Define if we are compiling with OpenBSD audio support.])],
+	[AC_MSG_RESULT([no])])
 
 #
 # mpcdec
@@ -518,21 +531,65 @@ if test x$with_external_tremor = xyes; then
 	AC_SUBST([TREMOR_LIBS], ["-lvorbisidec"])
 fi
 
+#
+# trio
+#
+AM_CONDITIONAL(HAVE_EXTERNAL_TRIO, false)
+AC_ARG_WITH([external-trio], [AS_HELP_STRING([--with-external-trio], [compile and link with external trio @<:@default=no@:>@])],
+	[],
+	[with_external_trio=no])
+if test x$with_external_trio = xyes; then
+	AC_CHECK_LIB([trio], [trio_printf], [], AC_MSG_ERROR([*** libtrio not found!]))
+	AC_CHECK_HEADER([trio.h], [], AC_MSG_ERROR([*** libtrio not found!]))
 
+	AC_DEFINE([HAVE_EXTERNAL_TRIO], [1], [Define if we are compiling and linking with external trio.])
+	AM_CONDITIONAL(HAVE_EXTERNAL_TRIO, true)
+	AC_SUBST([TRIO_LIBS], ["-ltrio"])
+	trio_include_symsrc="include/trio_external"
+else
+	trio_include_symsrc="src/trio"
+fi
+AC_CONFIG_LINKS([include/trio/triodef.h:$trio_include_symsrc/triodef.h])
+AC_CONFIG_LINKS([include/trio/trio.h:$trio_include_symsrc/trio.h])
+AC_CONFIG_LINKS([include/trio/trionan.h:$trio_include_symsrc/trionan.h])
+AC_CONFIG_LINKS([include/trio/triop.h:$trio_include_symsrc/triop.h])
+AC_CONFIG_LINKS([include/trio/triostr.h:$trio_include_symsrc/triostr.h])
+
+#
+# libsndfile
+#
+AM_CONDITIONAL(HAVE_LIBSNDFILE, false)
+AC_ARG_WITH([libsndfile],
+            [AS_HELP_STRING([--with-libsndfile],
+              [support various sound file formats in ripped CD images @<:@default=yes@:>@])],
+            [],
+            [with_libsndfile=yes])
+if test x$with_libsndfile = xyes; then
+	PKG_CHECK_MODULES(SNDFILE, sndfile >= 1.0.2, [], AC_MSG_ERROR([*** libsndfile >= 1.0.2 not found!]))
+	AC_DEFINE([HAVE_LIBSNDFILE], [1], [Define if we are compiling with libsndfile support.])
+	AM_CONDITIONAL(HAVE_LIBSNDFILE, true)
+fi
+AC_SUBST([SNDFILE_LIBS])
+AC_SUBST([SNDFILE_CFLAGS])
+
+
+AM_CONDITIONAL(HAVE_OSSDSP, false)
+AM_CONDITIONAL(HAVE_DIRECTSOUND, false)
+AM_CONDITIONAL(HAVE_WASAPI, false)
+AM_CONDITIONAL(HAVE_SDL, false)
 AM_CONDITIONAL(DOS, false)
 AM_CONDITIONAL(WIN32, false)
 AM_CONDITIONAL(UNIX, false)
 AM_CONDITIONAL(HAVE_LINUX_JOYSTICK, false)
-AM_CONDITIONAL(HAVE_LIBSNDFILE, false)
 NEED_SDL=true
 
-if expr x"$target" : 'x.*-mingw*' > /dev/null; then
+if expr x"$host" : 'x.*-mingw*' > /dev/null; then
 	AC_CHECK_TOOL([WINDRES], [windres])
 
-	if test x$target_cpu != xx86_64; then
+	if test x$host_cpu != xx86_64; then
 		# Enable larger address space support(for the 32-bit build).
 		LDFLAGS="$LDFLAGS -Wl,--large-address-aware"
-		AX_CFLAGS_GCC_OPTION([-march=i586], OPTIMIZER_FLAGS)
+		AX_CFLAGS_GCC_OPTION([-march=i686], OPTIMIZER_FLAGS)
 		AX_CFLAGS_GCC_OPTION([-mtune=pentium3], OPTIMIZER_FLAGS)
 	else
 		AX_CFLAGS_GCC_OPTION([-mtune=amdfam10], OPTIMIZER_FLAGS)
@@ -553,41 +610,18 @@ if expr x"$target" : 'x.*-mingw*' > /dev/null; then
 	AM_CONDITIONAL(WIN32, true)
 
 	LIBS="-mwindows -lws2_32 -ldxguid -lwinmm -ldinput $LIBS -lwinmm"
-
-        if test x$with_libsndfile = xyes; then
-                SNDFILE_LIBS="-lsndfile"
-                SNDFILE_CFLAGS=""
-                AC_DEFINE([HAVE_LIBSNDFILE], [1], [Define if we are compiling with libsndfile support.])
-		AM_CONDITIONAL(HAVE_LIBSNDFILE, true)
-        fi
-
-elif expr x"$target" : 'x.*djgpp' > /dev/null; then
+	CPPFLAGS="-D_LFS64_LARGEFILE=1 $CPPFLAGS"
+elif expr x"$host" : 'x.*djgpp' > /dev/null; then
        	AC_DEFINE([PSS_STYLE],[2], [Defines the filesystem path-separator type.])
        	AC_DEFINE([DOS], [1], [Define if we are compiling for DOS.])
        	AM_CONDITIONAL(DOS, true)
 	NEED_SDL=false
-
-        if test x$with_libsndfile = xyes; then
-                SNDFILE_LIBS="-lsndfile"
-                SNDFILE_CFLAGS=""
-                AC_DEFINE([HAVE_LIBSNDFILE], [1], [Define if we are compiling with libsndfile support.])
-		AM_CONDITIONAL(HAVE_LIBSNDFILE, true)
-        fi
 else
 	AC_DEFINE([PSS_STYLE],[1], [Defines the filesystem path-separator type.])
-
-	if test x$with_libsndfile = xyes; then
-		PKG_CHECK_MODULES(SNDFILE, sndfile >= 1.0.2, [], AC_MSG_ERROR([*** libsndfile >= 1.0.2 not found!]))
-                AC_DEFINE([HAVE_LIBSNDFILE], [1], [Define if we are compiling with libsndfile support.])
-		AM_CONDITIONAL(HAVE_LIBSNDFILE, true)
-	fi
 
 	AC_CHECK_HEADER([sys/soundcard.h],[AM_CONDITIONAL(HAVE_OSSDSP,true) AC_DEFINE([HAVE_OSSDSP], [1], [Define if we are compiling with OSS support.])])
 	AC_CHECK_HEADER([linux/joystick.h],[AM_CONDITIONAL(HAVE_LINUX_JOYSTICK,true) AC_DEFINE([HAVE_LINUX_JOYSTICK], [1], [Define if we are compiling with Linux joystick support.])])
 fi
-
-AC_SUBST([SNDFILE_LIBS])
-AC_SUBST([SNDFILE_CFLAGS])
 
 if $NEED_SDL
 then
@@ -617,7 +651,7 @@ dnl
 dnl Solaris may require "nsl" and "socket" libraries.
 dnl
 AC_SEARCH_LIBS([gethostbyname], [nsl])
-AC_SEARCH_LIBS([socket], [socket])
+AC_SEARCH_LIBS([socket], [socket network])
 
 AC_CHECK_FUNCS(socket bind listen connect accept send recv close gethostbyname gethostbyaddr getaddrinfo freeaddrinfo gai_strerror select poll getsockopt setsockopt, [], 
 	[HAVE_POSIX_SOCKETS=no])
@@ -640,7 +674,7 @@ AC_TRY_COMPILE([], [asm volatile("vcvtss2si %xmm6,%ecx\n\tvhaddps %ymm7,%ymm7,%y
 	AC_DEFINE([HAVE_INLINEASM_AVX], [1], [Define if GNU-style AVX inline assembly is supported.]),
 	[])
 
-case "$target_cpu" in
+case "$host_cpu" in
 	x86_64|amd64)
 	        AC_DEFINE([ARCH_X86], [1], [Define if we are compiling for 32-bit or 64-bit x86 architectures.])
 	        AM_CONDITIONAL(ARCH_X86, true)
@@ -668,9 +702,12 @@ case "$target_cpu" in
         	                AC_DEFINE([ARCH_POWERPC_ALTIVEC], [1], [Define if we are compiling with AltiVec usage.])
                 	        AM_CONDITIONAL(ARCH_POWERPC_ALTIVEC, true)
 
+				altivec_save_CPPFLAGS="$CPPFLAGS"
+				CPPFLAGS="$CPPFLAGS $ALTIVEC_FLAGS"
 				AC_CHECK_HEADER([altivec.h],
 					AC_DEFINE([HAVE_ALTIVEC_H], [1], [Define if altivec.h is present and usable.]),
 					[] )
+				CPPFLAGS="$altivec_save_CPPFLAGS"
 	                fi
 	        fi
 		;;
@@ -692,4 +729,4 @@ AC_SUBST([AM_CFLAGS], "$ALTIVEC_FLAGS $OPTIMIZER_FLAGS $WARNING_FLAGS $CODEGEN_F
 AC_SUBST([AM_CXXFLAGS], "$ALTIVEC_FLAGS $OPTIMIZER_FLAGS $WARNING_FLAGS $CODEGEN_FLAGS $CODEGEN_CXXFLAGS")
 
 dnl Output Makefiles
-AC_OUTPUT([Makefile src/Makefile src/drivers/Makefile src/drivers_dos/Makefile src/sexyal/Makefile src/tremor/Makefile src/mpcdec/Makefile src/trio/Makefile src/ngp/Makefile src/snes/Makefile src/ss/Makefile src/desa68/Makefile src/quicklz/Makefile po/Makefile.in  intl/Makefile])
+AC_OUTPUT([Makefile po/Makefile.in intl/Makefile src/Makefile src/drivers/Makefile src/drivers_dos/Makefile src/sexyal/Makefile src/ss/Makefile])

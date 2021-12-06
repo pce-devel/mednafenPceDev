@@ -2,7 +2,7 @@
 /* Mednafen - Multi-system Emulator                                           */
 /******************************************************************************/
 /* wasapish.cpp - Shared-Mode WASAPI Sound Driver
-**  Copyright (C) 2014-2016 Mednafen Team
+**  Copyright (C) 2014-2017 Mednafen Team
 **
 ** This program is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU General Public License
@@ -23,13 +23,10 @@
 
 #include <windows.h>
 #include <windowsx.h>
-#include <stdio.h>
-#include <string.h>
 #include <mmdeviceapi.h>
 #include <audioclient.h>
 #include <audiopolicy.h>
 #include <propidl.h>
-#include <algorithm>
 
 static const CLSID LV_CLSID_MMDeviceEnumerator = { 0xbcde0395, 0xe52f, 0x467c, { 0x8e,0x3d, 0xc4,0x57,0x92,0x91,0x69,0x2e} }; //__uuidof(MMDeviceEnumerator);
 static const IID LV_IID_IMMDeviceEnumerator = { 0xa95664d2, 0x9614, 0x4f35, {0xa7,0x46, 0xde,0x8d,0xb6,0x36,0x17,0xe6} }; //__uuidof(IMMDeviceEnumerator);
@@ -40,7 +37,7 @@ static const GUID LV_KSDATAFORMAT_SUBTYPE_PCM = { 0x00000001, 0x0000, 0x0010, { 
 static const PROPERTYKEY LV_PKEY_Device_FriendlyName = { { 0xa45c254e, 0xdf1c, 0x4efd, { 0x80, 0x20, 0x67, 0xd1, 0x46, 0xa8, 0x50, 0xe0 } }, 14 };
 static const PROPERTYKEY LV_PKEY_DeviceInterface_FriendlyName = { { 0x026e516e, 0xb814, 0x414b, { 0x83, 0xcd, 0x85, 0x6d, 0x6f, 0xef, 0x48, 0x22 } }, 2 };
 
-struct WASWrap
+struct SexyAL_WASAPISH
 {
  IMMDevice *immdev;
  IAudioClient *ac;
@@ -54,11 +51,11 @@ struct WASWrap
 
  CRITICAL_SECTION crit;
 
- uint32_t BufferBPF;
+ uint32 BufferBPF;
 
  UINT32 recent_pad;
  LARGE_INTEGER recent_time;
- uint32_t written_since;
+ uint32 written_since;
 
  LARGE_INTEGER qpc_freq;
 
@@ -67,8 +64,8 @@ struct WASWrap
 
 
 static int Close(SexyAL_device *device);
-static int RawCanWrite(SexyAL_device *device, uint32_t *can_write);
-static int RawWrite(SexyAL_device *device, const void *data, uint32_t len);
+static int RawCanWrite(SexyAL_device *device, uint32 *can_write);
+static int RawWrite(SexyAL_device *device, const void *data, uint32 len);
 
 static int Pause(SexyAL_device *device, int state)
 {
@@ -78,7 +75,7 @@ static int Pause(SexyAL_device *device, int state)
 static DWORD WINAPI AThreadMain(LPVOID param)
 {
  SexyAL_device *dev = (SexyAL_device*)param;
- WASWrap *w = (WASWrap*)dev->private_data;
+ SexyAL_WASAPISH *w = (SexyAL_WASAPISH*)dev->private_data;
  DWORD task_index = 0;
  HANDLE avh = NULL;
 
@@ -124,7 +121,7 @@ static void Cleanup(SexyAL_device* device)
  {
   if(device->private_data)
   {
-   WASWrap *w = (WASWrap *)device->private_data;
+   SexyAL_WASAPISH *w = (SexyAL_WASAPISH *)device->private_data;
 
    w->AThreadRunning = false;
    if(w->AThread)
@@ -195,7 +192,7 @@ bool SexyALI_WASAPISH_Avail(void)
 SexyAL_device *SexyALI_WASAPISH_Open(const char *id, SexyAL_format *format, SexyAL_buffering *buffering)
 {
  SexyAL_device *dev;
- WASWrap *w;
+ SexyAL_WASAPISH *w;
  IMMDeviceEnumerator *immdeven = NULL;
  WAVEFORMATEXTENSIBLE wfe;
  HRESULT hr;
@@ -207,7 +204,7 @@ SexyAL_device *SexyALI_WASAPISH_Open(const char *id, SexyAL_format *format, Sexy
  }
  timeBeginPeriod(1);
 
- w = (WASWrap *)calloc(1, sizeof(WASWrap));
+ w = (SexyAL_WASAPISH *)calloc(1, sizeof(SexyAL_WASAPISH));
  dev->private_data = w;
  if(!w)
  {
@@ -328,13 +325,9 @@ SexyAL_device *SexyALI_WASAPISH_Open(const char *id, SexyAL_format *format, Sexy
  }
 
  format->rate = wfe.Format.nSamplesPerSec;
- format->sampformat = ((wfe.Format.wBitsPerSample >> 3) << 4) | 1;
-
- if(wfe.Format.wBitsPerSample == 32)
-  format->sampformat |= 2;
+ format->sampformat = SAMPFORMAT_MAKE(SEXYAL_ENC_PCM_SINT, wfe.Format.wBitsPerSample >> 3, wfe.Format.wBitsPerSample, 0, MDFN_IS_BIGENDIAN);
 
  format->channels = wfe.Format.nChannels;
- format->revbyteorder = false;
  format->noninterleaved = false;
 
  //
@@ -342,9 +335,9 @@ SexyAL_device *SexyALI_WASAPISH_Open(const char *id, SexyAL_format *format, Sexy
  //
  {
   REFERENCE_TIME raw_ac_latency;
-  int32_t des_effbuftime = buffering->ms ? buffering->ms : 52;
-  int32_t des_effbufsize = (int64_t)des_effbuftime * wfe.Format.nSamplesPerSec / 1000;
-  int32_t des_realbuftime = des_effbuftime + 40;
+  int32 des_effbuftime = buffering->ms ? buffering->ms : 52;
+  int32 des_effbufsize = (int64)des_effbuftime * wfe.Format.nSamplesPerSec / 1000;
+  int32 des_realbuftime = des_effbuftime + 40;
 
   //printf("%u\n", wfe.Format.wFormatTag);
   //printf("%u\n", wfe.Format.nChannels);
@@ -362,9 +355,9 @@ SexyAL_device *SexyALI_WASAPISH_Open(const char *id, SexyAL_format *format, Sexy
 
   w->BufferBPF = wfe.Format.wBitsPerSample / 8 * wfe.Format.nChannels;
 
-  buffering->buffer_size = std::min<int32_t>(des_effbufsize, w->bfc);
+  buffering->buffer_size = std::min<int32>(des_effbufsize, w->bfc);
   buffering->period_size = 0;
-  buffering->latency = buffering->buffer_size + (((int64_t)raw_ac_latency * format->rate + 5000000) / 10000000);
+  buffering->latency = buffering->buffer_size + (((int64)raw_ac_latency * format->rate + 5000000) / 10000000);
   buffering->bt_gran = 0;
  }
 
@@ -452,14 +445,14 @@ SexyAL_device *SexyALI_WASAPISH_Open(const char *id, SexyAL_format *format, Sexy
  return(dev);
 }
 
-static inline int64_t MooCowGoesMoo(SexyAL_device *device)
+static inline int64 MooCowGoesMoo(SexyAL_device *device)
 {
- WASWrap *w = (WASWrap *)device->private_data;
+ SexyAL_WASAPISH *w = (SexyAL_WASAPISH *)device->private_data;
  UINT32 local_recent_pad;
  LARGE_INTEGER local_recent_time;
  LARGE_INTEGER current_time;
- uint32_t local_written_since;
- int64_t extra_prec;
+ uint32 local_written_since;
+ int64 extra_prec;
 
  current_time.QuadPart = 0;
 
@@ -479,28 +472,28 @@ static inline int64_t MooCowGoesMoo(SexyAL_device *device)
   current_time.QuadPart = local_recent_time.QuadPart;
 
 #if 1
- extra_prec = (int64_t)(((double)(current_time.QuadPart - local_recent_time.QuadPart) / w->qpc_freq.QuadPart) * device->format.rate) - local_written_since;
+ extra_prec = (int64)(((double)(current_time.QuadPart - local_recent_time.QuadPart) / w->qpc_freq.QuadPart) * device->format.rate) - local_written_since;
 #else
  w->ac->GetCurrentPadding(&local_recent_pad);
  extra_prec = 0;
 #endif
 
- return std::min<int64_t>(device->buffering.buffer_size, ((int64_t)device->buffering.buffer_size - local_recent_pad) + extra_prec);
+ return std::min<int64>(device->buffering.buffer_size, ((int64)device->buffering.buffer_size - local_recent_pad) + extra_prec);
 }
 
-static int RawCanWrite(SexyAL_device *device, uint32_t *can_write)
+static int RawCanWrite(SexyAL_device *device, uint32 *can_write)
 {
- WASWrap *w = (WASWrap *)device->private_data;
+ SexyAL_WASAPISH *w = (SexyAL_WASAPISH *)device->private_data;
 
- *can_write = std::max<int64_t>(0, w->BufferBPF * MooCowGoesMoo(device));
+ *can_write = std::max<int64>(0, w->BufferBPF * MooCowGoesMoo(device));
 
  return(1);
 }
 
-static int RawWrite(SexyAL_device *device, const void *data, uint32_t len)
+static int RawWrite(SexyAL_device *device, const void *data, uint32 len)
 {
- WASWrap *w = (WASWrap *)device->private_data;
- const uint8_t* data8 = (uint8_t*)data;
+ SexyAL_WASAPISH *w = (SexyAL_WASAPISH *)device->private_data;
+ const uint8* data8 = (uint8*)data;
 
  while(len > 0)
  {
@@ -512,7 +505,7 @@ static int RawWrite(SexyAL_device *device, const void *data, uint32_t len)
   if(w->ac->GetCurrentPadding(&paddie) != S_OK)
    return(0);
 
-  toget = std::min<uint32_t>(w->bfc - paddie, (len / w->BufferBPF));
+  toget = std::min<uint32>(w->bfc - paddie, (len / w->BufferBPF));
 
   EnterCriticalSection(&w->crit);
   if((hr = w->arc->GetBuffer(toget, &bd)) == S_OK)
@@ -535,12 +528,12 @@ static int RawWrite(SexyAL_device *device, const void *data, uint32_t len)
 
  for(;;)
  {
-  int64_t milk = MooCowGoesMoo(device);
+  int64 milk = MooCowGoesMoo(device);
 
-  if(milk >= -(int64_t)(device->format.rate / 2000))
+  if(milk >= -(int64)(device->format.rate / 2000))
    break;
 
-  Sleep(std::max<int64_t>(1, -milk * 1000 / device->format.rate));
+  Sleep(std::max<int64>(1, -milk * 1000 / device->format.rate));
  }
 
  return(1);

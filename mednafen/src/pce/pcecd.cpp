@@ -392,8 +392,8 @@ static INLINE uint8 read_1808(int32 timestamp, const bool PeekMode)
   {
    if(SCSICD_GetIO())
    {
-    SCSICD_SetACK(TRUE);
-    ACKStatus = TRUE;
+    SCSICD_SetACK(true);
+    ACKStatus = true;
     scsicd_ne = SCSICD_Run(timestamp);
     ClearACKDelay = 15 * 3;
    }
@@ -474,7 +474,7 @@ int32 PCECD_Power(uint32 timestamp)
 	SCSICD_Power(timestamp);
         scsicd_ne = 0x7fffffff;
 
-        bBRAMEnabled = FALSE;
+        bBRAMEnabled = false;
         memset(_Port, 0, sizeof(_Port));
 	ACKStatus = 0;
 	ClearACKDelay = 0;
@@ -509,7 +509,7 @@ int32 PCECD_Power(uint32 timestamp)
 	Fader.Volume = 0;
 	Fader.CycleCounter = 0;
 	Fader.CountValue = 0;
-	Fader.Clocked = FALSE;
+	Fader.Clocked = false;
 
 	return(CalcNextEvent(0x7FFFFFFF));
 }
@@ -519,7 +519,7 @@ bool PCECD_IsBRAMEnabled()
 	return bBRAMEnabled;
 }
 
-uint8 PCECD_Read(uint32 timestamp, uint32 A, int32 &next_event, const bool PeekMode)
+MDFN_FASTCALL uint8 PCECD_Read(uint32 timestamp, uint32 A, int32 &next_event, const bool PeekMode)
 {
  uint8 ret = 0;
 
@@ -557,7 +557,7 @@ uint8 PCECD_Read(uint32 timestamp, uint32 A, int32 &next_event, const bool PeekM
    case 0x2: ret = _Port[2];
 	     break;
 
-   case 0x3: bBRAMEnabled = FALSE;
+   case 0x3: bBRAMEnabled = false;
 
 	     /* switch left/right of digitized cd playback */
 	     ret = _Port[0x3];
@@ -658,7 +658,7 @@ static INLINE void Fader_Run(const int32 clocks)
 }
 
 
-int32 PCECD_Write(uint32 timestamp, uint32 physAddr, uint8 data)
+MDFN_FASTCALL int32 PCECD_Write(uint32 timestamp, uint32 physAddr, uint8 data)
 {
 	const uint8 V = data;
 
@@ -729,7 +729,7 @@ int32 PCECD_Write(uint32 timestamp, uint32 physAddr, uint8 data)
 		case 0x7:	// $1807: D7=1 enables backup ram 
 			if (data & 0x80)
 			{
-				bBRAMEnabled = TRUE;
+				bBRAMEnabled = true;
 			}
 			break;
 	
@@ -871,7 +871,7 @@ int32 PCECD_Write(uint32 timestamp, uint32 physAddr, uint8 data)
 			 Fader.Volume = 65536;
 			 Fader.CycleCounter = 0;
 			 Fader.CountValue = 0;
-			 Fader.Clocked = FALSE;
+			 Fader.Clocked = false;
 			}
 			else
 			{
@@ -880,7 +880,7 @@ int32 PCECD_Write(uint32 timestamp, uint32 physAddr, uint8 data)
 			 if(!Fader.Clocked)
 			  Fader.CycleCounter = Fader.CountValue;
 
-			 Fader.Clocked = TRUE;
+			 Fader.Clocked = true;
 			}
 			Fader_SyncWhich();
 			break;
@@ -1202,7 +1202,7 @@ static INLINE void ADPCM_Run(const int32 clocks, const int32 timestamp)
 
 // The return value of this function is ignored in PCECD_Read() and PCECD_Write() for speed reasons, and the
 // fact that reading and writing can change the next potential event,
-int32 PCECD_Run(uint32 in_timestamp)
+MDFN_FASTCALL int32 PCECD_Run(uint32 in_timestamp)
 {
  int32 clocks = in_timestamp - lastts;
  int32 running_ts = lastts;
@@ -1221,8 +1221,8 @@ int32 PCECD_Run(uint32 in_timestamp)
    ClearACKDelay -= chunk_clocks;
    if(ClearACKDelay <= 0)
    {
-    ACKStatus = FALSE;
-    SCSICD_SetACK(FALSE);
+    ACKStatus = false;
+    SCSICD_SetACK(false);
     SCSICD_Run(running_ts);
     if(SCSICD_GetCD())
     {

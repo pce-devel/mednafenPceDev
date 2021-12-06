@@ -2,7 +2,7 @@
 /* Mednafen Virtual Boy Emulation Module                                      */
 /******************************************************************************/
 /* vip.cpp:
-**  Copyright (C) 2010-2016 Mednafen Team
+**  Copyright (C) 2010-2017 Mednafen Team
 **
 ** This program is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU General Public License
@@ -21,10 +21,9 @@
 
 #include "vb.h"
 #include "vip.h"
-#include <math.h>
 
-#define VIP_DBGMSG(format, ...) { }
-//#define VIP_DBGMSG(format, ...) printf(format "\n", ## __VA_ARGS__)
+#define VIP_DBGMSG(...) { }
+//#define VIP_DBGMSG(...) printf(__VA_ARGS__)
 
 namespace MDFN_IEN_VB
 {
@@ -56,6 +55,7 @@ static void CopyFBColumnToTarget_SideBySide(void) NO_INLINE;
 static void CopyFBColumnToTarget_VLI(void) NO_INLINE;
 static void CopyFBColumnToTarget_HLI(void) NO_INLINE;
 static void (*CopyFBColumnToTarget)(void) = NULL;
+static float VBLEDOnScale;
 static uint32 VB3DMode;
 static uint32 VB3DReverse;
 static uint32 VBPrescale;
@@ -65,7 +65,7 @@ static uint32 ColorLUT[2][256];
 static int32 BrightnessCache[4];
 static uint32 BrightCLUT[2][4];
 
-static double ColorLUTNoGC[2][256][3];
+static float ColorLUTNoGC[2][256][3];
 static uint32 AnaSlowColorLUT[256][256];
 
 // A few settings:
@@ -77,38 +77,54 @@ static bool ParallaxDisabled;
 static uint32 Anaglyph_Colors[2];
 static uint32 Default_Color;
 
-static void MakeColorLUT(const MDFN_PixelFormat &format)
+const CustomPalette_Spec VIP_CPInfo[] =
 {
+ { gettext_noop("VB LED Active Time; 256 left, 256 right.  If only 256 triplets are present, then they will be used for both left and right views.  When the custom palette's right view colors are the same as the left view colors(either explicitly, or when using a 256-entry custom palette), and anaglyph 3D mode is active, then the custom palette will not be used."), NULL, { 256, 256 * 2, 0 } },
+
+ { NULL, NULL }
+};
+
+static void MakeColorLUT(const MDFN_PixelFormat& format, const uint8* const CustomPalette, const uint32 CustomPaletteNumEntries)
+{
+ //
+ // TODO: Use correct CRT/sRGB gamma curve, instead of approximation.
+ //
+ const bool cprunique = CustomPalette && (CustomPaletteNumEntries == 512) && memcmp(CustomPalette + 0 * 3, CustomPalette + 256 * 3, 256 * 3);
+
  for(int lr = 0; lr < 2; lr++)
  {
   for(int i = 0; i < 256; i++)
   {
-   double r, g, b;
-   double r_prime, g_prime, b_prime;
+   float r, g, b;
+   uint32 modcolor_prime;
 
-   r = g = b = (double)i / 255;
+   if(VB3DMode == VB3DMODE_ANAGLYPH)
+    modcolor_prime = Anaglyph_Colors[lr ^ VB3DReverse];
+   else
+    modcolor_prime = Default_Color;
 
-   // TODO: Use correct gamma curve, instead of approximation.
-   r_prime = pow(r, 1.0 / 2.2);
-   g_prime = pow(g, 1.0 / 2.2);
-   b_prime = pow(b, 1.0 / 2.2);
-
-   switch(VB3DMode)
+   if(CustomPalette && (VB3DMode != VB3DMODE_ANAGLYPH || cprunique))
    {
-    case VB3DMODE_ANAGLYPH:
-	r_prime = r_prime * ((Anaglyph_Colors[lr ^ VB3DReverse] >> 16) & 0xFF) / 255;
-	g_prime = g_prime * ((Anaglyph_Colors[lr ^ VB3DReverse] >> 8) & 0xFF) / 255;
-	b_prime = b_prime * ((Anaglyph_Colors[lr ^ VB3DReverse] >> 0) & 0xFF) / 255;
-	break;
-    default:
-        r_prime = r_prime * ((Default_Color >> 16) & 0xFF) / 255;
-        g_prime = g_prime * ((Default_Color >> 8) & 0xFF) / 255;
-        b_prime = b_prime * ((Default_Color >> 0) & 0xFF) / 255;
-	break;
+    r = g = b = 1.0;
+    // Don't ^ VB3DReverse here.
+    modcolor_prime = MDFN_de24msb(CustomPalette + ((lr & cprunique) * 256 + i) * 3);
    }
-   ColorLUTNoGC[lr][i][0] = pow(r_prime, 2.2 / 1.0);
-   ColorLUTNoGC[lr][i][1] = pow(g_prime, 2.2 / 1.0);
-   ColorLUTNoGC[lr][i][2] = pow(b_prime, 2.2 / 1.0);
+   else
+    r = g = b = std::min<float>(1.0, i * VBLEDOnScale / 255.0);
+
+   // Modulate.
+   r = r * pow(((modcolor_prime >> 16) & 0xFF) / 255.0, 2.2 / 1.0);
+   g = g * pow(((modcolor_prime >>  8) & 0xFF) / 255.0, 2.2 / 1.0);
+   b = b * pow(((modcolor_prime >>  0) & 0xFF) / 255.0, 2.2 / 1.0);
+
+   ColorLUTNoGC[lr][i][0] = r;
+   ColorLUTNoGC[lr][i][1] = g;
+   ColorLUTNoGC[lr][i][2] = b;
+
+   // Apply gamma correction
+   const float r_prime = pow(r, 1.0 / 2.2);
+   const float g_prime = pow(g, 1.0 / 2.2);
+   const float b_prime = pow(b, 1.0 / 2.2);
 
    ColorLUT[lr][i] = format.MakeColor((int)(r_prime * 255), (int)(g_prime * 255), (int)(b_prime * 255), 0);
   }
@@ -119,8 +135,8 @@ static void MakeColorLUT(const MDFN_PixelFormat &format)
  {
   for(int r_b = 0; r_b < 256; r_b++)
   {
-   double r, g, b;
-   double r_prime, g_prime, b_prime;
+   float r, g, b;
+   float r_prime, g_prime, b_prime;
 
    r = ColorLUTNoGC[0][l_b][0] + ColorLUTNoGC[1][r_b][0];
    g = ColorLUTNoGC[0][l_b][1] + ColorLUTNoGC[1][r_b][1];
@@ -144,9 +160,10 @@ static void MakeColorLUT(const MDFN_PixelFormat &format)
 
 static void RecalcBrightnessCache(void)
 {
- //printf("BRTA: %d, BRTB: %d, BRTC: %d, Rest: %d\n", BRTA, BRTB, BRTC, REST);
+ static const int32 MaxTime = 255;
  int32 CumulativeTime = (BRTA + 1 + BRTB + 1 + BRTC + 1 + REST + 1) + 1;
- int32 MaxTime = 128;
+
+ //printf("BRTA: %d, BRTB: %d, BRTC: %d, Rest: %d --- %d\n", BRTA, BRTB, BRTC, REST, BRTA + 1 + BRTB + 1 + BRTC);
 
  BrightnessCache[0] = 0;
  BrightnessCache[1] = 0;
@@ -196,13 +213,11 @@ static void RecalcBrightnessCache(void)
 
  //printf("BC: %d %d %d %d\n", BrightnessCache[0], BrightnessCache[1], BrightnessCache[2], BrightnessCache[3]);
 
- for(int i = 0; i < 4; i++)
-  BrightnessCache[i] = 255 * BrightnessCache[i] / MaxTime;
-
  for(int lr = 0; lr < 2; lr++)
   for(int i = 0; i < 4; i++)
   {
    BrightCLUT[lr][i] = ColorLUT[lr][BrightnessCache[i]];
+   //printf("%d %d, %08x\n", lr, i, BrightCLUT[lr][i]);
   }
 }
 
@@ -286,6 +301,10 @@ void VIP_SetDefaultColor(uint32 default_color)
  VidSettingsDirty = true;
 }
 
+void VIP_SetLEDOnScale(float coeff)
+{
+ VBLEDOnScale = coeff;
+}
 
 void VIP_SetAnaglyphColors(uint32 lcolor, uint32 rcolor)
 {
@@ -458,11 +477,11 @@ static INLINE uint16 ReadRegister(int32 &timestamp, uint32 A)
  uint16 ret = 0;	//0xFFFF;
 
  if(A & 1)
-  VIP_DBGMSG("Misaligned VIP Read: %08x", A);
+  VIP_DBGMSG("Misaligned VIP Read: %08x\n", A);
 
  switch(A & 0xFE)
  {
-  default: VIP_DBGMSG("Unknown VIP register read: %08x", A);
+  default: VIP_DBGMSG("Unknown VIP register read: %08x\n", A);
 	   break;
 
   case 0x00: ret = InterruptPending;
@@ -545,11 +564,11 @@ static INLINE uint16 ReadRegister(int32 &timestamp, uint32 A)
 static INLINE void WriteRegister(int32 &timestamp, uint32 A, uint16 V)
 {
  if(A & 1)
-  VIP_DBGMSG("Misaligned VIP Write: %08x %04x", A, V);
+  VIP_DBGMSG("Misaligned VIP Write: %08x %04x\n", A, V);
 
  switch(A & 0xFE)
  {
-  default: VIP_DBGMSG("Unknown VIP register write: %08x %04x", A, V);
+  default: VIP_DBGMSG("Unknown VIP register write: %08x %04x\n", A, V);
            break;
 
   case 0x00: break; // Interrupt pending, read-only
@@ -557,7 +576,7 @@ static INLINE void WriteRegister(int32 &timestamp, uint32 A, uint16 V)
   case 0x02: {
 	      InterruptEnable = V & 0xE01F;
 
-	      VIP_DBGMSG("Interrupt Enable: %04x", V);
+	      VIP_DBGMSG("Interrupt Enable: %04x\n", V);
 
 	      if(V & 0x2000)
 	       VIP_DBGMSG("Warning: VIP SB Hit Interrupt enable: %04x\n", V);
@@ -608,7 +627,7 @@ static INLINE void WriteRegister(int32 &timestamp, uint32 A, uint16 V)
 
 	     if(V & 1)
 	     {
-	      VIP_DBGMSG("XPRST");
+	      VIP_DBGMSG("XPRST\n");
 	      DrawingActive = 0;
 	      DrawingCounter = 0;
               InterruptPending &= ~(INT_SB_HIT | INT_XP_END | INT_TIME_ERR);
@@ -648,7 +667,7 @@ static INLINE void WriteRegister(int32 &timestamp, uint32 A, uint16 V)
 // Don't update the VIP state on reads/writes, the event system will update it with enough precision as far as VB software cares.
 //
 
-uint8 VIP_Read8(int32 &timestamp, uint32 A)
+MDFN_FASTCALL uint8 VIP_Read8(int32 &timestamp, uint32 A)
 {
  uint8 ret = 0; //0xFF;
 
@@ -676,7 +695,7 @@ uint8 VIP_Read8(int32 &timestamp, uint32 A)
   case 0x5: if(A >= 0x5E000)
 	     ret = ReadRegister(timestamp, A);
 	    else
-	     VIP_DBGMSG("Unknown VIP Read: %08x", A);
+	     VIP_DBGMSG("Unknown VIP Read: %08x\n", A);
             break;
 
   case 0x6: break;
@@ -686,10 +705,10 @@ uint8 VIP_Read8(int32 &timestamp, uint32 A)
              ret = ne16_rbo_le<uint8>(CHR_RAM, A & 0x7FFF);
             }
 	    else
-	     VIP_DBGMSG("Unknown VIP Read: %08x", A);
+	     VIP_DBGMSG("Unknown VIP Read: %08x\n", A);
             break;
 
-  default: VIP_DBGMSG("Unknown VIP Read: %08x", A);
+  default: VIP_DBGMSG("Unknown VIP Read: %08x\n", A);
 	   break;
  }
 
@@ -699,7 +718,7 @@ uint8 VIP_Read8(int32 &timestamp, uint32 A)
  return(ret);
 }
 
-uint16 VIP_Read16(int32 &timestamp, uint32 A)
+MDFN_FASTCALL uint16 VIP_Read16(int32 &timestamp, uint32 A)
 {
  uint16 ret = 0; //0xFFFF;
 
@@ -728,7 +747,7 @@ uint16 VIP_Read16(int32 &timestamp, uint32 A)
 	    if(A >= 0x5E000)
 	     ret = ReadRegister(timestamp, A);
             else
-             VIP_DBGMSG("Unknown VIP Read: %08x", A);
+             VIP_DBGMSG("Unknown VIP Read: %08x\n", A);
             break;
 
   case 0x6: break;
@@ -738,10 +757,10 @@ uint16 VIP_Read16(int32 &timestamp, uint32 A)
              ret = ne16_rbo_le<uint16>(CHR_RAM, A & 0x7FFF);
             }
 	    else
-	     VIP_DBGMSG("Unknown VIP Read: %08x", A);
+	     VIP_DBGMSG("Unknown VIP Read: %08x\n", A);
             break;
 
-  default: VIP_DBGMSG("Unknown VIP Read: %08x", A);
+  default: VIP_DBGMSG("Unknown VIP Read: %08x\n", A);
            break;
  }
 
@@ -750,7 +769,7 @@ uint16 VIP_Read16(int32 &timestamp, uint32 A)
  return(ret);
 }
 
-void VIP_Write8(int32 &timestamp, uint32 A, uint8 V)
+MDFN_FASTCALL void VIP_Write8(int32 &timestamp, uint32 A, uint8 V)
 {
  //VIP_Update(timestamp); 
 
@@ -775,26 +794,26 @@ void VIP_Write8(int32 &timestamp, uint32 A, uint8 V)
   case 0x5: if(A >= 0x5E000)
  	     WriteRegister(timestamp, A, V);
             else
-             VIP_DBGMSG("Unknown VIP Write: %08x %02x", A, V);
+             VIP_DBGMSG("Unknown VIP Write: %08x %02x\n", A, V);
 	    break;
 
-  case 0x6: VIP_DBGMSG("Unknown VIP Write: %08x %02x", A, V);
+  case 0x6: VIP_DBGMSG("Unknown VIP Write: %08x %02x\n", A, V);
 	    break;
 
   case 0x7: if(A >= 0x8000)
 	     ne16_wbo_le<uint8>(CHR_RAM, A & 0x7FFF, V);
 	    else
-	     VIP_DBGMSG("Unknown VIP Write: %08x %02x", A, V);
+	     VIP_DBGMSG("Unknown VIP Write: %08x %02x\n", A, V);
 	    break;
 
-  default: VIP_DBGMSG("Unknown VIP Write: %08x %02x", A, V);
+  default: VIP_DBGMSG("Unknown VIP Write: %08x %02x\n", A, V);
            break;
  }
 
  //VB_SetEvent(VB_EVENT_VIP, timestamp + CalcNextEvent());
 }
 
-void VIP_Write16(int32 &timestamp, uint32 A, uint16 V)
+MDFN_FASTCALL void VIP_Write16(int32 &timestamp, uint32 A, uint16 V)
 {
  //VIP_Update(timestamp); 
 
@@ -819,19 +838,19 @@ void VIP_Write16(int32 &timestamp, uint32 A, uint16 V)
   case 0x5: if(A >= 0x5E000)
  	     WriteRegister(timestamp, A, V);
             else
-             VIP_DBGMSG("Unknown VIP Write: %08x %04x", A, V);
+             VIP_DBGMSG("Unknown VIP Write: %08x %04x\n", A, V);
             break;
 
-  case 0x6: VIP_DBGMSG("Unknown VIP Write: %08x %04x", A, V);
+  case 0x6: VIP_DBGMSG("Unknown VIP Write: %08x %04x\n", A, V);
 	    break;
 
   case 0x7: if(A >= 0x8000)
              ne16_wbo_le<uint16>(CHR_RAM, A & 0x7FFF, V);
 	    else
-	     VIP_DBGMSG("Unknown VIP Write: %08x %04x", A, V);
+	     VIP_DBGMSG("Unknown VIP Write: %08x %04x\n", A, V);
             break;
 
-  default: VIP_DBGMSG("Unknown VIP Write: %08x %04x", A, V);
+  default: VIP_DBGMSG("Unknown VIP Write: %08x %04x\n", A, V);
            break;
  }
 
@@ -848,7 +867,7 @@ void VIP_StartFrame(EmulateSpecStruct *espec)
 
  if(espec->VideoFormatChanged || VidSettingsDirty)
  {
-  MakeColorLUT(espec->surface->format);
+  MakeColorLUT(espec->surface->format, espec->CustomPalette, espec->CustomPaletteNumEntries);
   Recalc3DModeStuff(espec->surface->format.colorspace != MDFN_COLORSPACE_RGB);
 
   VidSettingsDirty = false;
@@ -1136,7 +1155,7 @@ static INLINE void CopyFBColumnToTarget_VLI_BASE(const bool DisplayActive_arg, c
        uint32 tv;
 
        if(DisplayActive_arg)
-        tv = BrightCLUT[0][source_bits & 3];
+        tv = BrightCLUT[lr][source_bits & 3];
        else
         tv = 0;
 
@@ -1185,7 +1204,7 @@ if(VBPrescale <= 4)
       for(int y_sub = 4 * VBPrescale; y_sub; y_sub--)
       {
        if(DisplayActive_arg)
-        *target = BrightCLUT[0][source_bits & 3];
+        *target = BrightCLUT[lr][source_bits & 3];
        else
         *target = 0;
 
@@ -1204,7 +1223,7 @@ else
        for(uint32 ps = 0; ps < VBPrescale; ps++)
        {
         if(DisplayActive_arg)
-         *target = BrightCLUT[0][source_bits & 3];
+         *target = BrightCLUT[lr][source_bits & 3];
         else
          *target = 0;
 
@@ -1324,6 +1343,8 @@ v810_timestamp_t MDFN_FASTCALL VIP_Update(const v810_timestamp_t timestamp)
     {
      const int lr = (DisplayRegion & 2) >> 1;
      uint16 ctdata = ne16_rbo_le<uint16>(DRAM, 0x1DFFE - ((Column >> 2) * 2) - (lr ? 0 : 0x200));
+
+     //printf("%02x, repeat: %02x\n", ctdata & 0xFF, ctdata >> 8);
 
      if((ctdata >> 8) != Repeat)
      {

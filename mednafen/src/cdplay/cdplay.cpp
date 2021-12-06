@@ -24,8 +24,6 @@
 #include <mednafen/mednafen.h>
 #include <mednafen/cdrom/cdromif.h>
 #include <trio/trio.h>
-#include <vector>
-#include <math.h>
 
 using namespace CDUtility;
 
@@ -123,6 +121,7 @@ static void LoadCD(std::vector<CDIF *> *CDInterfaces)
  //
  //
  EmulatedCDPlay.RMD->Drives.clear();
+ EmulatedCDPlay.RMD->DrivesDefaults.clear();
  EmulatedCDPlay.RMD->MediaTypes.clear();
  EmulatedCDPlay.RMD->Media.clear();
 }
@@ -503,7 +502,7 @@ static void DoSimpleCommand(int cmd)
  }
 }
 
-static MDFNSetting CDPlaySettings[] =
+static const MDFNSetting CDPlaySettings[] =
 {
  { "cdplay.visualization", MDFNSF_NOFLAGS, gettext_noop("Enable simple waveform visualization."), NULL, MDFNST_BOOL, "1" },
  { NULL }

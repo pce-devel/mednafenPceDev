@@ -21,9 +21,7 @@
 
 #include "pcfx.h"
 
-#include <string.h>
 #include <trio/trio.h>
-#include <stdarg.h>
 #include <iconv.h>
 
 #include "debug.h"
@@ -42,7 +40,7 @@ static void (*CPUHook)(uint32, bool bpoint) = NULL;
 static bool CPUHookContinuous = false;
 static void (*LogFunc)(const char *, const char *);
 static iconv_t sjis_ict = (iconv_t)-1;
-bool PCFX_LoggingOn = FALSE;
+bool PCFX_LoggingOn = false;
 
 typedef struct __PCFX_BPOINT {
         uint32 A[2];
@@ -264,7 +262,7 @@ void PCFXDBG_CheckBP(int type, uint32 address, uint32 value, unsigned int len)
   {
    if(tmp_address >= bpit->A[0] && tmp_address <= bpit->A[1])
    {
-    FoundBPoint = TRUE;
+    FoundBPoint = true;
     break;
    }
    tmp_address++;
@@ -353,7 +351,7 @@ static void DoSyscallLog(void)
    {
     uint8 quickiebuf[64 + 1];
     int qbuf_index = 0;
-    bool error_thing = FALSE;
+    bool error_thing = false;
 
     do
     {
@@ -363,7 +361,7 @@ static void DoSyscallLog(void)
 
      if(A >= 0x80000000 && A < 0xF0000000)
      {
-      error_thing = TRUE;
+      error_thing = true;
       break;
      }
 
@@ -371,7 +369,7 @@ static void DoSyscallLog(void)
     } while(quickiebuf[qbuf_index] && ++qbuf_index < 64);
 
     if(qbuf_index == 64) 
-     error_thing = TRUE;
+     error_thing = true;
 
     quickiebuf[64] = 0;
 
@@ -422,7 +420,7 @@ static void CPUHandler(const v810_timestamp_t timestamp, uint32 PC)
  {
   if(PC >= bpit->A[0] && PC <= bpit->A[1])
   {
-   FoundBPoint = TRUE;
+   FoundBPoint = true;
    break;
   }
  }
@@ -604,7 +602,7 @@ void PCFXDBG_SetLogFunc(void (*func)(const char *, const char *))
 {
  LogFunc = func;
 
- PCFX_LoggingOn = func ? TRUE : FALSE;
+ PCFX_LoggingOn = func ? true : false;
  SCSICD_SetLog(func ? PCFXDBG_DoLog : NULL);
  KING_SetLogFunc(func ? PCFXDBG_DoLog : NULL);
 
@@ -656,7 +654,7 @@ char *PCFXDBG_ShiftJIS_to_UTF8(const uint16 sjc)
  return(ret);
 }
 
-static RegType PCFXRegs0[] =
+static const RegType PCFXRegs0[] =
 {
         { V810::GSREG_PC, "PC", "Program Counter", 4 },
 	{ V810::GSREG_PR + 1, "PR1", "Program Register 1", 4 },
@@ -718,7 +716,7 @@ static RegType PCFXRegs0[] =
         { 0, "", "", 0 },
 };
 
-static RegType KINGRegs0[] =
+static const RegType KINGRegs0[] =
 {
 	{ KING_GSREG_AR, "AR", "Active Register", 1 },
 	{ KING_GSREG_MPROGADDR, "MPROGADDR", "Micro-program Address", 2 },
@@ -764,7 +762,7 @@ static RegType KINGRegs0[] =
         { 0, "", "", 0 },
 };
 
-static RegType KINGRegs1[] =
+static const RegType KINGRegs1[] =
 {
 	{ 0, "-KING BG-", "", 0xFFFF },
 
@@ -848,7 +846,7 @@ static void SetRegister_VCERAINBOW(const unsigned int id, uint32 value)
   FXVCE_SetRegister(id & 0xFFFF, value);
 } 
 
-static RegType VCERAINBOWRegs[] =
+static const RegType VCERAINBOWRegs[] =
 {
 	{ 0, "--VCE--", "", 0xFFFF },
         { FXVCE_GSREG_Line, "Line", "VCE Frame Counter", 0x100 | 9 },
@@ -898,7 +896,7 @@ static void SetRegister_VDC(const unsigned int id, uint32 value)
 } 
 
 
-static RegType VDCRegs[] =
+static const RegType VDCRegs[] =
 {
         { 0, "--VDC-A--", "", 0xFFFF },
 	
@@ -954,7 +952,7 @@ static RegType VDCRegs[] =
         { 0, "", "", 0 },
 };
 
-static RegGroupType PCFXRegs0Group =
+static const RegGroupType PCFXRegs0Group =
 {
  NULL,
  PCFXRegs0,
@@ -962,7 +960,7 @@ static RegGroupType PCFXRegs0Group =
  PCFXDBG_SetRegister,
 };
 
-static RegGroupType KINGRegs0Group =
+static const RegGroupType KINGRegs0Group =
 {
  NULL,
  KINGRegs0,
@@ -970,7 +968,7 @@ static RegGroupType KINGRegs0Group =
  KING_SetRegister
 };
 
-static RegGroupType KINGRegs1Group =
+static const RegGroupType KINGRegs1Group =
 {
  NULL,
  KINGRegs1,
@@ -978,7 +976,7 @@ static RegGroupType KINGRegs1Group =
  KING_SetRegister
 };
 
-static RegGroupType VCERAINBOWRegsGroup =
+static const RegGroupType VCERAINBOWRegsGroup =
 {
  NULL,
  VCERAINBOWRegs,
@@ -986,7 +984,7 @@ static RegGroupType VCERAINBOWRegsGroup =
  SetRegister_VCERAINBOW
 };
 
-static RegGroupType VDCRegsGroup =
+static const RegGroupType VDCRegsGroup =
 {
  NULL,
  VDCRegs,
