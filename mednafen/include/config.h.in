@@ -87,9 +87,6 @@
 /* Define to 1 if you have the `connect' function. */
 #undef HAVE_CONNECT
 
-/* define if the compiler supports basic C++11 syntax */
-#undef HAVE_CXX11
-
 /* Define if the GNU dcgettext() function is already present or preinstalled.
    */
 #undef HAVE_DCGETTEXT
@@ -122,6 +119,12 @@
 
 /* Define to 1 if you have the `dup2' function. */
 #undef HAVE_DUP2
+
+/* Define if we are compiling and linking with external mpcdec. */
+#undef HAVE_EXTERNAL_MPCDEC
+
+/* Define if we are compiling and linking with external tremor. */
+#undef HAVE_EXTERNAL_TREMOR
 
 /* Define to 1 if you have the `fcntl' function. */
 #undef HAVE_FCNTL
@@ -210,6 +213,9 @@
 /* Define if you have the iconv() function and it works. */
 #undef HAVE_ICONV
 
+/* Define if GNU-style AVX inline assembly is supported. */
+#undef HAVE_INLINEASM_AVX
+
 /* Define if you have the 'intmax_t' type in <stdint.h> or <inttypes.h>. */
 #undef HAVE_INTMAX_T
 
@@ -232,8 +238,14 @@
 /* Define to 1 if you have the `asound' library (-lasound). */
 #undef HAVE_LIBASOUND
 
+/* Define to 1 if you have the `mpcdec' library (-lmpcdec). */
+#undef HAVE_LIBMPCDEC
+
 /* Define if we are compiling with libsndfile support. */
 #undef HAVE_LIBSNDFILE
+
+/* Define to 1 if you have the `vorbisidec' library (-lvorbisidec). */
+#undef HAVE_LIBVORBISIDEC
 
 /* Define to 1 if you have the `z' library (-lz). */
 #undef HAVE_LIBZ
@@ -671,8 +683,14 @@
 /* Define if we are compiling with SNES emulation. */
 #undef WANT_SNES_EMU
 
-/* Define if we are compiling with shrieking zombies. */
+/* Define if we are compiling with experimental fast SNES emulation. */
 #undef WANT_SNES_FAUST_EMU
+
+/* Define if we are compiling with SSF playback support. */
+#undef WANT_SSFPLAY_EMU
+
+/* Define if we are compiling with Sega Saturn emulation. */
+#undef WANT_SS_EMU
 
 /* Define if we are compiling with Virtual Boy emulation. */
 #undef WANT_VB_EMU

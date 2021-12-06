@@ -1,19 +1,23 @@
-/* Mednafen - Multi-system Emulator
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
+/******************************************************************************/
+/* Mednafen Fast SNES Emulation Module                                        */
+/******************************************************************************/
+/* ppu.cpp:
+**  Copyright (C) 2015-2016 Mednafen Team
+**
+** This program is free software; you can redistribute it and/or
+** modify it under the terms of the GNU General Public License
+** as published by the Free Software Foundation; either version 2
+** of the License, or (at your option) any later version.
+**
+** This program is distributed in the hope that it will be useful,
+** but WITHOUT ANY WARRANTY; without even the implied warranty of
+** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+** GNU General Public License for more details.
+**
+** You should have received a copy of the GNU General Public License
+** along with this program; if not, write to the Free Software Foundation, Inc.,
+** 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+*/
 
 //
 // FIXME: Blank lines properly in es->surface when switching from overscan to non-overscan mode mid-frame.
@@ -1564,27 +1568,27 @@ static void NO_INLINE MixMainSubSubSubMarine(uint32* __restrict__ target)
     {
      if(sub & 0x8)	// Is subscreen backdrop?  Then no half-math when (CGWSEL & 0x2)
      {
-      main_color = CMath<false, cmath_mode & 2>(main_color, FixedColor);
-      sub_color  = CMath<false, cmath_mode & 2>(sub_color,  FixedColor);
+      main_color = CMath<false, (bool)(cmath_mode & 2)>(main_color, FixedColor);
+      sub_color  = CMath<false, (bool)(cmath_mode & 2)>(sub_color,  FixedColor);
      }
      else
      {
       if((cmath_mode & 1) && (main & 2))	// If half math enabled, and main wasn't clipped to 0 by color window, then half math.
       {
-       main_color = CMath<true,  cmath_mode & 2>(main_color, sub_color);
-       sub_color  = CMath<true,  cmath_mode & 2>(sub_color,  main_color);
+       main_color = CMath<true,  (bool)(cmath_mode & 2)>(main_color, sub_color);
+       sub_color  = CMath<true,  (bool)(cmath_mode & 2)>(sub_color,  main_color);
       }
       else
       {
-       main_color = CMath<false, cmath_mode & 2>(main_color, sub_color);
-       sub_color  = CMath<false, cmath_mode & 2>(sub_color,  main_color);
+       main_color = CMath<false, (bool)(cmath_mode & 2)>(main_color, sub_color);
+       sub_color  = CMath<false, (bool)(cmath_mode & 2)>(sub_color,  main_color);
       }
      }
     }
     else
     {
-     main_color = CMath<cmath_mode & 1, cmath_mode & 2>(main_color, FixedColor);
-     sub_color  = CMath<cmath_mode & 1, cmath_mode & 2>(sub_color,  FixedColor);
+     main_color = CMath<(bool)(cmath_mode & 1), (bool)(cmath_mode & 2)>(main_color, FixedColor);
+     sub_color  = CMath<(bool)(cmath_mode & 1), (bool)(cmath_mode & 2)>(sub_color,  FixedColor);
     }
    }
 
@@ -1607,9 +1611,9 @@ static void NO_INLINE MixMainSubSubSubMarine(uint32* __restrict__ target)
     //assert(main != sub);
 
     if((cmath_mode & 1) && (main & sub & 2))	// Halving mathing
-     tmp = CMath<true, cmath_mode & 2>(tmp, other_color);
+     tmp = CMath<true, (bool)(cmath_mode & 2)>(tmp, other_color);
     else
-     tmp = CMath<false, cmath_mode & 2>(tmp, other_color);
+     tmp = CMath<false, (bool)(cmath_mode & 2)>(tmp, other_color);
    }
 
    target[i] = ConvertRGB555(tmp);

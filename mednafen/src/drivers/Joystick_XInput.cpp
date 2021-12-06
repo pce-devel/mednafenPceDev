@@ -1,19 +1,26 @@
-/* Mednafen - Multi-system Emulator
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
+/******************************************************************************/
+/* Mednafen - Multi-system Emulator                                           */
+/******************************************************************************/
+/* Joystick_XInput.cpp:
+**  Copyright (C) 2012-2016 Mednafen Team
+**
+** This program is free software; you can redistribute it and/or
+** modify it under the terms of the GNU General Public License
+** as published by the Free Software Foundation; either version 2
+** of the License, or (at your option) any later version.
+**
+** This program is distributed in the hope that it will be useful,
+** but WITHOUT ANY WARRANTY; without even the implied warranty of
+** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+** GNU General Public License for more details.
+**
+** You should have received a copy of the GNU General Public License
+** along with this program; if not, write to the Free Software Foundation, Inc.,
+** 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+*/
+
+// For future reference: XInputGetState(Ex) is reported to have a very high overhead
+// when the controller is disconnected.
 
 #include "main.h"
 #include "input.h"
@@ -29,10 +36,10 @@
 
 struct XInputFuncPointers
 {
- void WINAPI (*p_XInputEnable)(BOOL);
- DWORD WINAPI (*p_XInputSetState)(DWORD, XINPUT_VIBRATION*);
- DWORD WINAPI (*p_XInputGetState)(DWORD, XINPUT_STATE*);	// Pointer to XInputGetState or XInputGetStateEx(if available).
- DWORD WINAPI (*p_XInputGetCapabilities)(DWORD, DWORD, XINPUT_CAPABILITIES*);
+ void WINAPI (*p_XInputEnable)(BOOL) = nullptr;
+ DWORD WINAPI (*p_XInputSetState)(DWORD, XINPUT_VIBRATION*) = nullptr;
+ DWORD WINAPI (*p_XInputGetState)(DWORD, XINPUT_STATE*) = nullptr;	// Pointer to XInputGetState or XInputGetStateEx(if available).
+ DWORD WINAPI (*p_XInputGetCapabilities)(DWORD, DWORD, XINPUT_CAPABILITIES*) = nullptr;
 };
 
 class Joystick_XInput : public Joystick
@@ -149,10 +156,10 @@ class JoystickDriver_XInput : public JoystickDriver
 
  private:
  Joystick_XInput *joys[XUSER_MAX_COUNT];
- unsigned joy_count;
+ unsigned joy_count = 0;
 
 
- HMODULE dll_handle;
+ HMODULE dll_handle = nullptr;
  XInputFuncPointers xfps;
 };
 
@@ -163,7 +170,7 @@ bool GetXIPA(HMODULE dll_handle, T& pf, const char *name)
  return(pf != NULL);
 }
 
-JoystickDriver_XInput::JoystickDriver_XInput() : joy_count(0), dll_handle(NULL)
+JoystickDriver_XInput::JoystickDriver_XInput()
 {
  if((dll_handle = LoadLibrary("xinput1_3.dll")) == NULL)
  {

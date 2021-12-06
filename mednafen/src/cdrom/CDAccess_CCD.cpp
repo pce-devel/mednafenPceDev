@@ -1,23 +1,28 @@
-/* Mednafen - Multi-system Emulator
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
+/******************************************************************************/
+/* Mednafen - Multi-system Emulator                                           */
+/******************************************************************************/
+/* CDAccess_CCD.cpp:
+**  Copyright (C) 2013-2016 Mednafen Team
+**
+** This program is free software; you can redistribute it and/or
+** modify it under the terms of the GNU General Public License
+** as published by the Free Software Foundation; either version 2
+** of the License, or (at your option) any later version.
+**
+** This program is distributed in the hope that it will be useful,
+** but WITHOUT ANY WARRANTY; without even the implied warranty of
+** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+** GNU General Public License for more details.
+**
+** You should have received a copy of the GNU General Public License
+** along with this program; if not, write to the Free Software Foundation, Inc.,
+** 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+*/
 
-#include "../mednafen.h"
-#include "../general.h"
-#include "../string/trim.h"
+#include <mednafen/mednafen.h>
+#include <mednafen/general.h>
+#include <mednafen/string/trim.h>
+
 #include "CDAccess_CCD.h"
 #include <trio/trio.h>
 
@@ -332,11 +337,11 @@ void CDAccess_CCD::CheckSubQSanity(void)
 
     //printf("%2x %2x %2x\n", am_bcd, as_bcd, af_bcd);
 
-    if(!BCD_is_valid(track_bcd) || !BCD_is_valid(index_bcd) || !BCD_is_valid(rm_bcd) || !BCD_is_valid(rs_bcd) || !BCD_is_valid(rf_bcd) ||
+    if((track_bcd != 0xAA && !BCD_is_valid(track_bcd)) || !BCD_is_valid(index_bcd) || !BCD_is_valid(rm_bcd) || !BCD_is_valid(rs_bcd) || !BCD_is_valid(rf_bcd) ||
 	!BCD_is_valid(am_bcd) || !BCD_is_valid(as_bcd) || !BCD_is_valid(af_bcd) ||
 	rs_bcd > 0x59 || rf_bcd > 0x74 || as_bcd > 0x59 || af_bcd > 0x74)
     {
-     throw MDFN_Error(0, _("Garbage subchannel Q data detected(bad BCD/out of range): %02x:%02x:%02x %02x:%02x:%02x"), rm_bcd, rs_bcd, rf_bcd, am_bcd, as_bcd, af_bcd);
+     throw MDFN_Error(0, _("Garbage subchannel Q data detected(bad BCD/out of range): TNO=%02x IDX=%02x RMSF=%02x:%02x:%02x AMSF=%02x:%02x:%02x"), track_bcd, index_bcd, rm_bcd, rs_bcd, rf_bcd, am_bcd, as_bcd, af_bcd);
     }
     else
     {
@@ -346,7 +351,7 @@ void CDAccess_CCD::CheckSubQSanity(void)
      if(prev_lba != INT_MAX && abs(lba - prev_lba) > 100)
       throw MDFN_Error(0, _("Garbage subchannel Q data detected(excessively large jump in AMSF)"));
 
-     if(abs(lba - s) > 100)
+     if(abs((int)(lba - s)) > 100)
       throw MDFN_Error(0, _("Garbage subchannel Q data detected(AMSF value is out of tolerance)"));
 
      prev_lba = lba;

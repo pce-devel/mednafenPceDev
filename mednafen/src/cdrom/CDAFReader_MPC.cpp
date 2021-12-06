@@ -1,26 +1,32 @@
-/* Mednafen - Multi-system Emulator
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
+/******************************************************************************/
+/* Mednafen - Multi-system Emulator                                           */
+/******************************************************************************/
+/* CDAFReader_MPC.cpp:
+**  Copyright (C) 2006-2016 Mednafen Team
+**
+** This program is free software; you can redistribute it and/or
+** modify it under the terms of the GNU General Public License
+** as published by the Free Software Foundation; either version 2
+** of the License, or (at your option) any later version.
+**
+** This program is distributed in the hope that it will be useful,
+** but WITHOUT ANY WARRANTY; without even the implied warranty of
+** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+** GNU General Public License for more details.
+**
+** You should have received a copy of the GNU General Public License
+** along with this program; if not, write to the Free Software Foundation, Inc.,
+** 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+*/
 
 #include <mednafen/mednafen.h>
+#include <math.h>
 #include "CDAFReader.h"
 #include "CDAFReader_MPC.h"
 
-#if 0
+#ifdef HAVE_EXTERNAL_MPCDEC
  #include <mpc/mpcdec.h>
+ #define MPC_STATUS_FAIL -1
 #else
  #include <mednafen/mpcdec/mpcdec.h>
 #endif
@@ -194,8 +200,7 @@ uint64 CDAFReader_MPC::Read_(int16 *buffer, uint64 frames)
 #ifdef MPC_FIXED_POINT
     int32 samp = MPCBuffer[MPCBufferOffs + x] >> MPC_FIXED_POINT_FRACTPART;
 #else
-    #warning Floating-point MPC decoding path not tested.
-    int32 samp = (int32)(MPCBuffer[MPCBufferOffs + x] * 32767);
+    int32 samp = (int32)(MPCBuffer[MPCBufferOffs + x] * 32768);
 #endif
     if(samp < -32768)
      samp = -32768;
