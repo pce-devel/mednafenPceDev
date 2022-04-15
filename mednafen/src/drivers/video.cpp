@@ -346,7 +346,7 @@ void Video_MakeSettings(void)
    else if(!mr)
     default_videoip = "0";
    else
-    default_videoip = "1";
+    default_videoip = "0";
 
    sysname = (const char *)MDFNSystems[i]->shortname;
   }
