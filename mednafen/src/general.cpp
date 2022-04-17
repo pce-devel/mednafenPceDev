@@ -215,6 +215,34 @@ std::string MDFN_MakeFName(MakeFName_Type type, int id1, const char *cd1)
 	NVFS.create_missing_dirs(ret);
 	break;
 
+// FIXEDSAV is for 'shared' saves which don't change based on game name (or other factors),
+// in order to deliberately transmit data between games, or to be used as an external "save card"
+//
+  case MDFNMKF_FIXEDSAV:
+	if(NVFS.is_absolute_path(cd1))
+	 ret = cd1;
+	else
+	{
+	 std::string overpath = MDFN_GetSettingS("filesys.path_sav");
+
+	 if(NVFS.is_absolute_path(overpath))
+	  ret = overpath + PSS + cd1;
+	 else
+	 {
+	  ret = BaseDirectory + PSS + overpath + PSS + cd1;
+
+	  // For backwards-compatibility with < 0.9.0
+	  if(!NVFS.finfo(ret, nullptr, false))
+	  {
+	   std::string new_ret = BaseDirectory + PSS + cd1;
+
+	   if(NVFS.finfo(new_ret, nullptr, false))
+            ret = new_ret;
+	  }
+	 }
+	}
+	break;
+
 
   case MDFNMKF_SNAP_DAT:
   case MDFNMKF_SNAP:

@@ -65,7 +65,7 @@ static bool WantHuC6273 = false;
 VDC *fx_vdc_chips[2];
 
 static uint16 BackupControl;
-static uint8 BackupRAM[0x8000], ExBackupRAM[0x8000];
+static uint8 BackupRAM[0x8000], ExBackupRAM[0x20000];
 static uint8 ExBusReset; // I/O Register at 0x0700
 
 static bool BRAMDisabled;	// Cached at game load, don't remove this caching behavior or save game loss may result(if we ever get a GUI).
@@ -408,7 +408,7 @@ static void PCFXDBG_GetAddressSpaceBytes(const char *name, uint32 Address, uint3
  {
   while(Length--)
   {
-   Address &= 0x7FFF;
+   Address &= 0x1FFFF;
    *Buffer = ExBackupRAM[Address];
    Address++;
    Buffer++;
@@ -478,8 +478,8 @@ static void PCFXDBG_PutAddressSpaceBytes(const char *name, uint32 Address, uint3
    {
     if(!(Address & 1))
     {
-     BackupSignalDirty |= (ExBackupRAM[(Address & 0xFFFF) >> 1] != *Buffer);
-     ExBackupRAM[(Address & 0xFFFF) >> 1] = *Buffer;
+     BackupSignalDirty |= (ExBackupRAM[(Address & 0x3FFFF) >> 1] != *Buffer);
+     ExBackupRAM[(Address & 0x3FFFF) >> 1] = *Buffer;
     }
    }
    Address++;
@@ -511,7 +511,7 @@ static void PCFXDBG_PutAddressSpaceBytes(const char *name, uint32 Address, uint3
  {
   while(Length--)
   {
-   Address &= 0x7FFF;
+   Address &= 0x1FFFF;
    BackupSignalDirty |= (ExBackupRAM[Address] != *Buffer);
    ExBackupRAM[Address] = *Buffer;
    Address++;
@@ -717,7 +717,7 @@ static MDFN_COLD void LoadCommon(std::vector<CDInterface*> *CDInterfaces)
 
 
   static const uint8 ExBRInit00[] = { 0x24, 0x8A, 0xDF, 0x50, 0x43, 0x46, 0x58, 0x43, 0x61, 0x72, 0x64, 0x80,
-                                     0x00, 0x01, 0x01, 0x00, 0x01, 0x40, 0x00, 0x00, 0x01, 0xF9, 0x03, 0x00,
+                                     0x00, 0x01, 0x01, 0x00, 0x01, 0xFC, 0x00, 0x00, 0x04, 0xF9, 0x0C, 0x00,
                                      0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00
                                   };
   static const uint8 ExBRInit80[] = { 0xF9, 0xFF, 0xFF };
@@ -731,11 +731,29 @@ static MDFN_COLD void LoadCommon(std::vector<CDInterface*> *CDInterfaces)
    GZFileStream savefp(save_path, GZFileStream::MODE::READ);
    const uint64 fp_size_tmp = savefp.size();
 
-   if(fp_size_tmp != 65536)
-    throw MDFN_Error(0, _("Save game memory file \"%s\" is an incorrect size(%llu bytes).  The correct size is %llu bytes."), MDFN_strhumesc(save_path).c_str(), (unsigned long long)fp_size_tmp, (unsigned long long)65536);
+   if(fp_size_tmp < 32768)
+    throw MDFN_Error(0, _("Save game memory file \"%s\" is an incorrect size(%llu bytes).  The correct size is %llu bytes."), MDFN_strhumesc(save_path).c_str(), (unsigned long long)fp_size_tmp, (unsigned long long)32768);
 
    savefp.read(BackupRAM, 0x8000);
-   savefp.read(ExBackupRAM, 0x8000);
+//   savefp.read(ExBackupRAM, 0x20000);
+  }
+  catch(MDFN_Error &e)
+  {
+   if(e.GetErrno() != ENOENT)
+    throw;
+  }
+
+//
+  try
+  {
+   std::string ext_save_path = MDFN_MakeFName(MDFNMKF_FIXEDSAV, 0, MDFN_GetSettingS("pcfx.external_bram_file"));
+   GZFileStream esavefp(ext_save_path, GZFileStream::MODE::READ);
+   const uint64 efp_size_tmp = esavefp.size();
+
+   if(efp_size_tmp != 131072)
+    throw MDFN_Error(0, _("External save game memory file \"%s\" is an incorrect size(%llu bytes).  The correct size is %llu bytes."), MDFN_strhumesc(ext_save_path).c_str(), (unsigned long long)efp_size_tmp, (unsigned long long)131072);
+   esavefp.read(ExBackupRAM, 0x20000);
+//
   }
   catch(MDFN_Error &e)
   {
@@ -945,12 +963,13 @@ static void SaveBackupMemory(void)
  if(!BRAMDisabled)
  {
   FileStream fp(MDFN_MakeFName(MDFNMKF_SAV, 0, "sav"), FileStream::MODE_WRITE_INPLACE);
-
   fp.write(BackupRAM, 0x8000);
-  fp.write(ExBackupRAM, 0x8000);
-
-  fp.truncate(fp.tell());
   fp.close();
+
+  FileStream fp_e(MDFN_MakeFName(MDFNMKF_FIXEDSAV, 0, MDFN_GetSettingS("pcfx.external_bram_file")), FileStream::MODE_WRITE_INPLACE);
+  fp_e.write(ExBackupRAM, 0x20000);
+  fp_e.truncate(fp_e.tell());
+  fp_e.close();
  }
 }
 
@@ -989,7 +1008,7 @@ static void StateAction(StateMem *sm, const unsigned load, const bool data_only)
   SFVAR(BackupControl),
   SFVAR(ExBusReset),
   SFPTR8(BackupRAM, BRAMDisabled ? 0 : 0x8000, SFORMAT::FORM::NVMEM),
-  SFPTR8(ExBackupRAM, BRAMDisabled ? 0 : 0x8000, SFORMAT::FORM::NVMEM),
+  SFPTR8(ExBackupRAM, BRAMDisabled ? 0 : 0x20000, SFORMAT::FORM::NVMEM),
 
   SFEND
  };
@@ -1053,6 +1072,7 @@ static const MDFNSetting PCFXSettings[] =
   { "pcfx.bios", MDFNSF_EMU_STATE | MDFNSF_CAT_PATH, gettext_noop("Path to the ROM BIOS"), NULL, MDFNST_STRING, "pcfx.rom" },
   { "pcfx.fxscsi", MDFNSF_EMU_STATE | MDFNSF_CAT_PATH, gettext_noop("Path to the FX-SCSI ROM"), gettext_noop("Intended for developers only."), MDFNST_STRING, "0" },
   { "pcfx.disable_bram", MDFNSF_EMU_STATE | MDFNSF_UNTRUSTED_SAFE, gettext_noop("Disable internal and external BRAM."), gettext_noop("It is intended for viewing games' error screens that may be different from simple BRAM full and uninitialized BRAM error screens, though it can cause the game to crash outright."), MDFNST_BOOL, "0" },
+  { "pcfx.external_bram_file", MDFNSF_EMU_STATE | MDFNSF_CAT_PATH, gettext_noop("Path to external Backup Memory file (i.e. FX-BMP cartridge)."), NULL, MDFNST_STRING, "pcfx_fx-bmp.sav" },
   { "pcfx.cdspeed", MDFNSF_EMU_STATE | MDFNSF_UNTRUSTED_SAFE, gettext_noop("Emulated CD-ROM speed."), gettext_noop("Setting the value higher than 2, the default, will decrease loading times in most games by some degree."), MDFNST_UINT, "2", "2", "10" },
 
   { "pcfx.nospritelimit", MDFNSF_NOFLAGS, gettext_noop("Remove 16-sprites-per-scanline hardware limit."), NULL, MDFNST_BOOL, "0" },
