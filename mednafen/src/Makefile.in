@@ -619,10 +619,11 @@ am__mednafen_SOURCES_DIST = debug.cpp error.cpp mempatcher.cpp \
 	cdrom/lec.cpp cdrom/CDUtility.cpp cdrom/CDInterface.cpp \
 	cdrom/CDInterface_MT.cpp cdrom/CDInterface_ST.cpp \
 	cdrom/CDAccess.cpp cdrom/CDAccess_Image.cpp \
-	cdrom/CDAccess_CCD.cpp cdrom/CDAFReader.cpp \
-	cdrom/CDAFReader_Vorbis.cpp cdrom/CDAFReader_MPC.cpp \
-	cdrom/CDAFReader_FLAC.cpp cdrom/CDAFReader_PCM.cpp \
-	cdrom/scsicd.cpp sound/Blip_Buffer.cpp sound/Stereo_Buffer.cpp \
+	cdrom/CDAccess_CCD.cpp cdrom/seektime_pce.cpp \
+	cdrom/CDAFReader.cpp cdrom/CDAFReader_Vorbis.cpp \
+	cdrom/CDAFReader_MPC.cpp cdrom/CDAFReader_FLAC.cpp \
+	cdrom/CDAFReader_PCM.cpp cdrom/scsicd.cpp \
+	sound/Blip_Buffer.cpp sound/Stereo_Buffer.cpp \
 	sound/Fir_Resampler.cpp sound/WAVRecord.cpp sound/okiadpcm.cpp \
 	sound/DSPUtility.cpp sound/SwiftResampler.cpp \
 	sound/OwlResampler.cpp net/Net.cpp net/Net_POSIX.cpp \
@@ -971,7 +972,8 @@ am_mednafen_OBJECTS = debug.$(OBJEXT) error.$(OBJEXT) \
 	cdrom/CDInterface.$(OBJEXT) cdrom/CDInterface_MT.$(OBJEXT) \
 	cdrom/CDInterface_ST.$(OBJEXT) cdrom/CDAccess.$(OBJEXT) \
 	cdrom/CDAccess_Image.$(OBJEXT) cdrom/CDAccess_CCD.$(OBJEXT) \
-	cdrom/CDAFReader.$(OBJEXT) cdrom/CDAFReader_Vorbis.$(OBJEXT) \
+	cdrom/seektime_pce.$(OBJEXT) cdrom/CDAFReader.$(OBJEXT) \
+	cdrom/CDAFReader_Vorbis.$(OBJEXT) \
 	cdrom/CDAFReader_MPC.$(OBJEXT) $(am__objects_39) \
 	cdrom/CDAFReader_PCM.$(OBJEXT) cdrom/scsicd.$(OBJEXT) \
 	$(am__objects_40) sound/Fir_Resampler.$(OBJEXT) \
@@ -1042,8 +1044,8 @@ am__depfiles_remade = ./$(DEPDIR)/ExtMemStream.Po \
 	cdrom/$(DEPDIR)/crc32.Po cdrom/$(DEPDIR)/galois.Po \
 	cdrom/$(DEPDIR)/l-ec.Po cdrom/$(DEPDIR)/lec.Po \
 	cdrom/$(DEPDIR)/recover-raw.Po cdrom/$(DEPDIR)/scsicd.Po \
-	cheat_formats/$(DEPDIR)/gb.Po cheat_formats/$(DEPDIR)/psx.Po \
-	cheat_formats/$(DEPDIR)/snes.Po \
+	cdrom/$(DEPDIR)/seektime_pce.Po cheat_formats/$(DEPDIR)/gb.Po \
+	cheat_formats/$(DEPDIR)/psx.Po cheat_formats/$(DEPDIR)/snes.Po \
 	compress/$(DEPDIR)/ArchiveReader.Po \
 	compress/$(DEPDIR)/DecompressFilter.Po \
 	compress/$(DEPDIR)/GZFileStream.Po \
@@ -1706,24 +1708,24 @@ mednafen_SOURCES = debug.cpp error.cpp mempatcher.cpp settings.cpp \
 	cdrom/lec.cpp cdrom/CDUtility.cpp cdrom/CDInterface.cpp \
 	cdrom/CDInterface_MT.cpp cdrom/CDInterface_ST.cpp \
 	cdrom/CDAccess.cpp cdrom/CDAccess_Image.cpp \
-	cdrom/CDAccess_CCD.cpp cdrom/CDAFReader.cpp \
-	cdrom/CDAFReader_Vorbis.cpp cdrom/CDAFReader_MPC.cpp \
-	$(am__append_62) cdrom/CDAFReader_PCM.cpp cdrom/scsicd.cpp \
-	$(am__append_63) sound/Fir_Resampler.cpp sound/WAVRecord.cpp \
-	sound/okiadpcm.cpp sound/DSPUtility.cpp \
-	sound/SwiftResampler.cpp sound/OwlResampler.cpp net/Net.cpp \
-	$(am__append_64) $(am__append_65) string/escape.cpp \
-	string/string.cpp video/surface.cpp video/convert.cpp \
-	video/tblur.cpp video/Deinterlacer.cpp \
-	video/Deinterlacer_Simple.cpp video/Deinterlacer_Blend.cpp \
-	video/resize.cpp video/video.cpp video/primitives.cpp \
-	video/png.cpp video/text.cpp video/font-data.cpp \
-	video/font-data-18x18.c video/font-data-12x13.c \
-	resampler/resample.c cputest/cputest.c $(am__append_66) \
-	$(am__append_67) cheat_formats/gb.cpp cheat_formats/psx.cpp \
-	cheat_formats/snes.cpp compress/ArchiveReader.cpp \
-	compress/ZIPReader.cpp compress/GZFileStream.cpp \
-	compress/DecompressFilter.cpp \
+	cdrom/CDAccess_CCD.cpp cdrom/seektime_pce.cpp \
+	cdrom/CDAFReader.cpp cdrom/CDAFReader_Vorbis.cpp \
+	cdrom/CDAFReader_MPC.cpp $(am__append_62) \
+	cdrom/CDAFReader_PCM.cpp cdrom/scsicd.cpp $(am__append_63) \
+	sound/Fir_Resampler.cpp sound/WAVRecord.cpp sound/okiadpcm.cpp \
+	sound/DSPUtility.cpp sound/SwiftResampler.cpp \
+	sound/OwlResampler.cpp net/Net.cpp $(am__append_64) \
+	$(am__append_65) string/escape.cpp string/string.cpp \
+	video/surface.cpp video/convert.cpp video/tblur.cpp \
+	video/Deinterlacer.cpp video/Deinterlacer_Simple.cpp \
+	video/Deinterlacer_Blend.cpp video/resize.cpp video/video.cpp \
+	video/primitives.cpp video/png.cpp video/text.cpp \
+	video/font-data.cpp video/font-data-18x18.c \
+	video/font-data-12x13.c resampler/resample.c cputest/cputest.c \
+	$(am__append_66) $(am__append_67) cheat_formats/gb.cpp \
+	cheat_formats/psx.cpp cheat_formats/snes.cpp \
+	compress/ArchiveReader.cpp compress/ZIPReader.cpp \
+	compress/GZFileStream.cpp compress/DecompressFilter.cpp \
 	compress/ZstdDecompressFilter.cpp compress/ZLInflateFilter.cpp \
 	hash/md5.cpp hash/sha1.cpp hash/sha256.cpp hash/crc.cpp \
 	$(am__append_70)
@@ -3225,6 +3227,8 @@ cdrom/CDAccess_Image.$(OBJEXT): cdrom/$(am__dirstamp) \
 	cdrom/$(DEPDIR)/$(am__dirstamp)
 cdrom/CDAccess_CCD.$(OBJEXT): cdrom/$(am__dirstamp) \
 	cdrom/$(DEPDIR)/$(am__dirstamp)
+cdrom/seektime_pce.$(OBJEXT): cdrom/$(am__dirstamp) \
+	cdrom/$(DEPDIR)/$(am__dirstamp)
 cdrom/CDAFReader.$(OBJEXT): cdrom/$(am__dirstamp) \
 	cdrom/$(DEPDIR)/$(am__dirstamp)
 cdrom/CDAFReader_Vorbis.$(OBJEXT): cdrom/$(am__dirstamp) \
@@ -3536,6 +3540,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@cdrom/$(DEPDIR)/lec.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@cdrom/$(DEPDIR)/recover-raw.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@cdrom/$(DEPDIR)/scsicd.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@cdrom/$(DEPDIR)/seektime_pce.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@cheat_formats/$(DEPDIR)/gb.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@cheat_formats/$(DEPDIR)/psx.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@cheat_formats/$(DEPDIR)/snes.Po@am__quote@ # am--include-marker
@@ -5645,6 +5650,7 @@ distclean: distclean-recursive
 	-rm -f cdrom/$(DEPDIR)/lec.Po
 	-rm -f cdrom/$(DEPDIR)/recover-raw.Po
 	-rm -f cdrom/$(DEPDIR)/scsicd.Po
+	-rm -f cdrom/$(DEPDIR)/seektime_pce.Po
 	-rm -f cheat_formats/$(DEPDIR)/gb.Po
 	-rm -f cheat_formats/$(DEPDIR)/psx.Po
 	-rm -f cheat_formats/$(DEPDIR)/snes.Po
@@ -6193,6 +6199,7 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f cdrom/$(DEPDIR)/lec.Po
 	-rm -f cdrom/$(DEPDIR)/recover-raw.Po
 	-rm -f cdrom/$(DEPDIR)/scsicd.Po
+	-rm -f cdrom/$(DEPDIR)/seektime_pce.Po
 	-rm -f cheat_formats/$(DEPDIR)/gb.Po
 	-rm -f cheat_formats/$(DEPDIR)/psx.Po
 	-rm -f cheat_formats/$(DEPDIR)/snes.Po

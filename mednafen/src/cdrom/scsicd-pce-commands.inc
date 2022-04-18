@@ -6,6 +6,7 @@
 static void DoNEC_PCE_SAPSP(const uint8 *cdb)
 {
  uint32 new_read_sec_start;
+ float seekms;
 
  //printf("Set audio start: %02x %02x %02x %02x %02x %02x %02x\n", cdb[9], cdb[1], cdb[2], cdb[3], cdb[4], cdb[5], cdb[6]);
  switch (cdb[9] & 0xc0)
@@ -47,6 +48,15 @@ static void DoNEC_PCE_SAPSP(const uint8 *cdb)
  read_sec = read_sec_start = new_read_sec_start;
  read_sec_end = toc.tracks[100].lba;
 
+ seekms = get_pce_cd_seek_ms(head_pos, read_sec);
+ //printf("From sec %6.6X to %6.6X (SAPSP), ms = %.2f\n", head_pos, read_sec, seekms);
+ CDDASeekTimer = (uint64)(System_Clock * seekms / 1000);
+ CDAudioDelay  = (uint64)(System_Clock * 260 / 1000);
+
+ if (CDDASeekTimer > CDAudioDelay)
+   CDDASeekTimer -= CDAudioDelay;
+ else
+   CDAudioDelay = 0;
 
  cdda.CDDAReadPos = 588;
 
@@ -62,7 +72,7 @@ static void DoNEC_PCE_SAPSP(const uint8 *cdb)
  if(read_sec < toc.tracks[100].lba)
   Cur_CDIF->HintReadSector(read_sec);
 
- SendStatusAndMessage(STATUS_GOOD, 0x00);
+ DelaySendStatusAndMessage(STATUS_GOOD, 0x00);
  CDIRQCallback(SCSICD_IRQ_DATA_TRANSFER_DONE);
 }
 
@@ -127,6 +137,7 @@ static void DoNEC_PCE_SAPEP(const uint8 *cdb)
 		   break;
  }
 
+ //printf("(SAPEP)\n");
  SendStatusAndMessage(STATUS_GOOD, 0x00);
 }
 
