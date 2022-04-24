@@ -469,10 +469,10 @@ INLINE void VCE::SyncSub(int32 clocks)
     else
      scanline++;
 
-    if(scanline == 14 + 240)
+    if(scanline == 14 + 240) // does this need to be 242 as well?
      FrameDone = true;
 
-    if((scanline == 14 + 240) || (scanline == 123))
+    if((scanline == 14 + 242) || (scanline == 125))
     {
      HuCPU.Exit();
     }
