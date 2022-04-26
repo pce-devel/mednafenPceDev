@@ -374,14 +374,14 @@ enum
 
 static const RegType NESCPURegs[] =
 {
-        { CPU_GSREG_PC, "PC", "Program Counter", 2 },
-        { CPU_GSREG_A, "A", "Accumulator", 1 },
-        { CPU_GSREG_X, "X", "X Index", 1 },
-        { CPU_GSREG_Y, "Y", "Y Index", 1 },
-        { CPU_GSREG_SP, "SP", "Stack Pointer", 1 },
-        { CPU_GSREG_P, "P", "Status", 1 },
-	{ CPU_GSREG_TIMESTAMP, "TiSt", "Timestamp", 4 },
-        { 0, "", "", 0 },
+        { CPU_GSREG_PC,	1,	"PC", "Program Counter", 2 },
+        { CPU_GSREG_A,	1,	"A", "Accumulator", 1 },
+        { CPU_GSREG_X,	1,	"X", "X Index", 1 },
+        { CPU_GSREG_Y,	1,	"Y", "Y Index", 1 },
+        { CPU_GSREG_SP,	1,	"SP", "Stack Pointer", 1 },
+        { CPU_GSREG_P,	1,	"P", "Status", 1 },
+	{ CPU_GSREG_TIMESTAMP,	1,	"TiSt", "Timestamp", 4 },
+        { 0, 0, "", "", 0 },
 };
 
 static uint32 GetRegister_CPU(const unsigned int id, char *special, const uint32 special_len)
@@ -475,17 +475,17 @@ static const RegGroupType NESCPURegsGroup =
 
 static const RegType NESPPURegs[] =
 {
-        { PPU_GSREG_PPU0, "PPU0", "PPU0", 1 },
-        { PPU_GSREG_PPU1, "PPU1", "PPU1", 1 },
-        { PPU_GSREG_PPU2, "PPU2", "PPU2", 1 },
-        { PPU_GSREG_PPU3, "PPU3", "PPU3", 1 },
-        { PPU_GSREG_XOFFSET, "XOffset", "Tile X Offset", 1},
-        { PPU_GSREG_RADDR, "RAddr", "Refresh Address", 2},
-        { PPU_GSREG_TADDR, "TAddr", "Temp Address", 2},
-        { PPU_GSREG_VRAMBUF, "VRAM Buf", "VRAM Buffer", 1},
-        { PPU_GSREG_VTOGGLE, "V-Toggle", "High/low Toggle", 1},
-        { PPU_GSREG_SCANLINE, "Scanline", "Current Scanline(0 = first visible, 0xF0 = in vblank)", 1 },
-        { 0, "", "", 0 },
+        { PPU_GSREG_PPU0,	1,	"PPU0", "PPU0", 1 },
+        { PPU_GSREG_PPU1,	1,	"PPU1", "PPU1", 1 },
+        { PPU_GSREG_PPU2,	1,	"PPU2", "PPU2", 1 },
+        { PPU_GSREG_PPU3,	1,	"PPU3", "PPU3", 1 },
+        { PPU_GSREG_XOFFSET,	1,	"XOffset", "Tile X Offset", 1},
+        { PPU_GSREG_RADDR,	1,	"RAddr", "Refresh Address", 2},
+        { PPU_GSREG_TADDR,	1,	"TAddr", "Temp Address", 2},
+        { PPU_GSREG_VRAMBUF,	1,	"VRAM Buf", "VRAM Buffer", 1},
+        { PPU_GSREG_VTOGGLE,	1,	"V-Toggle", "High/low Toggle", 1},
+        { PPU_GSREG_SCANLINE,	1,	"Scanline", "Current Scanline(0 = first visible, 0xF0 = in vblank)", 1 },
+        { 0, 0, "", "", 0 },
 };
 
 static const RegGroupType NESPPURegsGroup =

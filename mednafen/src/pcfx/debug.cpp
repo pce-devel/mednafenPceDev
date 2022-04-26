@@ -665,233 +665,277 @@ char *PCFXDBG_ShiftJIS_to_UTF8(const uint16 sjc)
 
 static const RegType PCFXRegs0[] =
 {
-        { V810::GSREG_PC, "PC", "Program Counter", 4 },
-	{ V810::GSREG_PR + 1, "PR1", "Program Register 1", 4 },
-	{ V810::GSREG_PR + 2, "HSP", "Program Register 2(Handler Stack Pointer)", 4 },
-	{ V810::GSREG_PR + 3, "SP", "Program Register 3(Stack Pointer)", 4 },
-	{ V810::GSREG_PR + 4, "GP", "Program Register 4(Global Pointer)", 4 },
-	{ V810::GSREG_PR + 5, "TP", "Program Register 5(Text Pointer)", 4 },
-	{ V810::GSREG_PR + 6, "PR6", "Program Register 6", 4 },
-	{ V810::GSREG_PR + 7, "PR7", "Program Register 7", 4 },
-	{ V810::GSREG_PR + 8, "PR8", "Program Register 8", 4 },
-	{ V810::GSREG_PR + 9, "PR9", "Program Register 9", 4 },
-	{ V810::GSREG_PR + 10, "PR10", "Program Register 10", 4 },
-	{ V810::GSREG_PR + 11, "PR11", "Program Register 11", 4 },
-	{ V810::GSREG_PR + 12, "PR12", "Program Register 12", 4 },
-	{ V810::GSREG_PR + 13, "PR13", "Program Register 13", 4 },
-	{ V810::GSREG_PR + 14, "PR14", "Program Register 14", 4 },
-	{ V810::GSREG_PR + 15, "PR15", "Program Register 15", 4 },
-        { V810::GSREG_PR + 16, "PR16", "Program Register 16", 4 },
-        { V810::GSREG_PR + 17, "PR17", "Program Register 17", 4 },
-        { V810::GSREG_PR + 18, "PR18", "Program Register 18", 4 },
-        { V810::GSREG_PR + 19, "PR19", "Program Register 19", 4 },
-        { V810::GSREG_PR + 20, "PR20", "Program Register 20", 4 },
-        { V810::GSREG_PR + 21, "PR21", "Program Register 21", 4 },
-        { V810::GSREG_PR + 22, "PR22", "Program Register 22", 4 },
-        { V810::GSREG_PR + 23, "PR23", "Program Register 23", 4 },
-        { V810::GSREG_PR + 24, "PR24", "Program Register 24", 4 },
-        { V810::GSREG_PR + 25, "PR25", "Program Register 25", 4 },
-        { V810::GSREG_PR + 26, "PR26", "Program Register 26(String Dest Bit Offset)", 4 },
-        { V810::GSREG_PR + 27, "PR27", "Program Register 27(String Source Bit Offset)", 4 },
-        { V810::GSREG_PR + 28, "PR28", "Program Register 28(String Length)", 4 },
-        { V810::GSREG_PR + 29, "PR29", "Program Register 29(String Dest)", 4 },
-        { V810::GSREG_PR + 30, "PR30", "Program Register 30(String Source)", 4 },
-        { V810::GSREG_PR + 31, "LP", "Program Register 31(Link Pointer)", 4 },
+	{ 0, 0, "-----V810-----", "", 0xFFFF },
 
-        { V810::GSREG_SR + 0, "SR0", "Exception/Interrupt PC", 4 },
-        { V810::GSREG_SR + 1, "SR1", "Exception/Interrupt PSW", 4 },
-        { V810::GSREG_SR + 2, "SR2", "Fatal Error PC", 4 },
-        { V810::GSREG_SR + 3, "SR3", "Fatal Error PSW", 4 },
-        { V810::GSREG_SR + 4, "SR4", "Exception Cause Register", 4 },
-        { V810::GSREG_SR + 5, "SR5", "Program Status Word", 4 },
-        { V810::GSREG_SR + 6, "SR6", "Processor ID Register", 4 },
-        { V810::GSREG_SR + 7, "SR7", "Task Control Word", 4 },
-        { V810::GSREG_SR + 24, "SR24", "Cache Control Word", 4 },
-        { V810::GSREG_SR + 25, "SR25", "Address Trap Register", 4 },
+	{ V810::GSREG_PC,      4, "PC",      "Program Counter",                               4 },
+	{ V810::GSREG_PR +  1, 4, "R1",      "Program Register 1 (Workspace)",                4 },
+	{ V810::GSREG_PR +  2, 4, "FP",      "Program Register 2 (Frame Pointer)",            4 },
+	{ V810::GSREG_PR +  3, 4, "SP",      "Program Register 3 (Stack Pointer)",            4 },
+	{ V810::GSREG_PR +  4, 4, "GP",      "Program Register 4 (Global Pointer)",           4 },
+	{ V810::GSREG_PR +  5, 4, "TP",      "Program Register 5 (Text Pointer)",             4 },
+	{ V810::GSREG_PR +  6, 4, "R6",      "Program Register 6 (Parameter 1)",              4 },
+	{ V810::GSREG_PR +  7, 4, "R7",      "Program Register 7 (Parameter 2)",              4 },
+	{ V810::GSREG_PR +  8, 4, "R8",      "Program Register 8 (Parameter 3)",              4 },
+	{ V810::GSREG_PR +  9, 4, "R9",      "Program Register 9 (Parameter 4)",              4 },
+	{ V810::GSREG_PR + 10, 3, "R10",     "Program Register 10 (Return 1)",                4 },
+	{ V810::GSREG_PR + 11, 3, "R11",     "Program Register 11 (Return 2)",                4 },
+	{ V810::GSREG_PR + 12, 3, "R12",     "Program Register 12 (Workspace)",               4 },
+	{ V810::GSREG_PR + 13, 3, "R13",     "Program Register 13 (Workspace)",               4 },
+	{ V810::GSREG_PR + 14, 3, "R14",     "Program Register 14 (Workspace)",               4 },
+	{ V810::GSREG_PR + 15, 3, "R15",     "Program Register 15 (Workspace)",               4 },
+	{ V810::GSREG_PR + 16, 3, "R16",     "Program Register 16 (Workspace)",               4 },
+	{ V810::GSREG_PR + 17, 3, "R17",     "Program Register 17 (Workspace)",               4 },
+	{ V810::GSREG_PR + 18, 3, "R18",     "Program Register 18 (Workspace)",               4 },
+	{ V810::GSREG_PR + 19, 3, "R19",     "Program Register 19 (Workspace)",               4 },
+	{ V810::GSREG_PR + 20, 3, "R20",     "Program Register 20 (Preserved)",               4 },
+	{ V810::GSREG_PR + 21, 3, "R21",     "Program Register 21 (Preserved)",               4 },
+	{ V810::GSREG_PR + 22, 3, "R22",     "Program Register 22 (Preserved)",               4 },
+	{ V810::GSREG_PR + 23, 3, "R23",     "Program Register 23 (Preserved)",               4 },
+	{ V810::GSREG_PR + 24, 3, "R24",     "Program Register 24 (Preserved)",               4 },
+	{ V810::GSREG_PR + 25, 3, "R25",     "Program Register 25 (Preserved)",               4 },
+	{ V810::GSREG_PR + 26, 3, "R26",     "Program Register 26 (String Dest Bit Offset)",  4 },
+	{ V810::GSREG_PR + 27, 3, "R27",     "Program Register 27 (String Source Bit Offset)",4 },
+	{ V810::GSREG_PR + 28, 3, "R28",     "Program Register 28 (String Length)",           4 },
+	{ V810::GSREG_PR + 29, 3, "R29",     "Program Register 29 (String Dest)",             4 },
+	{ V810::GSREG_PR + 30, 3, "R30",     "Program Register 30 (String Source)",           4 },
+	{ V810::GSREG_PR + 31, 4, "LP",      "Program Register 31 (Link Pointer)",            4 },
 
-	{ (1 << 16) | PCFXIRQ_GSREG_IPEND, "IPEND", "Interrupts Pending", 2 },
-        { (1 << 16) | PCFXIRQ_GSREG_IMASK, "IMASK", "Interrupt Mask", 2 },
-        { (1 << 16) | PCFXIRQ_GSREG_IPRIO0, "IPRIO0", "Interrupt Priority Register 0", 2 },
-        { (1 << 16) | PCFXIRQ_GSREG_IPRIO1, "IPRIO1", "Interrupt Priority Register 1", 2 },
+	{ 0, 0, "-----SREG-----", "", 0xFFFF },
 
-        { (2 << 16) | FXTIMER_GSREG_TCTRL, "TCTRL", "Timer Control", 2 },
-        { (2 << 16) | FXTIMER_GSREG_TPRD, "TPRD", "Timer Period", 2 },
-        { (2 << 16) | FXTIMER_GSREG_TCNTR, "TCNTR", "Timer Counter", 3 },
+	{ V810::GSREG_SR +  0, 2, "EIPC",    "Exception/Interrupt PC",                        4 },
+	{ V810::GSREG_SR +  1, 1, "EIPSW",   "Exception/Interrupt PSW",                       4 },
+	{ V810::GSREG_SR +  2, 2, "FEPC",    "Fatal Error PC",                                4 },
+	{ V810::GSREG_SR +  3, 1, "FEPSW",   "Fatal Error PSW",                               4 },
+	{ V810::GSREG_SR +  4, 3, "ECR",     "Exception Cause Register",                      4 },
+	{ V810::GSREG_SR +  5, 3, "PSW",     "Program Status Word",                           4 },
+	{ V810::GSREG_SR +  6, 3, "PIR",     "Processor ID Register",                         4 },
+	{ V810::GSREG_SR +  7, 2, "TKCW",    "Task Control Word",                             4 },
+	{ V810::GSREG_SR + 24, 2, "CHCW",    "Cache Control Word",                            4 },
+	{ V810::GSREG_SR + 25, 1, "ADTRE",   "Address Trap Register",                         4 },
 
-	{ (3 << 16) | FXINPUT_GSREG_KPCTRL0, "KPCTRL0", "Keyport 0 Control", 1 },
-	{ (3 << 16) | FXINPUT_GSREG_KPCTRL1, "KPCTRL1", "Keyport 1 Control", 1 },
+	{ 0, 0, "----TSTAMP----", "", 0xFFFF },
 
-	{ V810::GSREG_TIMESTAMP, "TStamp", "Timestamp", 3 },
-        { 0, "", "", 0 },
+	{ V810::GSREG_TIMESTAMP,             2, "TStamp",  "Timestamp",                       3 },
+
+	{ 0, 0, "--------------", "", 0xFFFF },
+
+	{ 0, 0, "", "", 0 },
 };
 
 static const RegType KINGRegs0[] =
 {
-	{ KING_GSREG_AR, "AR", "Active Register", 1 },
-	{ KING_GSREG_MPROGADDR, "MPROGADDR", "Micro-program Address", 2 },
-        { KING_GSREG_MPROGCTRL, "MPROGCTRL", "Micro-program Control", 2 },
+	{ 0, 0, "--KING-SYSTEM--", "", 0xFFFF },
 
-	{ KING_GSREG_PAGESET, "PAGESET", "KRAM Page Settings", 2 },
-        { KING_GSREG_RTCTRL, "RTCTRL", "Rainbow Transfer Control", 2 },
-        { KING_GSREG_RKRAMA, "RKRAMA", "Rainbow Transfer K-RAM Address", 3},
-        { KING_GSREG_RSTART, "RSTART", "Rainbow Transfer Start Position", 2},
-        { KING_GSREG_RCOUNT, "RCOUNT", "Rainbow Transfer Block Count", 2 },
-        { KING_GSREG_RIRQLINE, "RIRQLINE", "Raster IRQ Line", 2 },
-	{ KING_GSREG_KRAMWA, "KRAMWA", "K-RAM Write Address", 4 },
-	{ KING_GSREG_KRAMRA, "KRAMRA", "K-RAM Read Address", 4 },
-        { KING_GSREG_DMATA, "DMATA", "DMA Transfer Address", 3 },
-        { KING_GSREG_DMATS, "DMATS", "DMA Transfer Size", 4 },
-        { KING_GSREG_DMASTT, "DMASTT", "DMA Status", 2 },
-        { KING_GSREG_ADPCMCTRL, "ADPCMCTRL", "ADPCM Control", 2 },
-        { KING_GSREG_ADPCMBM0, "ADPCMBM0", "ADPCM Buffer Mode Ch0", 2 },
-        { KING_GSREG_ADPCMBM1, "ADPCMBM1", "ADPCM Buffer Mode Ch1", 2 },
-        { KING_GSREG_ADPCMPA0, "ADPCMPA0", "ADPCM PlayAddress Ch0", 0x100 | 18 },
-        { KING_GSREG_ADPCMPA1, "ADPCMPA1", "ADPCM PlayAddress Ch1", 0x100 | 18 },
-        { KING_GSREG_ADPCMSA0, "ADPCMSA0", "ADPCM Start Address Ch0", 2 },
-        { KING_GSREG_ADPCMSA1, "ADPCMSA1", "ADPCM Start Address Ch1", 2 },
-        { KING_GSREG_ADPCMIA0, "ADPCMIA0", "ADPCM Intermediate Address Ch0", 2 },
-        { KING_GSREG_ADPCMIA1, "ADPCMIA1", "ADPCM Intermediate Address Ch1", 2 },
-        { KING_GSREG_ADPCMEA0, "ADPCMEA0", "ADPCM End Address Ch0", 0x100 | 18 },
-        { KING_GSREG_ADPCMEA1, "ADPCMEA1", "ADPCM End Address Ch1", 0x100 | 18 },
-	{ KING_GSREG_ADPCMStat, "ADPCMStat", "ADPCM Status Register", 1 },
-	{ KING_GSREG_Reg01, "Reg01", "KING Register 0x01", 1 },
-	{ KING_GSREG_Reg02, "Reg02", "KING Register 0x02", 1 },
-	{ KING_GSREG_Reg03, "Reg03", "KING Register 0x03", 1 },
-	{ KING_GSREG_SUBCC, "SUBCC", "Sub-channel Control", 1 },
-	{ 0, "------", "", 0xFFFF },
-	{ KING_GSREG_DB, "DB", "SCSI Data Bus", 0x100 | 8 },
-	{ KING_GSREG_BSY, "BSY", "SCSI BSY", 0x100 | 1 },
-	{ KING_GSREG_REQ, "REQ", "SCSI REQ", 0x100 | 1 },
-	{ KING_GSREG_ACK, "ACK", "SCSI ACK", 0x100 | 1 },
-	{ KING_GSREG_MSG, "MSG", "SCSI MSG", 0x100 | 1 },
-	{ KING_GSREG_IO, "IO", "SCSI IO", 0x100 | 1 },
-	{ KING_GSREG_CD, "CD", "SCSI CD", 0x100 | 1 },
-	{ KING_GSREG_SEL, "SEL", "SCSI SEL", 0x100 | 1 },
+	{ KING_GSREG_AR,       11, "AR",        "Active Register",                 1 },
 
-        { 0, "", "", 0 },
+	{ KING_GSREG_PAGESET,   4, "PAGESET",   "KRAM Page Settings",              2 },
+	{ KING_GSREG_RTCTRL,    5, "RTCTRL",    "Rainbow Transfer Control",        2 },
+	{ KING_GSREG_RKRAMA,    3, "RKRAMA",    "Rainbow Transfer K-RAM Address",  3 },
+	{ KING_GSREG_RSTART,    5, "RSTART",    "Rainbow Transfer Start Position", 2 },
+	{ KING_GSREG_RCOUNT,    5, "RCOUNT",    "Rainbow Transfer Block Count",    2 },
+	{ KING_GSREG_RIRQLINE,  3, "RIRQLINE",  "Raster IRQ Line",                 2 },
+	{ KING_GSREG_KRAMWA,    1, "KRAMWA",    "K-RAM Write Address",             4 },
+	{ KING_GSREG_KRAMRA,    1, "KRAMRA",    "K-RAM Read Address",              4 },
+	{ KING_GSREG_DMATA,     4, "DMATA",     "DMA Transfer Address",            3 },
+	{ KING_GSREG_DMATS,     2, "DMATS",     "DMA Transfer Size",               4 },
+	{ KING_GSREG_DMASTT,    5, "DMASTT",    "DMA Status",                      2 },
+
+	{ 0, 0, "-----MPROG-----", "", 0xFFFF },
+
+	{ KING_GSREG_MPROGADDR, 2, "MPROGADDR", "Micro-program Address",           2 },
+	{ KING_GSREG_MPROGCTRL, 2, "MPROGCTRL", "Micro-program Control",           2 },
+
+	{ KING_GSREG_MPROG0,    3, "Program0",    "Micro-program",                   2 },
+	{ KING_GSREG_MPROG1,    3, "Program1",    "Micro-program",                   2 },
+	{ KING_GSREG_MPROG2,    3, "Program2",    "Micro-program",                   2 },
+	{ KING_GSREG_MPROG3,    3, "Program3",    "Micro-program",                   2 },
+	{ KING_GSREG_MPROG4,    3, "Program4",    "Micro-program",                   2 },
+	{ KING_GSREG_MPROG5,    3, "Program5",    "Micro-program",                   2 },
+	{ KING_GSREG_MPROG6,    3, "Program6",    "Micro-program",                   2 },
+	{ KING_GSREG_MPROG7,    3, "Program7",    "Micro-program",                   2 },
+	{ KING_GSREG_MPROG8,    3, "Program8",    "Micro-program",                   2 },
+	{ KING_GSREG_MPROG9,    3, "Program9",    "Micro-program",                   2 },
+	{ KING_GSREG_MPROGA,    3, "ProgramA",    "Micro-program",                   2 },
+	{ KING_GSREG_MPROGB,    3, "ProgramB",    "Micro-program",                   2 },
+	{ KING_GSREG_MPROGC,    3, "ProgramC",    "Micro-program",                   2 },
+	{ KING_GSREG_MPROGD,    3, "ProgramD",    "Micro-program",                   2 },
+	{ KING_GSREG_MPROGE,    3, "ProgramE",    "Micro-program",                   2 },
+	{ KING_GSREG_MPROGF,    3, "ProgramF",    "Micro-program",                   2 },
+
+	{ 0, 0, "-----ADPCM-----", "", 0xFFFF },
+
+	{ KING_GSREG_ADPCMCTRL, 2, "ADPCMCTRL", "ADPCM Control",                   2 },
+	{ KING_GSREG_ADPCMBM0,  3, "ADPCMBM0",  "ADPCM Buffer Mode Ch0",           2 },
+	{ KING_GSREG_ADPCMBM1,  3, "ADPCMBM1",  "ADPCM Buffer Mode Ch1",           2 },
+	{ KING_GSREG_ADPCMPA0,  2, "ADPCMPA0",  "ADPCM PlayAddress Ch0",           0x100 | 18 },
+	{ KING_GSREG_ADPCMPA1,  2, "ADPCMPA1",  "ADPCM PlayAddress Ch1",           0x100 | 18 },
+	{ KING_GSREG_ADPCMSA0,  3, "ADPCMSA0",  "ADPCM Start Address Ch0",         2 },
+	{ KING_GSREG_ADPCMSA1,  3, "ADPCMSA1",  "ADPCM Start Address Ch1",         2 },
+	{ KING_GSREG_ADPCMIA0,  3, "ADPCMIA0",  "ADPCM Intermediate Address Ch0",  2 },
+	{ KING_GSREG_ADPCMIA1,  3, "ADPCMIA1",  "ADPCM Intermediate Address Ch1",  2 },
+	{ KING_GSREG_ADPCMEA0,  2, "ADPCMEA0",  "ADPCM End Address Ch0",           0x100 | 18 },
+	{ KING_GSREG_ADPCMEA1,  2, "ADPCMEA1",  "ADPCM End Address Ch1",           0x100 | 18 },
+	{ KING_GSREG_ADPCMStat, 4, "ADPCMStat", "ADPCM Status Register",           1 },
+	{ KING_GSREG_Reg01,     8, "Reg01",     "KING Register 0x01",              1 },
+	{ KING_GSREG_Reg02,     8, "Reg02",     "KING Register 0x02",              1 },
+	{ KING_GSREG_Reg03,     8, "Reg03",     "KING Register 0x03",              1 },
+	{ KING_GSREG_SUBCC,     8, "SUBCC",     "Sub-channel Control",             1 },
+
+	{ 0, 0, "---------------", "", 0xFFFF },
+
+	{ 0, 0, "", "", 0 },
 };
 
 static const RegType KINGRegs1[] =
 {
-	{ 0, "-KING BG-", "", 0xFFFF },
+	{ 0, 0, "--KING-BG--", "", 0xFFFF },
 
-        { KING_GSREG_BGMODE, "Mode", "Background Mode", 2 },
-        { KING_GSREG_BGPRIO, "Prio", "Background Priority", 2 },
-        { KING_GSREG_BGSCRM, "ScrM", "Background Scroll Mode", 2 },
+	{ KING_GSREG_BGMODE, 3, "Mode",   "Background Mode",                2 },
+	{ KING_GSREG_BGPRIO, 3, "Prio",   "Background Priority",            2 },
+	{ KING_GSREG_BGSCRM, 3, "ScrM",   "Background Scroll Mode",         2 },
 
-	{ 0, "--KBG0:--", "", 0xFFFF },
-        { KING_GSREG_BGSIZ0, "Size", "Background 0 Size", 2 },
-        { KING_GSREG_BGBAT0, "BAT", "Background 0 BAT Address", 1 },
-        { KING_GSREG_BGCG0, "CG", "Background 0 CG Address", 1 },
-        { KING_GSREG_BGBATS, "SubBAT", "Background 0 SUB BAT Address", 1 },
-        { KING_GSREG_BGCGS, "SubCG", "Background 0 SUB CG Address", 1 },
-        { KING_GSREG_BGXSC0, "XScr", "Background 0 X Scroll", 0x100 | 11 },
-        { KING_GSREG_BGYSC0, "YScr", "Background 0 Y Scroll", 0x100 | 11 },
+	{ 0, 0, "----BG0----", "", 0xFFFF },
 
-	{ 0, "--KBG1:--", "", 0xFFFF },
-        { KING_GSREG_BGSIZ1, "Size", "Background 1 Size", 1 },
-        { KING_GSREG_BGBAT1, "BAT", "Background 1 BAT Address", 1 },
-        { KING_GSREG_BGCG1, "CG", "Background 1 CG Address", 1 },
-        { KING_GSREG_BGXSC1, "XScr", "Background 1 X Scroll", 0x100 | 10 },
-        { KING_GSREG_BGYSC1, "YScr", "Background 1 Y Scroll", 0x100 | 10 },
+	{ KING_GSREG_BGSIZ0, 3, "Size",   "Background 0 Size",              2 },
+	{ KING_GSREG_BGBAT0, 6, "BAT",    "Background 0 BAT Address",       1 },
+	{ KING_GSREG_BGCG0,  7, "CG",     "Background 0 CG Address",        1 },
+	{ KING_GSREG_BGBATS, 3, "SubBAT", "Background 0 SUB BAT Address",   1 },
+	{ KING_GSREG_BGCGS,  4, "SubCG",  "Background 0 SUB CG Address",    1 },
+	{ KING_GSREG_BGXSC0, 4, "XScr",   "Background 0 X Scroll",          0x100 | 11 },
+	{ KING_GSREG_BGYSC0, 4, "YScr",   "Background 0 Y Scroll",          0x100 | 11 },
 
-	{ 0, "--KBG2:--", "", 0xFFFF },
-        { KING_GSREG_BGSIZ2, "Size", "Background 2 Size", 1 },
-        { KING_GSREG_BGBAT2, "BAT", "Background 2 BAT Address", 1 },
-        { KING_GSREG_BGCG2, "CG", "Background 2 CG Address", 1 },
-        { KING_GSREG_BGXSC2, "XScr", "Background 2 X Scroll", 0x100 | 10 },
-        { KING_GSREG_BGYSC2, "YScr", "Background 2 Y Scroll", 0x100 | 10 },
+	{ 0, 0, "----BG1----", "", 0xFFFF },
 
-	{ 0, "--KBG3:--", "", 0xFFFF },
-        { KING_GSREG_BGSIZ3, "Size", "Background 3 Size", 1 },
-        { KING_GSREG_BGBAT3, "BAT", "Background 3 BAT Address", 1 },
-        { KING_GSREG_BGCG3, "CG", "Background 3 CG Address", 1 },
-        { KING_GSREG_BGXSC3, "XScr", "Background 3 X Scroll", 0x100 | 10 },
-        { KING_GSREG_BGYSC3, "YScr", "Background 3 Y Scroll", 0x100 | 10 },
+	{ KING_GSREG_BGSIZ1, 5, "Size",   "Background 1 Size",              1 },
+	{ KING_GSREG_BGBAT1, 6, "BAT",    "Background 1 BAT Address",       1 },
+	{ KING_GSREG_BGCG1,  7, "CG",     "Background 1 CG Address",        1 },
+	{ KING_GSREG_BGXSC1, 4, "XScr",   "Background 1 X Scroll",          0x100 | 10 },
+	{ KING_GSREG_BGYSC1, 4, "YScr",   "Background 1 Y Scroll",          0x100 | 10 },
 
+	{ 0, 0, "----BG2----", "", 0xFFFF },
 
-	{ 0, "--AFFIN:--", "", 0xFFFF },
-	{ KING_GSREG_AFFINA, "A", "Background Affin Coefficient A", 2 },
-	{ KING_GSREG_AFFINB, "B", "Background Affin Coefficient B", 2 },
-	{ KING_GSREG_AFFINC, "C", "Background Affin Coefficient C", 2 },
-	{ KING_GSREG_AFFIND, "D", "Background Affin Coefficient D", 2 },
-	{ KING_GSREG_AFFINX, "X", "Background Affin Center X", 2 },
-	{ KING_GSREG_AFFINY, "Y", "Background Affin Center Y", 2 },
+	{ KING_GSREG_BGSIZ2, 5, "Size",   "Background 2 Size",              1 },
+	{ KING_GSREG_BGBAT2, 6, "BAT",    "Background 2 BAT Address",       1 },
+	{ KING_GSREG_BGCG2,  7, "CG",     "Background 2 CG Address",        1 },
+	{ KING_GSREG_BGXSC2, 4, "XScr",   "Background 2 X Scroll",          0x100 | 10 },
+	{ KING_GSREG_BGYSC2, 4, "YScr",   "Background 2 Y Scroll",          0x100 | 10 },
 
-	{ 0, "--MPROG:--", "", 0xFFFF },
-	{ KING_GSREG_MPROG0, "0", "Micro-program", 2},
-	{ KING_GSREG_MPROG1, "1", "Micro-program", 2},
-	{ KING_GSREG_MPROG2, "2", "Micro-program", 2},
-	{ KING_GSREG_MPROG3, "3", "Micro-program", 2},
-	{ KING_GSREG_MPROG4, "4", "Micro-program", 2},
-	{ KING_GSREG_MPROG5, "5", "Micro-program", 2},
-	{ KING_GSREG_MPROG6, "6", "Micro-program", 2},
-	{ KING_GSREG_MPROG7, "7", "Micro-program", 2},
-	{ KING_GSREG_MPROG8, "8", "Micro-program", 2},
-	{ KING_GSREG_MPROG9, "9", "Micro-program", 2},
-	{ KING_GSREG_MPROGA, "A", "Micro-program", 2},
-	{ KING_GSREG_MPROGB, "B", "Micro-program", 2},
-	{ KING_GSREG_MPROGC, "C", "Micro-program", 2},
-	{ KING_GSREG_MPROGD, "D", "Micro-program", 2},
-	{ KING_GSREG_MPROGE, "E", "Micro-program", 2},
-	{ KING_GSREG_MPROGF, "F", "Micro-program", 2},
+	{ 0, 0, "----BG3----", "", 0xFFFF },
 
-	{ 0, "", "", 0 },
+	{ KING_GSREG_BGSIZ3, 5, "Size",   "Background 3 Size",              1 },
+	{ KING_GSREG_BGBAT3, 6, "BAT",    "Background 3 BAT Address",       1 },
+	{ KING_GSREG_BGCG3,  7, "CG",     "Background 3 CG Address",        1 },
+	{ KING_GSREG_BGXSC3, 4, "XScr",   "Background 3 X Scroll",          0x100 | 10 },
+	{ KING_GSREG_BGYSC3, 4, "YScr",   "Background 3 Y Scroll",          0x100 | 10 },
+
+	{ 0, 0, "---AFFIN---", "", 0xFFFF },
+
+	{ KING_GSREG_AFFINA, 6, "A",     "Background Affin Coefficient A", 2 },
+	{ KING_GSREG_AFFINB, 6, "B",     "Background Affin Coefficient B", 2 },
+	{ KING_GSREG_AFFINC, 6, "C",     "Background Affin Coefficient C", 2 },
+	{ KING_GSREG_AFFIND, 6, "D",     "Background Affin Coefficient D", 2 },
+	{ KING_GSREG_AFFINX, 6, "X",     "Background Affin Center X",      2 },
+	{ KING_GSREG_AFFINY, 6, "Y",     "Background Affin Center Y",      2 },
+
+	{ 0, 0, "---CDROM---", "", 0xFFFF },
+
+	{ KING_GSREG_DB,     7, "DB",    "SCSI Data Bus",                  0x100 | 8 },
+	{ KING_GSREG_BSY,    7, "BSY",   "SCSI BSY",                       0x100 | 1 },
+	{ KING_GSREG_REQ,    7, "REQ",   "SCSI REQ",                       0x100 | 1 },
+	{ KING_GSREG_ACK,    7, "ACK",   "SCSI ACK",                       0x100 | 1 },
+	{ KING_GSREG_MSG,    7, "MSG",   "SCSI MSG",                       0x100 | 1 },
+	{ KING_GSREG_IO,     8, "IO",    "SCSI IO",                        0x100 | 1 },
+	{ KING_GSREG_CD,     8, "CD",    "SCSI CD",                        0x100 | 1 },
+	{ KING_GSREG_SEL,    7, "SEL",   "SCSI SEL",                       0x100 | 1 },
+
+	{ 0, 0, "-----------", "", 0xFFFF },
+
+	{ 0, 0, "", "", 0 },
 };
 
 static uint32 GetRegister_VCERAINBOW(const unsigned int id, char *special, const uint32 special_len)
 {
- if(id >> 16)
-  return RAINBOW_GetRegister(id & 0xFFFF, special, special_len);
- else
-  return FXVCE_GetRegister(id & 0xFFFF, special, special_len);
+ switch(id >> 16)
+ {
+  case 0: return FXVCE_GetRegister(id & 0xFFFF, special, special_len);
+  case 1: return RAINBOW_GetRegister(id & 0xFFFF, special, special_len);
+  case 2: return PCFXIRQ_GetRegister(id & 0xFFFF, special, special_len);
+  case 3: return FXTIMER_GetRegister(id & 0xFFFF, special, special_len);
+  case 4: return FXINPUT_GetRegister(id & 0xFFFF, special, special_len);
+ }
+
+ return 0xDEADBEEF;
 }
 
 static void SetRegister_VCERAINBOW(const unsigned int id, uint32 value)
 {
- if(id >> 16)
-  RAINBOW_SetRegister(id & 0xFFFF, value);
- else
-  FXVCE_SetRegister(id & 0xFFFF, value);
+ switch(id >> 16)
+ {
+  case 0: FXVCE_SetRegister(id & 0xFFFF, value); break;
+  case 1: RAINBOW_SetRegister(id & 0xFFFF, value); break;
+  case 2: PCFXIRQ_SetRegister(id & 0xFFFF, value); break;
+  case 3: FXTIMER_SetRegister(id & 0xFFFF, value); break;
+  case 4: FXINPUT_SetRegister(id & 0xFFFF, value); break;
+ }
 } 
 
 static const RegType VCERAINBOWRegs[] =
 {
-	{ 0, "--VCE--", "", 0xFFFF },
-        { FXVCE_GSREG_Line, "Line", "VCE Frame Counter", 0x100 | 9 },
-        { FXVCE_GSREG_PRIO0, "PRIO0", "VCE Priority 0", 0x100 | 12 },
-        { FXVCE_GSREG_PRIO1, "PRIO1", "VCE Priority 1", 2 },
-        { FXVCE_GSREG_PICMODE, "PICMODE", "VCE Picture Mode", 2},
-        { FXVCE_GSREG_PALRWOF, "PALRWOF", "VCE Palette R/W Offset", 2 },
-        { FXVCE_GSREG_PALRWLA, "PALRWLA", "VCE Palette R/W Latch", 2 },
-        { FXVCE_GSREG_PALOFS0, "PALOFS0", "VCE Palette Offset 0", 2 } ,
-        { FXVCE_GSREG_PALOFS1, "PALOFS1", "VCE Palette Offset 1", 2 },
-        { FXVCE_GSREG_PALOFS2, "PALOFS2", "VCE Palette Offset 2", 2 },
-        { FXVCE_GSREG_PALOFS3, "PALOFS3", "VCE Palette Offset 3", 1 },
-        { FXVCE_GSREG_CCR, "CCR", "VCE Fixed Color Register", 2 },
-        { FXVCE_GSREG_BLE, "BLE", "VCE Cellophane Setting Register", 2 },
-        { FXVCE_GSREG_SPBL, "SPBL", "VCE Sprite Cellophane Setting Register", 2 },
-        { FXVCE_GSREG_COEFF0, "COEFF0", "VCE Cellophane Coefficient 0(1A)", 0x100 | 12 },
-        { FXVCE_GSREG_COEFF1, "COEFF1", "VCE Cellophane Coefficient 1(1B)", 0x100 | 12 },
-        { FXVCE_GSREG_COEFF2, "COEFF2", "VCE Cellophane Coefficient 2(2A)", 0x100 | 12 },
-        { FXVCE_GSREG_COEFF3, "COEFF3", "VCE Cellophane Coefficient 3(2B)", 0x100 | 12 },
-        { FXVCE_GSREG_COEFF4, "COEFF4", "VCE Cellophane Coefficient 4(3A)", 0x100 | 12 },
-        { FXVCE_GSREG_COEFF5, "COEFF5", "VCE Cellophane Coefficient 5(3B)", 0x100 | 12 },
-        { FXVCE_GSREG_CKeyY, "CKeyY", "VCE Chroma Key Y", 2 },
-        { FXVCE_GSREG_CKeyU, "CKeyU", "VCE Chroma Key U", 2 },
-        { FXVCE_GSREG_CKeyV, "CKeyV", "VCE Chroma Key V", 2 },
+	{ 0, 0, "-----IRQ-----", "", 0xFFFF },
 
-	{ 0, "---------", "", 0xFFFF },
-	{ 0, "-RAINBOW-", "", 0xFFFF },
+	{ (2 << 16) | PCFXIRQ_GSREG_IPEND,   4, "IPEND",   "Interrupts Pending",            2 },
+	{ (2 << 16) | PCFXIRQ_GSREG_IMASK,   4, "IMASK",   "Interrupt Mask",                2 },
+	{ (2 << 16) | PCFXIRQ_GSREG_IPRIO0,  3, "IPRIO0",  "Interrupt Priority Register 0", 2 },
+	{ (2 << 16) | PCFXIRQ_GSREG_IPRIO1,  3, "IPRIO1",  "Interrupt Priority Register 1", 2 },
 
-	{ (1 << 16) | RAINBOW_GSREG_RSCRLL, "RSCRLL", "Rainbow Horizontal Scroll", 2 },
-	{ (1 << 16) | RAINBOW_GSREG_RCTRL, "RCTRL", "Rainbow Control", 2 },
-	{ (1 << 16) | RAINBOW_GSREG_RHSYNC, "RHSYNC", "Rainbow HSync?", 1 },
-	{ (1 << 16) | RAINBOW_GSREG_RNRY, "RNRY", "Rainbow Null Run Y", 2 },
-	{ (1 << 16) | RAINBOW_GSREG_RNRU, "RNRU", "Rainbow Null Run U", 2 },
-	{ (1 << 16) | RAINBOW_GSREG_RNRV, "RNRV", "Rainbow Null Run V", 2 },
+	{ 0, 0, "----TIMER----", "", 0xFFFF },
 
-        { 0, "", "", 0 },
+	{ (3 << 16) | FXTIMER_GSREG_TCTRL,   4, "TCTRL",   "Timer Control",                 2 },
+	{ (3 << 16) | FXTIMER_GSREG_TPRD,    5, "TPRD",    "Timer Period",                  2 },
+	{ (3 << 16) | FXTIMER_GSREG_TCNTR,   2, "TCNTR",   "Timer Counter",                 3 },
+
+	{ 0, 0, "-----PAD-----", "", 0xFFFF },
+
+	{ (4 << 16) | FXINPUT_GSREG_KPCTRL0, 4, "KPCTRL0", "Keyport 0 Control",             1 },
+	{ (4 << 16) | FXINPUT_GSREG_KPCTRL1, 4, "KPCTRL1", "Keyport 1 Control",             1 },
+
+	{ 0, 0, "-----VCE-----", "", 0xFFFF },
+
+	{ FXVCE_GSREG_Line,    6, "Line",    "VCE Frame Counter",                      0x100 |  9 },
+	{ FXVCE_GSREG_PRIO0,   5, "PRIO0",   "VCE Priority 0",                         0x100 | 12 },
+	{ FXVCE_GSREG_PRIO1,   4, "PRIO1",   "VCE Priority 1",                         2 },
+	{ FXVCE_GSREG_PICMODE, 2, "PICMODE", "VCE Picture Mode",                       2 },
+	{ FXVCE_GSREG_PALRWOF, 2, "PALRWOF", "VCE Palette R/W Offset",                 2 },
+	{ FXVCE_GSREG_PALRWLA, 2, "PALRWLA", "VCE Palette R/W Latch",                  2 },
+	{ FXVCE_GSREG_PALOFS0, 2, "PALOFS0", "VCE Palette Offset 0",                   2 } ,
+	{ FXVCE_GSREG_PALOFS1, 2, "PALOFS1", "VCE Palette Offset 1",                   2 },
+	{ FXVCE_GSREG_PALOFS2, 2, "PALOFS2", "VCE Palette Offset 2",                   2 },
+	{ FXVCE_GSREG_PALOFS3, 4, "PALOFS3", "VCE Palette Offset 3",                   1 },
+	{ FXVCE_GSREG_CCR,     6, "CCR",     "VCE Fixed Color Register",               2 },
+	{ FXVCE_GSREG_BLE,     6, "BLE",     "VCE Cellophane Setting Register",        2 },
+	{ FXVCE_GSREG_SPBL,    5, "SPBL",    "VCE Sprite Cellophane Setting Register", 2 },
+	{ FXVCE_GSREG_COEFF0,  4, "COEFF0",  "VCE Cellophane Coefficient 0(1A)",       0x100 | 12 },
+	{ FXVCE_GSREG_COEFF1,  4, "COEFF1",  "VCE Cellophane Coefficient 1(1B)",       0x100 | 12 },
+	{ FXVCE_GSREG_COEFF2,  4, "COEFF2",  "VCE Cellophane Coefficient 2(2A)",       0x100 | 12 },
+	{ FXVCE_GSREG_COEFF3,  4, "COEFF3",  "VCE Cellophane Coefficient 3(2B)",       0x100 | 12 },
+	{ FXVCE_GSREG_COEFF4,  4, "COEFF4",  "VCE Cellophane Coefficient 4(3A)",       0x100 | 12 },
+	{ FXVCE_GSREG_COEFF5,  4, "COEFF5",  "VCE Cellophane Coefficient 5(3B)",       0x100 | 12 },
+	{ FXVCE_GSREG_CKeyY,   4, "CKeyY",   "VCE Chroma Key Y",                       2 },
+	{ FXVCE_GSREG_CKeyU,   4, "CKeyU",   "VCE Chroma Key U",                       2 },
+	{ FXVCE_GSREG_CKeyV,   4, "CKeyV",   "VCE Chroma Key V",                       2 },
+
+	{ 0, 0, "---RAINBOW---", "", 0xFFFF },
+
+	{ (1 << 16) | RAINBOW_GSREG_RSCRLL, 3, "RSCRLL",  "Rainbow Horizontal Scroll", 2 },
+	{ (1 << 16) | RAINBOW_GSREG_RCTRL,  4, "RCTRL",   "Rainbow Control",           2 },
+	{ (1 << 16) | RAINBOW_GSREG_RHSYNC, 5, "RHSYNC",  "Rainbow HSync?",            1 },
+	{ (1 << 16) | RAINBOW_GSREG_RNRY,   5, "RNRY",    "Rainbow Null Run Y",        2 },
+	{ (1 << 16) | RAINBOW_GSREG_RNRU,   5, "RNRU",    "Rainbow Null Run U",        2 },
+	{ (1 << 16) | RAINBOW_GSREG_RNRV,   5, "RNRV",    "Rainbow Null Run V",        2 },
+
+	{ 0, 0, "-------------", "", 0xFFFF },
+
+	{ 0, 0, "", "", 0 },
 };
 
 static uint32 GetRegister_VDC(const unsigned int id, char *special, const uint32 special_len)
@@ -907,58 +951,59 @@ static void SetRegister_VDC(const unsigned int id, uint32 value)
 
 static const RegType VDCRegs[] =
 {
-        { 0, "--VDC-A--", "", 0xFFFF },
+	{ 0, 0, "---VDC-A---", "", 0xFFFF },
+
+	{ 0x0000 | VDC::GSREG_SELECT, 3, "Select", "Register Select, VDC-A",         1 },
+	{ 0x0000 | VDC::GSREG_STATUS, 3, "Status", "Status, VDC-A",                  1 },
 	
-        { VDC::GSREG_SELECT, "Select", "Register Select, VDC-A", 1 },
-        { VDC::GSREG_STATUS, "Status", "Status, VDC-A", 1 },
+	{ 0x0000 | VDC::GSREG_MAWR,   3, "MAWR",   "Memory Write Address, VDC-A",    2 },
+	{ 0x0000 | VDC::GSREG_MARR,   3, "MARR",   "Memory Read Address, VDC-A",     2 },
+	{ 0x0000 | VDC::GSREG_CR,     5, "CR",     "Control, VDC-A",                 2 },
+	{ 0x0000 | VDC::GSREG_RCR,    4, "RCR",    "Raster Counter, VDC-A",          2 },
+	{ 0x0000 | VDC::GSREG_BXR,    4, "BXR",    "X Scroll, VDC-A",                2 },
+	{ 0x0000 | VDC::GSREG_BYR,    4 ,"BYR",    "Y Scroll, VDC-A",                2 },
+	{ 0x0000 | VDC::GSREG_MWR,    4, "MWR",    "Memory Width, VDC-A",            2 },
 
-        { VDC::GSREG_MAWR, "MAWR", "Memory Write Address, VDC-A", 2 },
-        { VDC::GSREG_MARR, "MARR", "Memory Read Address, VDC-A", 2 },
-        { VDC::GSREG_CR, "CR", "Control, VDC-A", 2 },
-        { VDC::GSREG_RCR, "RCR", "Raster Counter, VDC-A", 2 },
-        { VDC::GSREG_BXR, "BXR", "X Scroll, VDC-A", 2 },
-        { VDC::GSREG_BYR, "BYR", "Y Scroll, VDC-A", 2 },
-        { VDC::GSREG_MWR, "MWR", "Memory Width, VDC-A", 2 },
+	{ 0x0000 | VDC::GSREG_HSR,    4, "HSR",    "HSR, VDC-A",                     2 },
+	{ 0x0000 | VDC::GSREG_HDR,    4, "HDR",    "HDR, VDC-A",                     2 },
+	{ 0x0000 | VDC::GSREG_VSR,    4, "VSR",    "VSR, VDC-A",                     2 },
+	{ 0x0000 | VDC::GSREG_VDR,    4, "VDR",    "VDR, VDC-A",                     2 },
 
-        { VDC::GSREG_HSR, "HSR", "HSR, VDC-A", 2 },
-        { VDC::GSREG_HDR, "HDR", "HDR, VDC-A", 2 },
-        { VDC::GSREG_VSR, "VSR", "VSR, VDC-A", 2 },
-        { VDC::GSREG_VDR, "VDR", "VDR, VDC-A", 2 },
+	{ 0x0000 | VDC::GSREG_VCR,    4, "VCR",    "VCR, VDC-A",                     2 },
+	{ 0x0000 | VDC::GSREG_DCR,    4, "DCR",    "DMA Control, VDC-A",             2 },
+	{ 0x0000 | VDC::GSREG_SOUR,   3, "SOUR",   "VRAM DMA Source Address, VDC-A", 2 },
+	{ 0x0000 | VDC::GSREG_DESR,   3, "DESR",   "VRAM DMA Dest Address, VDC-A",   2 },
+	{ 0x0000 | VDC::GSREG_LENR,   3, "LENR",   "VRAM DMA Length, VDC-A", 2 },
+	{ 0x0000 | VDC::GSREG_DVSSR,  2, "DVSSR",  "DVSSR Update Address, VDC-A",    2 },
 
-        { VDC::GSREG_VCR, "VCR", "VCR, VDC-A", 2 },
-        { VDC::GSREG_DCR, "DCR", "DMA Control, VDC-A", 2 },
-        { VDC::GSREG_SOUR, "SOUR", "VRAM DMA Source Address, VDC-A", 2 },
-        { VDC::GSREG_DESR, "DESR", "VRAM DMA Dest Address, VDC-A", 2 },
-        { VDC::GSREG_LENR, "LENR", "VRAM DMA Length, VDC-A", 2 },
-        { VDC::GSREG_DVSSR, "DVSSR", "DVSSR Update Address, VDC-A", 2 },
-        { 0, "------", "", 0xFFFF },
+	{ 0, 0, "---VDC-B---", "", 0xFFFF },
 
-        { 0, "--VDC-B--", "", 0xFFFF },
+	{ 0x8000 | VDC::GSREG_SELECT, 3, "Select", "Register Select, VDC-B",         1 },
+	{ 0x8000 | VDC::GSREG_STATUS, 3, "Status", "Status, VDC-B",                  1 },
 
-        { 0x8000 | VDC::GSREG_SELECT, "Select", "Register Select, VDC-B", 1 },
-        { 0x8000 | VDC::GSREG_STATUS, "Status", "Status, VDC-B", 1 },
+	{ 0x8000 | VDC::GSREG_MAWR,   3, "MAWR",   "Memory Write Address, VDC-B",    2 },
+	{ 0x8000 | VDC::GSREG_MARR,   3, "MARR",   "Memory Read Address, VDC-B",     2 },
+	{ 0x8000 | VDC::GSREG_CR,     5, "CR",     "Control, VDC-B",                 2 },
+	{ 0x8000 | VDC::GSREG_RCR,    4, "RCR",    "Raster Counter, VDC-B",          2 },
+	{ 0x8000 | VDC::GSREG_BXR,    4, "BXR",    "X Scroll, VDC-B",                2 },
+	{ 0x8000 | VDC::GSREG_BYR,    4 ,"BYR",    "Y Scroll, VDC-B",                2 },
+	{ 0x8000 | VDC::GSREG_MWR,    4, "MWR",    "Memory Width, VDC-B",            2 },
 
-        { 0x8000 | VDC::GSREG_MAWR, "MAWR", "Memory Write Address, VDC-B", 2 },
-        { 0x8000 | VDC::GSREG_MARR, "MARR", "Memory Read Address, VDC-B", 2 },
-        { 0x8000 | VDC::GSREG_CR, "CR", "Control, VDC-B", 2 },
-        { 0x8000 | VDC::GSREG_RCR, "RCR", "Raster Counter, VDC-B", 2 },
-        { 0x8000 | VDC::GSREG_BXR, "BXR", "X Scroll, VDC-B", 2 },
-        { 0x8000 | VDC::GSREG_BYR, "BYR", "Y Scroll, VDC-B", 2 },
-        { 0x8000 | VDC::GSREG_MWR, "MWR", "Memory Width, VDC-B", 2 },
+	{ 0x8000 | VDC::GSREG_HSR,    4, "HSR",    "HSR, VDC-B",                     2 },
+	{ 0x8000 | VDC::GSREG_HDR,    4, "HDR",    "HDR, VDC-B",                     2 },
+	{ 0x8000 | VDC::GSREG_VSR,    4, "VSR",    "VSR, VDC-B",                     2 },
+	{ 0x8000 | VDC::GSREG_VDR,    4, "VDR",    "VDR, VDC-B",                     2 },
 
-        { 0x8000 | VDC::GSREG_HSR, "HSR", "HSR, VDC-B", 2 },
-        { 0x8000 | VDC::GSREG_HDR, "HDR", "HDR, VDC-B", 2 },
-        { 0x8000 | VDC::GSREG_VSR, "VSR", "VSR, VDC-B", 2 },
-        { 0x8000 | VDC::GSREG_VDR, "VDR", "VDR, VDC-B", 2 },
+	{ 0x8000 | VDC::GSREG_VCR,    4, "VCR",    "VCR, VDC-B",                     2 },
+	{ 0x8000 | VDC::GSREG_DCR,    4, "DCR",    "DMA Control, VDC-B",             2 },
+	{ 0x8000 | VDC::GSREG_SOUR,   3, "SOUR",   "VRAM DMA Source Address, VDC-B", 2 },
+	{ 0x8000 | VDC::GSREG_DESR,   3, "DESR",   "VRAM DMA Dest Address, VDC-B",   2 },
+	{ 0x8000 | VDC::GSREG_LENR,   3, "LENR",   "VRAM DMA Length, VDC-B",         2 },
+	{ 0x8000 | VDC::GSREG_DVSSR,  2, "DVSSR",  "DVSSR Update Address, VDC-B",    2 },
 
-        { 0x8000 | VDC::GSREG_VCR, "VCR", "VCR, VDC-B", 2 },
-        { 0x8000 | VDC::GSREG_DCR, "DCR", "DMA Control, VDC-B", 2 },
-        { 0x8000 | VDC::GSREG_SOUR, "SOUR", "VRAM DMA Source Address, VDC-B", 2 },
-        { 0x8000 | VDC::GSREG_DESR, "DESR", "VRAM DMA Dest Address, VDC-B", 2 },
-        { 0x8000 | VDC::GSREG_LENR, "LENR", "VRAM DMA Length, VDC-B", 2 },
-        { 0x8000 | VDC::GSREG_DVSSR, "DVSSR", "DVSSR Update Address, VDC-B", 2 },
+	{ 0, 0, "-----------", "", 0xFFFF },
 
-        { 0, "", "", 0 },
+	{ 0, 0, "", "", 0 },
 };
 
 static const RegGroupType PCFXRegs0Group =

@@ -681,29 +681,45 @@ static void SetRegister_CD(const unsigned int id, uint32 value)
 
 static const RegType Regs_HuC6280[] =
 {
-        { HuC6280::GSREG_PC, "PC", "Program Counter", 2 },
-        { HuC6280::GSREG_A, "A", "Accumulator", 1 },
-        { HuC6280::GSREG_X, "X", "X Index Register", 1 },
-        { HuC6280::GSREG_Y, "Y", "Y Index Register", 1 },
-        { HuC6280::GSREG_SP, "SP", "Stack Pointer", 1 },
-        { HuC6280::GSREG_P, "P", "Status", 1 },
-        { HuC6280::GSREG_MPR0, "MPR0", "MPR0", 1},
-        { HuC6280::GSREG_MPR1, "MPR1", "MPR1", 1},
-        { HuC6280::GSREG_MPR2, "MPR2", "MPR2", 1},
-        { HuC6280::GSREG_MPR3, "MPR3", "MPR3", 1},
-        { HuC6280::GSREG_MPR4, "MPR4", "MPR4", 1},
-        { HuC6280::GSREG_MPR5, "MPR5", "MPR5", 1},
-        { HuC6280::GSREG_MPR6, "MPR6", "MPR6", 1},
-        { HuC6280::GSREG_MPR7, "MPR7", "MPR7", 1},
-        { HuC6280::GSREG_SPD, "SPD", "CPU Speed", 1 },
-        { HuC6280::GSREG_IRQM, "IRQM", "IRQ Mask", 1},
-        { HuC6280::GSREG_TIMS, "TIMS", "Timer Status", 1},
-        { HuC6280::GSREG_TIMV, "TIMV", "Timer Value", 1},
-        { HuC6280::GSREG_TIML, "TIML", "Timer Load", 1},
-        { HuC6280::GSREG_TIMD, "TIMD", "Timer Div Counter", 2},
-	{ 0, "------", "", 0xFFFF },   \
-	{ HuC6280::GSREG_STAMP, "TS", "Timestamp", 4 },
-        { 0, "", "", 0 },
+	{ 0, 0, "----CPU----", "", 0xFFFF },
+
+	{ HuC6280::GSREG_PC,    5, "PC",   "Program Counter",   2 },
+	{ HuC6280::GSREG_A,     8, "A",    "Accumulator",       1 },
+	{ HuC6280::GSREG_X,     8, "X",    "X Index Register",  1 },
+	{ HuC6280::GSREG_Y,     8, "Y",    "Y Index Register",  1 },
+	{ HuC6280::GSREG_SP,    7, "SP",   "Stack Pointer",     1 },
+	{ HuC6280::GSREG_P,     8, "P",    "Status",            1 },
+
+	{ 0, 0, "----MPR----", "", 0xFFFF },
+
+	{ HuC6280::GSREG_MPR0,  5, "MPR0", "MPR0",              1 },
+	{ HuC6280::GSREG_MPR1,  5, "MPR1", "MPR1",              1 },
+	{ HuC6280::GSREG_MPR2,  5, "MPR2", "MPR2",              1 },
+	{ HuC6280::GSREG_MPR3,  5, "MPR3", "MPR3",              1 },
+	{ HuC6280::GSREG_MPR4,  5, "MPR4", "MPR4",              1 },
+	{ HuC6280::GSREG_MPR5,  5, "MPR5", "MPR5",              1 },
+	{ HuC6280::GSREG_MPR6,  5, "MPR6", "MPR6",              1 },
+	{ HuC6280::GSREG_MPR7,  5, "MPR7", "MPR7",              1 },
+
+	{ 0, 0, "---HWREG---", "", 0xFFFF },
+
+	{ HuC6280::GSREG_SPD,   6, "SPD",  "CPU Speed",         1 },
+	{ HuC6280::GSREG_IRQM,  5, "IRQM", "IRQ Mask",          1 },
+
+	{ 0, 0, "---TIMER---", "", 0xFFFF },
+
+	{ HuC6280::GSREG_TIMS,  5, "TIMS", "Timer Status",      1 },
+	{ HuC6280::GSREG_TIMV,  5, "TIMV", "Timer Value",       1 },
+	{ HuC6280::GSREG_TIML,  5, "TIML", "Timer Load",        1 },
+	{ HuC6280::GSREG_TIMD,  3, "TIMD", "Timer Div Counter", 2 },
+
+	{ 0, 0, "---CLOCK---", "", 0xFFFF },
+
+	{ HuC6280::GSREG_STAMP, 1, "TS",   "Timestamp",         4 },
+
+	{ 0, 0, "-----------", "", 0xFFFF },
+
+	{ 0, 0, "", "", 0 },
 };
 
 static const RegGroupType RegsGroup_HuC6280 =
@@ -716,157 +732,180 @@ static const RegGroupType RegsGroup_HuC6280 =
 
 
 #define CHPDMOO(n)      \
- { 0, "------", "", 0xFFFF },	\
- { PSG_GSREG_CH0_FREQ | (n << 8), "CH"#n"Freq", "PSG Ch"#n" Frequency(Period)", 2 },   \
- { PSG_GSREG_CH0_CTRL | (n << 8), "CH"#n"Ctrl", "PSG Ch"#n" Control", 1 },     \
- { PSG_GSREG_CH0_BALANCE | (n << 8), "CH"#n"Balance", "PSG Ch"#n" Balance", 1 },  \
- { PSG_GSREG_CH0_WINDEX | (n << 8), "CH"#n"WIndex", "PSG Ch"#n" Waveform Index", 1},     \
- { PSG_GSREG_CH0_SCACHE | (n << 8), "CH"#n"SCache", "PSG Ch"#n" Sample Cache", 1 }
+	{ 0, 0, "----CH"#n"----", "", 0xFFFF },	\
+	{ PSG_GSREG_CH0_FREQ    | (n << 8), 3, "Freq",       "PSG Ch"#n" Frequency(Period)", 2 }, \
+	{ PSG_GSREG_CH0_CTRL    | (n << 8), 5, "Ctrl",       "PSG Ch"#n" Control",           1 }, \
+	{ PSG_GSREG_CH0_BALANCE | (n << 8), 2, "Balance",    "PSG Ch"#n" Balance",           1 }, \
+	{ PSG_GSREG_CH0_WINDEX  | (n << 8), 3, "WIndex",     "PSG Ch"#n" Waveform Index",    1 }, \
+	{ PSG_GSREG_CH0_SCACHE  | (n << 8), 3, "SCache",     "PSG Ch"#n" Sample Cache",      1 }
 
 static const RegType Regs_PSG[] =
 {
- { PSG_GSREG_SELECT, "Select", "PSG Channel Select", 1 },
- { PSG_GSREG_GBALANCE, "GBalance", "PSG Global Balance", 1 },
- { PSG_GSREG_LFOFREQ, "LFOFreq", "PSG LFO Freq", 1 },
- { PSG_GSREG_LFOCTRL, "LFOCtrl", "PSG LFO Control", 1 },
+	{ 0, 0, "----PSG----", "", 0xFFFF },
 
- CHPDMOO(0),
- CHPDMOO(1),
- CHPDMOO(2),
- CHPDMOO(3),
- CHPDMOO(4),
- { PSG_GSREG_CH4_NCTRL, "CH4NCtrl", "PSG Ch4 Noise Control", 1 },
- { PSG_GSREG_CH4_LFSR, "CH4LFSR", "PSG Ch4 Noise LFSR", 0x100 | 18 },
- CHPDMOO(5),
- { PSG_GSREG_CH5_NCTRL, "CH5NCtrl", "PSG Ch5 Noise Control", 1 },
- { PSG_GSREG_CH5_LFSR, "CH5LFSR", "PSG Ch5 Noise LFSR", 0x100 | 18 },
+	{ PSG_GSREG_SELECT,   3, "Select",    "PSG Channel Select",    1 },
+	{ PSG_GSREG_GBALANCE, 1, "GBalance",  "PSG Global Balance",    1 },
+	{ PSG_GSREG_LFOFREQ,  2, "LFOFreq",   "PSG LFO Freq",          1 },
+	{ PSG_GSREG_LFOCTRL,  2, "LFOCtrl",   "PSG LFO Control",       1 },
 
- { 0, "", "", 0 },
+	CHPDMOO(0),
+	CHPDMOO(1),
+	CHPDMOO(2),
+	CHPDMOO(3),
+	CHPDMOO(4),
+	{ PSG_GSREG_CH4_NCTRL, 4, "Noise",    "PSG Ch4 Noise Control", 1 },
+/*	{ PSG_GSREG_CH4_LFSR,  1, "LFSR",     "PSG Ch4 Noise LFSR",    3 }, */
+	CHPDMOO(5),
+	{ PSG_GSREG_CH5_NCTRL, 4, "Noise",    "PSG Ch5 Noise Control", 1 },
+/*	{ PSG_GSREG_CH5_LFSR,  1, "LFSR",     "PSG Ch5 Noise LFSR",    3 }, */
+
+	{ 0, 0, "-----------", "", 0xFFFF },
+
+	{ 0, 0, "", "", 0 },
 };
 
 static const RegGroupType RegsGroup_PSG =
 {
- "PSG",
- Regs_PSG,
- GetRegister_PSG,
- SetRegister_PSG
+	"PSG",
+	Regs_PSG,
+	GetRegister_PSG,
+	SetRegister_PSG
 };
 
 static const RegType Regs_VDC[] =
 {
-	{ VDC::GSREG_SELECT, "Select", "Register Select", 1 },
-        { VDC::GSREG_STATUS, "Status", "Status", 1 },
+	{ 0, 0, "---VDC-A---", "", 0xFFFF },
 
-        { VDC::GSREG_MAWR, "MAWR", "Memory Write Address", 2 },
-        { VDC::GSREG_MARR, "MARR", "Memory Read Address", 2 },
-        { VDC::GSREG_CR, "CR", "Control", 2 },
-        { VDC::GSREG_RCR, "RCR", "Raster Counter", 2 },
-        { VDC::GSREG_BXR, "BXR", "X Scroll", 2 },
-        { VDC::GSREG_BYR, "BYR", "Y Scroll", 2 },
-        { VDC::GSREG_MWR, "MWR", "Memory Width", 2 },
+	{ 0x0000 | VDC::GSREG_SELECT,   3, "Select", "Register Select",         1 },
+	{ 0x0000 | VDC::GSREG_STATUS,   3, "Status", "Status",                  1 },
 
-        { VDC::GSREG_HSR, "HSR", "HSR", 2 },
-        { VDC::GSREG_HDR, "HDR", "HDR", 2 },
-        { VDC::GSREG_VSR, "VSR", "VSR", 2 },
-        { VDC::GSREG_VDR, "VDR", "VDR", 2 },
+	{ 0x0000 | VDC::GSREG_MAWR,     3, "MAWR",   "Memory Write Address",    2 },
+	{ 0x0000 | VDC::GSREG_MARR,     3, "MARR",   "Memory Read Address",     2 },
+	{ 0x0000 | VDC::GSREG_CR,       5, "CR",     "Control",                 2 },
+	{ 0x0000 | VDC::GSREG_RCR,      4, "RCR",    "Raster Counter",          2 },
+	{ 0x0000 | VDC::GSREG_BXR,      4, "BXR",    "X Scroll",                2 },
+	{ 0x0000 | VDC::GSREG_BYR,      4, "BYR",    "Y Scroll",                2 },
+	{ 0x0000 | VDC::GSREG_MWR,      4, "MWR",    "Memory Width",            2 },
 
-        { VDC::GSREG_VCR, "VCR", "VCR", 2 },
-        { VDC::GSREG_DCR, "DCR", "DMA Control", 2 },
-        { VDC::GSREG_SOUR, "SOUR", "VRAM DMA Source Address", 2 },
-        { VDC::GSREG_DESR, "DESR", "VRAM DMA Dest Address", 2 },
-        { VDC::GSREG_LENR, "LENR", "VRAM DMA Length", 2 },
-        { VDC::GSREG_DVSSR, "DVSSR", "DVSSR Update Address", 2 },
-	{ 0, "------", "", 0xFFFF },
+	{ 0x0000 | VDC::GSREG_HSR,      4, "HSR",    "HSR",                     2 },
+	{ 0x0000 | VDC::GSREG_HDR,      4, "HDR",    "HDR",                     2 },
+	{ 0x0000 | VDC::GSREG_VSR,      4, "VSR",    "VSR",                     2 },
+	{ 0x0000 | VDC::GSREG_VDR,      4, "VDR",    "VDR",                     2 },
 
-	{ 0x8000 | VCE::GSREG_CR, "VCECR", "VCE Control Register", 1 },
-	{ 0x8000 | VCE::GSREG_CTA, "VCECTA", "VCE Color/Palette Table Address", 2 },
-	{ 0x8000 | VCE::GSREG_SCANLINE, "Line", "Current Scanline", 2 },
+	{ 0x0000 | VDC::GSREG_VCR,      4, "VCR",    "VCR",                     2 },
+	{ 0x0000 | VDC::GSREG_DCR,      4, "DCR",    "DMA Control",             2 },
+	{ 0x0000 | VDC::GSREG_SOUR,     3, "SOUR",   "VRAM DMA Source Address", 2 },
+	{ 0x0000 | VDC::GSREG_DESR,     3, "DESR",   "VRAM DMA Dest Address",   2 },
+	{ 0x0000 | VDC::GSREG_LENR,     3, "LENR",   "VRAM DMA Length",         2 },
+	{ 0x0000 | VDC::GSREG_DVSSR,    2, "DVSSR",  "DVSSR Update Address",    2 },
 
-        { 0, "", "", 0 },
+	{ 0, 0, "----VCE----", "", 0xFFFF },
+
+	{ 0x8000 | VCE::GSREG_CR,       4, "VCECR",  "VCE Control Register",            1 },
+	{ 0x8000 | VCE::GSREG_CTA,      1, "VCECTA", "VCE Color/Palette Table Address", 2 },
+
+	{ 0, 0, "---VIDEO---", "", 0xFFFF },
+
+	{ 0x8000 | VCE::GSREG_SCANLINE, 3, "Line",   "Current Scanline",                2 },
+
+	{ 0, 0, "-----------", "", 0xFFFF },
+
+	{ 0, 0, "", "", 0 },
 };
 
 static const RegGroupType RegsGroup_VDC =
 {
 	"VDC",
-        Regs_VDC,
-        GetRegister_VDC,
-        SetRegister_VDC
+	Regs_VDC,
+	GetRegister_VDC,
+	SetRegister_VDC
 };
 
 
 static const RegType Regs_SGXVDC[] =
 {
-        { VDC::GSREG_SELECT, "Select", "Register Select, VDC-B", 1 },
-	{ VDC::GSREG_STATUS, "Status", "Status, VDC-B", 1 },
+	{ 0, 0, "---VDC-B---", "", 0xFFFF },
 
-        { VDC::GSREG_MAWR, "MAWR-B", "Memory Write Address, VDC-B", 2 },
-        { VDC::GSREG_MARR, "MARR-B", "Memory Read Address, VDC-B", 2 },
-        { VDC::GSREG_CR, "CR-B", "Control, VDC-B", 2 },
-        { VDC::GSREG_RCR, "RCR-B", "Raster Counter, VDC-B", 2 },
-        { VDC::GSREG_BXR, "BXR-B", "X Scroll, VDC-B", 2 },
-        { VDC::GSREG_BYR, "BYR-B", "Y Scroll, VDC-B", 2 },
-        { VDC::GSREG_MWR, "MWR-B", "Memory Width, VDC-B", 2 },
+	{ 0x0000 | VDC::GSREG_SELECT, 3, "Select", "Register Select, VDC-B",         1 },
+	{ 0x0000 | VDC::GSREG_STATUS, 3, "Status", "Status, VDC-B",                  1 },
 
-        { VDC::GSREG_HSR, "HSR-B", "HSR, VDC-B", 2 },
-        { VDC::GSREG_HDR, "HDR-B", "HDR, VDC-B", 2 },
-        { VDC::GSREG_VSR, "VSR-B", "VSR, VDC-B", 2 },
-        { VDC::GSREG_VDR, "VDR-B", "VDR, VDC-B", 2 },
+	{ 0x0000 | VDC::GSREG_MAWR,   3, "MAWR",   "Memory Write Address, VDC-B",    2 },
+	{ 0x0000 | VDC::GSREG_MARR,   3, "MARR",   "Memory Read Address, VDC-B",     2 },
+	{ 0x0000 | VDC::GSREG_CR,     5, "CR",     "Control, VDC-B",                 2 },
+	{ 0x0000 | VDC::GSREG_RCR,    4, "RCR",    "Raster Counter, VDC-B",          2 },
+	{ 0x0000 | VDC::GSREG_BXR,    4, "BXR",    "X Scroll, VDC-B",                2 },
+	{ 0x0000 | VDC::GSREG_BYR,    4, "BYR",    "Y Scroll, VDC-B",                2 },
+	{ 0x0000 | VDC::GSREG_MWR,    4, "MWR",    "Memory Width, VDC-B",            2 },
 
-        { VDC::GSREG_VCR, "VCR-B", "VCR, VDC-B", 2 },
-        { VDC::GSREG_DCR, "DCR-B", "DMA Control, VDC-B", 2 },
-        { VDC::GSREG_SOUR, "SOUR-B", "VRAM DMA Source Address, VDC-B", 2 },
-        { VDC::GSREG_DESR, "DESR-B", "VRAM DMA Dest Address, VDC-B", 2 },
-        { VDC::GSREG_LENR, "LENR-B", "VRAM DMA Length, VDC-B", 2 },
-        { VDC::GSREG_DVSSR, "DVSSR-B", "DVSSR Update Address, VDC-B", 2 },
-        { 0, "------", "", 0xFFFF },
+	{ 0x0000 | VDC::GSREG_HSR,    4, "HSR",    "HSR, VDC-B",                     2 },
+	{ 0x0000 | VDC::GSREG_HDR,    4, "HDR",    "HDR, VDC-B",                     2 },
+	{ 0x0000 | VDC::GSREG_VSR,    4, "VSR",    "VSR, VDC-B",                     2 },
+	{ 0x0000 | VDC::GSREG_VDR,    4, "VDR",    "VDR, VDC-B",                     2 },
 
-	{ 0x8000 | VCE::GSREG_ST_MODE, "STMode", "ST(ST0/ST1/ST2) Mode/Target", 1 },
-        { 0x8000 | VCE::GSREG_PRIORITY_0, "PRIO0", "VPC Priority Register 0", 1 },
-	{ 0x8000 | VCE::GSREG_PRIORITY_1, "PRIO1", "VPC Priority Register 1", 1 },
-	{ 0x8000 | VCE::GSREG_WINDOW_WIDTH_0, "WIND0", "VPC Window Width Register 0", 2 },
-	{ 0x8000 | VCE::GSREG_WINDOW_WIDTH_1, "WIND1", "VPC Window Width Register 1", 2 },
+	{ 0x0000 | VDC::GSREG_VCR,    4, "VCR",    "VCR, VDC-B",                     2 },
+	{ 0x0000 | VDC::GSREG_DCR,    4, "DCR",    "DMA Control, VDC-B",             2 },
+	{ 0x0000 | VDC::GSREG_SOUR,   3, "SOUR",   "VRAM DMA Source Address, VDC-B", 2 },
+	{ 0x0000 | VDC::GSREG_DESR,   3, "DESR",   "VRAM DMA Dest Address, VDC-B",   2 },
+	{ 0x0000 | VDC::GSREG_LENR,   3, "LENR",   "VRAM DMA Length, VDC-B",         2 },
+	{ 0x0000 | VDC::GSREG_DVSSR,  2, "DVSSR",  "DVSSR Update Address, VDC-B",    2 },
 
-        { 0, "", "", 0 },
+	{ 0, 0, "-VDC-MIXER-", "", 0xFFFF },
+
+	{ 0x8000 | VCE::GSREG_ST_MODE,        3, "STMode", "ST(ST0/ST1/ST2) Mode/Target", 1 },
+	{ 0x8000 | VCE::GSREG_PRIORITY_0,     4, "PRIO0",  "VPC Priority Register 0",     1 },
+	{ 0x8000 | VCE::GSREG_PRIORITY_1,     4, "PRIO1",  "VPC Priority Register 1",     1 },
+	{ 0x8000 | VCE::GSREG_WINDOW_WIDTH_0, 2, "WIND0",  "VPC Window Width Register 0", 2 },
+	{ 0x8000 | VCE::GSREG_WINDOW_WIDTH_1, 2, "WIND1",  "VPC Window Width Register 1", 2 },
+
+	{ 0, 0, "-----------", "", 0xFFFF },
+
+	{ 0, 0, "", "", 0 },
 };
 
 static const RegGroupType RegsGroup_SGXVDC =
 {
 	"VDC-B",
-        Regs_SGXVDC,
-        GetRegister_SGXVDC,
-        SetRegister_SGXVDC
+	Regs_SGXVDC,
+	GetRegister_SGXVDC,
+	SetRegister_SGXVDC
 };
 
 static const RegType Regs_CD[] =
 {
- { CD_GSREG_BSY, "BSY", "SCSI BSY", 1 },
- { CD_GSREG_REQ, "REQ", "SCSI REQ", 1 },
- { CD_GSREG_MSG, "MSG", "SCSI MSG", 1 },
- { CD_GSREG_IO, "IO", "SCSI IO", 1 },
- { CD_GSREG_CD, "CD", "SCSI CD", 1 },
- { CD_GSREG_SEL, "SEL", "SCSI SEL", 1 },
+	{ 0, 0, "---CDROM---", "", 0xFFFF },
 
- { 0, "---ADPCM:---", "", 0xFFFF },
- { CD_GSREG_ADPCM_CONTROL, "Control", "ADPCM Control", 1 },
- { CD_GSREG_ADPCM_FREQ, "Freq", "ADPCM Frequency", 1 },
- { CD_GSREG_ADPCM_CUR, "CUR", "ADPCM Current 12-bit Value", 2 },
- { CD_GSREG_ADPCM_WRADDR, "WrAddr", "ADPCM Write Address", 2 },
- { CD_GSREG_ADPCM_RDADDR, "RdAddr", "ADPCM Read Address", 2 },
- { CD_GSREG_ADPCM_LENGTH, "Length", "ADPCM Length", 2 },
- { CD_GSREG_ADPCM_PLAYNIBBLE, "PlNibble", "ADPCM Play Nibble Select", 1 },
+	{ CD_GSREG_BSY,               6, "BSY",      "SCSI BSY",                      1 },
+	{ CD_GSREG_REQ,               6, "REQ",      "SCSI REQ",                      1 },
+	{ CD_GSREG_MSG,               6, "MSG",      "SCSI MSG",                      1 },
+	{ CD_GSREG_IO,                7, "IO",       "SCSI IO",                       1 },
+	{ CD_GSREG_CD,                7, "CD",       "SCSI CD",                       1 },
+	{ CD_GSREG_SEL,               6, "SEL",      "SCSI SEL",                      1 },
 
- { CD_GSREG_ADPCM_PLAYING, "Playing", "ADPCM Playing Flag", 1 },
- { CD_GSREG_ADPCM_HALFREACHED, "Half", "ADPCM Half-point Reached Flag", 1 },
- { CD_GSREG_ADPCM_ENDREACHED, "End", "ADPCM End Reached Flag", 1 } ,
- { 0, "", "", 0 },
+	{ 0, 0, "---ADPCM---", "", 0xFFFF },
+
+	{ CD_GSREG_ADPCM_CONTROL,     2, "Control",  "ADPCM Control",                 1 },
+	{ CD_GSREG_ADPCM_FREQ,        5, "Freq",     "ADPCM Frequency",               1 },
+	{ CD_GSREG_ADPCM_CUR,         4, "CUR",      "ADPCM Current 12-bit Value",    2 },
+	{ CD_GSREG_ADPCM_WRADDR,      1, "WrAddr",   "ADPCM Write Address",           2 },
+	{ CD_GSREG_ADPCM_RDADDR,      1, "RdAddr",   "ADPCM Read Address",            2 },
+	{ CD_GSREG_ADPCM_LENGTH,      1, "Length",   "ADPCM Length",                  2 },
+	{ CD_GSREG_ADPCM_PLAYNIBBLE,  1, "PlNibble", "ADPCM Play Nibble Select",      1 },
+
+	{ CD_GSREG_ADPCM_PLAYING,     2, "Playing",  "ADPCM Playing Flag",            1 },
+	{ CD_GSREG_ADPCM_HALFREACHED, 5, "Half",     "ADPCM Half-point Reached Flag", 1 },
+	{ CD_GSREG_ADPCM_ENDREACHED,  6, "End",      "ADPCM End Reached Flag",        1 },
+
+	{ 0, 0, "-----------", "", 0xFFFF },
+
+	{ 0, 0, "", "", 0 },
 };
 
 static const RegGroupType RegsGroup_CD =
 {
- "CD",
- Regs_CD,
- GetRegister_CD,
- SetRegister_CD
+	"CD",
+	Regs_CD,
+	GetRegister_CD,
+	SetRegister_CD
 };
 
 static void Do16BitGet(const char *name, uint32 Address, uint32 Length, uint8 *Buffer)

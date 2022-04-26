@@ -107,46 +107,52 @@ enum
 };
 
 #define CHPDMOO(n)      \
- { 0, "--CH"#n"--:", "", 0xFFFF },	\
- { PSG_GSREG_CH0_FREQ | (n << 8), "Freq", "PSG Ch"#n" Frequency(Period)", 2 },   \
- { PSG_GSREG_CH0_CTRL | (n << 8), "Ctrl", "PSG Ch"#n" Control", 1 },     \
- { PSG_GSREG_CH0_BALANCE | (n << 8), "Balance", "PSG Ch"#n" Balance", 1 },  \
- { PSG_GSREG_CH0_WINDEX | (n << 8), "WIndex", "PSG Ch"#n" Waveform Index", 1},     \
- { PSG_GSREG_CH0_SCACHE | (n << 8), "SCache", "PSG Ch"#n" Sample Cache", 1 }
+	{ 0, 0, "----CH"#n"----", "", 0xFFFF },	\
+	{ PSG_GSREG_CH0_FREQ    | (n << 8), 3, "Freq",    "PSG Ch"#n" Frequency(Period)", 2 }, \
+	{ PSG_GSREG_CH0_CTRL    | (n << 8), 5, "Ctrl",    "PSG Ch"#n" Control",           1 }, \
+	{ PSG_GSREG_CH0_BALANCE | (n << 8), 2, "Balance", "PSG Ch"#n" Balance",           1 }, \
+	{ PSG_GSREG_CH0_WINDEX  | (n << 8), 3, "WIndex",  "PSG Ch"#n" Waveform Index",    1 }, \
+	{ PSG_GSREG_CH0_SCACHE  | (n << 8), 3, "SCache",  "PSG Ch"#n" Sample Cache",      1 }
 
 static const RegType SBoxRegs[] =
 {
- { PSG_GSREG_SELECT, "Select", "PSG Channel Select", 1 },
- { PSG_GSREG_GBALANCE, "GBal", "PSG Global Balance", 1 },
- { PSG_GSREG_LFOFREQ, "LFOFreq", "PSG LFO Freq", 1 },
- { PSG_GSREG_LFOCTRL, "LFOCtrl", "PSG LFO Control", 1 },
+	{ 0, 0, "----PSG----", "", 0xFFFF },	\
 
- CHPDMOO(0),
- CHPDMOO(1),
- CHPDMOO(2),
- CHPDMOO(3),
- CHPDMOO(4),
- { PSG_GSREG_CH4_NCTRL, "NCtrl", "PSG Ch4 Noise Control", 1 },
- { PSG_GSREG_CH4_LFSR, "LFSR", "PSG Ch4 Noise LFSR", 0x100 | 18 },
- CHPDMOO(5),
- { PSG_GSREG_CH5_NCTRL, "NCtrl", "PSG Ch5 Noise Control", 1 },
- { PSG_GSREG_CH5_LFSR, "LFSR", "PSG Ch5 Noise LFSR", 0x100 | 18 },
+	{ PSG_GSREG_SELECT,    3, "Select",  "PSG Channel Select",        1 },
+	{ PSG_GSREG_GBALANCE,  2, "Balance", "PSG Global Balance",        1 },
+	{ PSG_GSREG_LFOFREQ,   2, "LFOFreq", "PSG LFO Freq",              1 },
+	{ PSG_GSREG_LFOCTRL,   2, "LFOCtrl", "PSG LFO Control",           1 },
 
- { 0, "--ADPCM:--", "", 0xFFFF },
+	CHPDMOO(0),
+	CHPDMOO(1),
+	CHPDMOO(2),
+	CHPDMOO(3),
+	CHPDMOO(4),
+	{ PSG_GSREG_CH4_NCTRL, 4, "Noise",   "PSG Ch4 Noise Control",     1 },
+/*	{ PSG_GSREG_CH4_LFSR,  3, "LFSR",    "PSG Ch4 Noise LFSR",        2 }, */
+	CHPDMOO(5),
+	{ PSG_GSREG_CH5_NCTRL, 4, "Noise",   "PSG Ch5 Noise Control",     1 },
+/*	{ PSG_GSREG_CH5_LFSR,  3, "LFSR",    "PSG Ch5 Noise LFSR",        2 }, */
 
- { GSREG_ADPCM_CTRL, "Ctrl", "ADPCM Control", 2 },
- { GSREG_ADPCM0_LVOL, "CH0LVol", "ADPCM Ch0 Left Volume", 1 },
- { GSREG_ADPCM0_RVOL, "CH0RVol", "ADPCM Ch0 Right Volume", 1 },
- { GSREG_ADPCM1_LVOL, "CH1LVol", "ADPCM Ch1 Left Volume", 1 },
- { GSREG_ADPCM1_RVOL, "CH1RVol", "ADPCM Ch1 Right Volume", 1 },
+	{ 0, 0, "---ADPCM---", "", 0xFFFF },
 
- { GSREG_ADPCM0_CUR, "CH0Prc", "ADPCM Ch0 Predictor Value", 2 },
- { GSREG_ADPCM1_CUR, "CH1Prc", "ADPCM Ch1 Predictor Value", 2 },
+	{ GSREG_ADPCM_CTRL,    3, "Ctrl",    "ADPCM Control",             2 },
+	{ GSREG_ADPCM0_LVOL,   2, "CH0LVol", "ADPCM Ch0 Left Volume",     1 },
+	{ GSREG_ADPCM0_RVOL,   2, "CH0RVol", "ADPCM Ch0 Right Volume",    1 },
+	{ GSREG_ADPCM1_LVOL,   2, "CH1LVol", "ADPCM Ch1 Left Volume",     1 },
+	{ GSREG_ADPCM1_RVOL,   2, "CH1RVol", "ADPCM Ch1 Right Volume",    1 },
 
- { 0, "--CD-DA:--", "", 0xFFFF },
- { GSREG_CDDA_LVOL, "CDLVol", "CD-DA Left Volume", 1 },
- { GSREG_CDDA_RVOL, "CDRVol", "CD-DA Right Volume", 1 },
- { 0, "", "", 0 },
+/*	{ GSREG_ADPCM0_CUR,    1, "CH0Prc",  "ADPCM Ch0 Predictor Value", 2 }, */
+/*	{ GSREG_ADPCM1_CUR,    1, "CH1Prc",  "ADPCM Ch1 Predictor Value", 2 }, */
+
+	{ 0, 0, "---CD-DA---", "", 0xFFFF },
+
+	{ GSREG_CDDA_LVOL,     3, "CDLVol",  "CD-DA Left Volume",         1 },
+	{ GSREG_CDDA_RVOL,     3, "CDRVol",  "CD-DA Right Volume",        1 },
+
+	{ 0, 0, "-----------", "", 0xFFFF },
+
+	{ 0, 0, "", "", 0 },
 };
 
 static uint32 SBoxDBG_GetRegister(const unsigned int id, char *special, const uint32 special_len)

@@ -441,31 +441,32 @@ DebuggerInfoStruct PSX_DBGInfo =
 
 static const RegType Regs_Misc[] =
 {
- { TIMER_GSREG_COUNTER0,	"COUNT0", "Counter 0", 2 	},
- { TIMER_GSREG_MODE0,		"MODE0", "Mode 0", 	2   	},
- { TIMER_GSREG_TARGET0,		"TARGET0", "Target 0",	2	},
+ { 0, 0, "--TIMER-0--", "", 0xFFFF },
+ { TIMER_GSREG_COUNTER0,        2,      "Count",        "Counter 0",    2 },
+ { TIMER_GSREG_MODE0,           3,      "Mode",         "Mode 0",       2 },
+ { TIMER_GSREG_TARGET0,         1,      "Target",       "Target 0",     2 },
 
- { 0, "------", "", 0xFFFF },
+ { 0, 0, "--TIMER-1--", "", 0xFFFF },
 
+ { TIMER_GSREG_COUNTER1,        2,      "Count",        "Counter 1",    2 },
+ { TIMER_GSREG_MODE1,           3,      "Mode",         "Mode 1",       2 },
+ { TIMER_GSREG_TARGET1,         1,      "Target",       "Target 1",     2 },
 
- { TIMER_GSREG_COUNTER1,	"COUNT1", "Counter 1", 2 	},
- { TIMER_GSREG_MODE1,		"MODE1", "Mode 1", 	2   	},
- { TIMER_GSREG_TARGET1,		"TARGET1", "Target 1",	2	},
+ { 0, 0, "--TIMER-2--", "", 0xFFFF },
 
- { 0, "------", "", 0xFFFF },
+ { TIMER_GSREG_COUNTER2,        2,      "Count",        "Counter 2",    2 },
+ { TIMER_GSREG_MODE2,           3,      "Mode",         "Mode 2",       2 },
+ { TIMER_GSREG_TARGET2,         1,      "Target",       "Target 2",     2 },
 
- { TIMER_GSREG_COUNTER2,	"COUNT2", "Counter 2", 2 	},
- { TIMER_GSREG_MODE2,		"MODE2", "Mode 2", 	2   	},
- { TIMER_GSREG_TARGET2,		"TARGET2", "Target 2",	2	},
+ { 0, 0, "----IRQ----", "", 0xFFFF },
 
- { 0, "------", "", 0xFFFF },
- { 0, "------", "", 0xFFFF },
+ { 0x10000 | IRQ_GSREG_ASSERTED,1,      "Assert",       "IRQ Asserted", 2 },
+ { 0x10000 | IRQ_GSREG_STATUS,  1,      "Status",       "IRQ Status",   2 },
+ { 0x10000 | IRQ_GSREG_MASK,    3,      "Mask",         "IRQ Mask",     2 },
 
- { 0x10000 | IRQ_GSREG_ASSERTED,	"ASSERTD",	"IRQ Asserted",	2 },
- { 0x10000 | IRQ_GSREG_STATUS,		"STATUS",	"IRQ Status", 2 },
- { 0x10000 | IRQ_GSREG_MASK,		"MASK",		"IRQ Mask", 2 },
+ { 0, 0, "-----------", "", 0xFFFF },
 
- { 0, "", "", 0 }
+ { 0, 0, "", "", 0 }
 };
 
 
@@ -495,85 +496,88 @@ static const RegGroupType MiscRegsGroup =
 
 static const RegType Regs_SPU[] =
 {
- { PS_SPU::GSREG_SPUCONTROL, "SPUCTRL", "SPU Control", 2 },
+ { 0, 0, "------SPU------", "", 0xFFFF },
+ { PS_SPU::GSREG_SPUCONTROL,    4,      "SPUCtrl", "SPU Control", 2 },
 
- { PS_SPU::GSREG_FM_ON, "FMOn", "FM Enable", 3 },
- { PS_SPU::GSREG_NOISE_ON, "NoiseOn", "Noise Enable", 3 },
- { PS_SPU::GSREG_REVERB_ON, "ReverbOn", "Reverb Enable", 3 },
+ { PS_SPU::GSREG_FM_ON,         5,      "FMOn", "FM Enable", 3 },
+ { PS_SPU::GSREG_NOISE_ON,      2,      "NoiseOn", "Noise Enable", 3 },
+ { PS_SPU::GSREG_REVERB_ON,     1,      "ReverbOn", "Reverb Enable", 3 },
 
- { PS_SPU::GSREG_CDVOL_L, "CDVolL", "CD Volume Left", 2 },
- { PS_SPU::GSREG_CDVOL_R, "CDVolR", "CD Volume Right", 2 },
+ { PS_SPU::GSREG_CDVOL_L,       5,      "CDVolL", "CD Volume Left", 2 },
+ { PS_SPU::GSREG_CDVOL_R,       5,      "CDVolR", "CD Volume Right", 2 },
 
- { PS_SPU::GSREG_RVBVOL_L, "RvbVolL", "Reverb Volume Left", 2 },
- { PS_SPU::GSREG_RVBVOL_R, "RvbVolR", "Reverb Volume Right", 2 },
+ { PS_SPU::GSREG_RVBVOL_L,      4,      "RvbVolL", "Reverb Volume Left", 2 },
+ { PS_SPU::GSREG_RVBVOL_R,      4,      "RvbVolR", "Reverb Volume Right", 2 },
 
- { PS_SPU::GSREG_MAINVOL_CTRL_L, "MainVolCL", "Main Volume Control Left", 2 },
- { PS_SPU::GSREG_MAINVOL_CTRL_R, "MainVolCR", "Main Volume Control Right", 2 },
+ { PS_SPU::GSREG_MAINVOL_CTRL_L,2,      "MainVolCL", "Main Volume Control Left", 2 },
+ { PS_SPU::GSREG_MAINVOL_CTRL_R,2,      "MainVolCR", "Main Volume Control Right", 2 },
 
- { PS_SPU::GSREG_MAINVOL_L, "MainVolL", "Dry Volume Left", 2 },
- { PS_SPU::GSREG_MAINVOL_R, "MainVolR", "Dry Volume Right", 2 },
+ { PS_SPU::GSREG_MAINVOL_L,     3,      "MainVolL", "Dry Volume Left", 2 },
+ { PS_SPU::GSREG_MAINVOL_R,     3,      "MainVolR", "Dry Volume Right", 2 },
 
- { PS_SPU::GSREG_RWADDR, "RWAddr", "SPURAM Read/Write Address", 3 },
+ { PS_SPU::GSREG_RWADDR,        3,      "RWAddr", "SPURAM Read/Write Address", 3 },
 
- { PS_SPU::GSREG_IRQADDR, "IRQAddr", "IRQ Compare Address", 3 },
+ { PS_SPU::GSREG_IRQADDR,       2,      "IRQAddr", "IRQ Compare Address", 3 },
 
- { PS_SPU::GSREG_REVERBWA, "ReverbWA", "Reverb Work Area(Raw)", 2 },
+ { PS_SPU::GSREG_REVERBWA,      3,      "ReverbWA", "Reverb Work Area(Raw)", 2 },
 
- { PS_SPU::GSREG_VOICEON, "VoiceOn", "Voice On", 3 },
- { PS_SPU::GSREG_VOICEOFF, "VoiceOff", "Voice Off", 3 },
- { PS_SPU::GSREG_BLOCKEND, "BlockEnd", "Block End", 3 },
+ { PS_SPU::GSREG_VOICEON,       2,      "VoiceOn", "Voice On", 3 },
+ { PS_SPU::GSREG_VOICEOFF,      1,      "VoiceOff", "Voice Off", 3 },
+ { PS_SPU::GSREG_BLOCKEND,      1,      "BlockEnd", "Block End", 3 },
 
 
- { 0, "------", "", 0xFFFF },
+/* { 0, 0, "---------------", "", 0xFFFF }, */
 
- { PS_SPU::GSREG_FB_SRC_A, "FB_SRC_A", "", 2 },
- { PS_SPU::GSREG_FB_SRC_B, "FB_SRC_B", "", 2 },
- { PS_SPU::GSREG_IIR_ALPHA, "IIR_ALPHA", "", 2 },
- { PS_SPU::GSREG_ACC_COEF_A, "ACC_COEF_A", "", 2 },
- { PS_SPU::GSREG_ACC_COEF_B, "ACC_COEF_B", "", 2 },
- { PS_SPU::GSREG_ACC_COEF_C, "ACC_COEF_C", "", 2 },
- { PS_SPU::GSREG_ACC_COEF_D, "ACC_COEF_D", "", 2 },
- { PS_SPU::GSREG_IIR_COEF, "IIR_COEF", "", 2 },
- { PS_SPU::GSREG_FB_ALPHA, "FB_ALPHA", "", 2 },
- { PS_SPU::GSREG_FB_X, "FB_X", "", 2 },
- { PS_SPU::GSREG_IIR_DEST_A0, "IIR_DST_A0", "", 2 },
- { PS_SPU::GSREG_IIR_DEST_A1, "IIR_DST_A1", "", 2 },
- { PS_SPU::GSREG_ACC_SRC_A0, "ACC_SRC_A0", "", 2 },
- { PS_SPU::GSREG_ACC_SRC_A1, "ACC_SRC_A1", "", 2 },
- { PS_SPU::GSREG_ACC_SRC_B0, "ACC_SRC_B0", "", 2 },
- { PS_SPU::GSREG_ACC_SRC_B1, "ACC_SRC_B1", "", 2 },
- { PS_SPU::GSREG_IIR_SRC_A0, "IIR_SRC_A0", "", 2 },
- { PS_SPU::GSREG_IIR_SRC_A1, "IIR_SRC_A1", "", 2 },
- { PS_SPU::GSREG_IIR_DEST_B0, "IIR_DST_B0", "", 2 },
- { PS_SPU::GSREG_IIR_DEST_B1, "IIR_DST_B1", "", 2 },
- { PS_SPU::GSREG_ACC_SRC_C0, "ACC_SRC_C0", "", 2 },
- { PS_SPU::GSREG_ACC_SRC_C1, "ACC_SRC_C1", "", 2 },
- { PS_SPU::GSREG_ACC_SRC_D0, "ACC_SRC_D0", "", 2 },
- { PS_SPU::GSREG_ACC_SRC_D1, "ACC_SRC_D1", "", 2 },
- { PS_SPU::GSREG_IIR_SRC_B1, "IIR_SRC_B1", "", 2 },
- { PS_SPU::GSREG_IIR_SRC_B0, "IIR_SRC_B0", "", 2 },
- { PS_SPU::GSREG_MIX_DEST_A0, "MIX_DST_A0", "", 2 },
- { PS_SPU::GSREG_MIX_DEST_A1, "MIX_DST_A1", "", 2 },
- { PS_SPU::GSREG_MIX_DEST_B0, "MIX_DST_B0", "", 2 },
- { PS_SPU::GSREG_MIX_DEST_B1, "MIX_DST_B1", "", 2 },
- { PS_SPU::GSREG_IN_COEF_L, "IN_COEF_L", "", 2 },
- { PS_SPU::GSREG_IN_COEF_R, "IN_COEF_R", "", 2 },
+/* { PS_SPU::GSREG_FB_SRC_A,    3,      "FB_SRC_A", "", 2 }, */
+/* { PS_SPU::GSREG_FB_SRC_B,    3,      "FB_SRC_B", "", 2 }, */
+/* { PS_SPU::GSREG_IIR_ALPHA,   2,      "IIR_ALPHA", "", 2 }, */
+/* { PS_SPU::GSREG_ACC_COEF_A,  1,      "ACC_COEF_A", "", 2 }, */
+/* { PS_SPU::GSREG_ACC_COEF_B,  1,      "ACC_COEF_B", "", 2 }, */
+/* { PS_SPU::GSREG_ACC_COEF_C,  1,      "ACC_COEF_C", "", 2 }, */
+/* { PS_SPU::GSREG_ACC_COEF_D,  1,      "ACC_COEF_D", "", 2 }, */
+/* { PS_SPU::GSREG_IIR_COEF,    3,      "IIR_COEF", "", 2 }, */
+/* { PS_SPU::GSREG_FB_ALPHA,    3,      "FB_ALPHA", "", 2 }, */
+/* { PS_SPU::GSREG_FB_X,                7,      "FB_X", "", 2 }, */
+/* { PS_SPU::GSREG_IIR_DEST_A0, 1,      "IIR_DST_A0", "", 2 }, */
+/* { PS_SPU::GSREG_IIR_DEST_A1, 1,      "IIR_DST_A1", "", 2 }, */
+/* { PS_SPU::GSREG_ACC_SRC_A0,  1,      "ACC_SRC_A0", "", 2 }, */
+/* { PS_SPU::GSREG_ACC_SRC_A1,  1,      "ACC_SRC_A1", "", 2 }, */
+/* { PS_SPU::GSREG_ACC_SRC_B0,  1,      "ACC_SRC_B0", "", 2 }, */
+/* { PS_SPU::GSREG_ACC_SRC_B1,  1,      "ACC_SRC_B1", "", 2 }, */
+/* { PS_SPU::GSREG_IIR_SRC_A0,  1,      "IIR_SRC_A0", "", 2 }, */
+/* { PS_SPU::GSREG_IIR_SRC_A1,  1,      "IIR_SRC_A1", "", 2 }, */
+/* { PS_SPU::GSREG_IIR_DEST_B0, 1,      "IIR_DST_B0", "", 2 }, */
+/* { PS_SPU::GSREG_IIR_DEST_B1, 1,      "IIR_DST_B1", "", 2 }, */
+/* { PS_SPU::GSREG_ACC_SRC_C0,  1,      "ACC_SRC_C0", "", 2 }, */
+/* { PS_SPU::GSREG_ACC_SRC_C1,  1,      "ACC_SRC_C1", "", 2 }, */
+/* { PS_SPU::GSREG_ACC_SRC_D0,  1,      "ACC_SRC_D0", "", 2 }, */
+/* { PS_SPU::GSREG_ACC_SRC_D1,  1,      "ACC_SRC_D1", "", 2 }, */
+/* { PS_SPU::GSREG_IIR_SRC_B1,  1,      "IIR_SRC_B1", "", 2 }, */
+/* { PS_SPU::GSREG_IIR_SRC_B0,  1,      "IIR_SRC_B0", "", 2 }, */
+/* { PS_SPU::GSREG_MIX_DEST_A0, 1,      "MIX_DST_A0", "", 2 }, */
+/* { PS_SPU::GSREG_MIX_DEST_A1, 1,      "MIX_DST_A1", "", 2 }, */
+/* { PS_SPU::GSREG_MIX_DEST_B0, 1,      "MIX_DST_B0", "", 2 }, */
+/* { PS_SPU::GSREG_MIX_DEST_B1, 1,      "MIX_DST_B1", "", 2 }, */
+/* { PS_SPU::GSREG_IN_COEF_L,   2,      "IN_COEF_L", "", 2 }, */
+/* { PS_SPU::GSREG_IN_COEF_R,   2,      "IN_COEF_R", "", 2 }, */
 
- { 0, "", "", 0 },
+ { 0, 0, "---------------", "", 0xFFFF },
+
+ { 0, 0, "", "", 0 },
 };
 
-#define VOICE_HELPER(v)									\
- { 0, "--V"#v"--", "", 0xFFFF },							\
- { PS_SPU:: GSREG_V0_VOL_CTRL_L + v * 256, "VolCL", "Volume Control Left", 2 },		\
- { PS_SPU:: GSREG_V0_VOL_CTRL_R + v * 256, "VolCR", "Volume Control Right", 2 },	\
- { PS_SPU:: GSREG_V0_VOL_L + v * 256, "VolL", "Volume Left", 2 },			\
- { PS_SPU:: GSREG_V0_VOL_R + v * 256, "VolR", "Volume Right", 2 },			\
- { PS_SPU:: GSREG_V0_PITCH + v * 256, "Pitch", "Pitch", 2 },				\
- { PS_SPU:: GSREG_V0_STARTADDR + v * 256, "SAddr", "Start Address", 3 },		\
- { PS_SPU:: GSREG_V0_ADSR_CTRL + v * 256, "ADSRCTRL", "ADSR Control", 4 },		\
- { PS_SPU:: GSREG_V0_ADSR_LEVEL + v * 256, "ADSRLev", "ADSR Level", 2 },		\
- { PS_SPU:: GSREG_V0_LOOP_ADDR + v * 256, "LAddr", "Loop Address", 3 },			\
- { PS_SPU:: GSREG_V0_READ_ADDR + v * 256, "RAddr", "Read Address", 3 }
+#define VOICE_HELPER(v)                         \
+ { 0, 0, "-----VOICE-"#v"-----", "", 0xFFFF },  \
+ { PS_SPU:: GSREG_V0_VOL_CTRL_L + v * 256,      8,      "VolCL", "Volume Control Left", 2 },    \
+ { PS_SPU:: GSREG_V0_VOL_CTRL_R + v * 256,      8,      "VolCR", "Volume Control Right", 2 },   \
+ { PS_SPU:: GSREG_V0_VOL_L + v * 256,           9,      "VolL", "Volume Left", 2 },             \
+ { PS_SPU:: GSREG_V0_VOL_R + v * 256,           9,      "VolR", "Volume Right", 2 },            \
+ { PS_SPU:: GSREG_V0_PITCH + v * 256,           8,      "Pitch", "Pitch", 2 },                  \
+ { PS_SPU:: GSREG_V0_STARTADDR + v * 256,       6,      "SAddr", "Start Address", 3 },          \
+ { PS_SPU:: GSREG_V0_ADSR_CTRL + v * 256,       1,      "ADSRCtrl", "ADSR Control", 4 },        \
+ { PS_SPU:: GSREG_V0_ADSR_LEVEL + v * 256,      6,      "ADSRLev", "ADSR Level", 2 },           \
+ { PS_SPU:: GSREG_V0_LOOP_ADDR + v * 256,       6,      "LAddr", "Loop Address", 3 },           \
+ { PS_SPU:: GSREG_V0_READ_ADDR + v * 256,       6,      "RAddr", "Read Address", 3 }
 
 
 static const RegType Regs_SPU_Voices[] =
@@ -594,7 +598,8 @@ static const RegType Regs_SPU_Voices[] =
  //VOICE_HELPER(22),
  //VOICE_HELPER(23),
 #endif
- { 0, "", "", 0 },
+ { 0, 0, "-----------------", "", 0xFFFF },
+ { 0, 0, "", "", 0 },
 };
 
 
@@ -627,55 +632,56 @@ static const RegGroupType SPUVoicesRegsGroup =
 
 static const RegType Regs_CPU[] =
 {
-	{ PS_CPU::GSREG_PC, 	   "PC", "PC", 4 },
-	{ PS_CPU::GSREG_PC_NEXT,   "NPC", "Next PC", 4 },
-	{ PS_CPU::GSREG_IN_BD_SLOT, "INBD", "In Branch Delay Slot", 1 },
-        { 0, "------", "", 0xFFFF },
-        { PS_CPU::GSREG_GPR + 1,   "at", "Assembler Temporary", 4 },
-        { PS_CPU::GSREG_GPR + 2,   "v0", "Return Value 0", 4 },
-        { PS_CPU::GSREG_GPR + 3,   "v1", "Return Value 1", 4 },
-        { PS_CPU::GSREG_GPR + 4,   "a0", "Argument 0", 4 },
-        { PS_CPU::GSREG_GPR + 5,   "a1", "Argument 1", 4 },
-        { PS_CPU::GSREG_GPR + 6,   "a2", "Argument 2", 4 },
-        { PS_CPU::GSREG_GPR + 7,   "a3", "Argument 3", 4 },
-        { PS_CPU::GSREG_GPR + 8,   "t0", "Temporary 0", 4 },
-        { PS_CPU::GSREG_GPR + 9,   "t1", "Temporary 1", 4 },
-        { PS_CPU::GSREG_GPR + 10,   "t2", "Temporary 2", 4 },
-        { PS_CPU::GSREG_GPR + 11,   "t3", "Temporary 3", 4 },
-        { PS_CPU::GSREG_GPR + 12,   "t4", "Temporary 4", 4 },
-        { PS_CPU::GSREG_GPR + 13,   "t5", "Temporary 5", 4 },
-        { PS_CPU::GSREG_GPR + 14,   "t6", "Temporary 6", 4 },
-        { PS_CPU::GSREG_GPR + 15,   "t7", "Temporary 7", 4 },
-        { PS_CPU::GSREG_GPR + 16,   "s0", "Subroutine Reg Var 0", 4 },
-        { PS_CPU::GSREG_GPR + 17,   "s1", "Subroutine Reg Var 1", 4 },
-        { PS_CPU::GSREG_GPR + 18,   "s2", "Subroutine Reg Var 2", 4 },
-        { PS_CPU::GSREG_GPR + 19,   "s3", "Subroutine Reg Var 3", 4 },
-        { PS_CPU::GSREG_GPR + 20,   "s4", "Subroutine Reg Var 4", 4 },
-        { PS_CPU::GSREG_GPR + 21,   "s5", "Subroutine Reg Var 5", 4 },
-        { PS_CPU::GSREG_GPR + 22,   "s6", "Subroutine Reg Var 6", 4 },
-        { PS_CPU::GSREG_GPR + 23,   "s7", "Subroutine Reg Var 7", 4 },
-        { PS_CPU::GSREG_GPR + 24,   "t8", "Temporary 8", 4 },
-        { PS_CPU::GSREG_GPR + 25,   "t9", "Temporary 9", 4 },
-        { PS_CPU::GSREG_GPR + 26,   "k0", "Interrupt/Trap Handler Reg 0", 4 },
-        { PS_CPU::GSREG_GPR + 27,   "k1", "Interrupt/Trap Handler Reg 1", 4 },
-        { PS_CPU::GSREG_GPR + 28,   "gp", "Global Pointer", 4 },
-        { PS_CPU::GSREG_GPR + 29,   "sp", "Stack Pointer", 4 },
-        { PS_CPU::GSREG_GPR + 30,   "s8", "Subroutine Reg Var 8/Frame Pointer", 4 },
-        { PS_CPU::GSREG_GPR + 31,   "ra", "Return Address", 4 },
-        { 0, "------", "", 0xFFFF },
-	{ PS_CPU::GSREG_SR,	"SR",	"Status Register", 4 },
-	{ PS_CPU::GSREG_CAUSE,	"CAU",	"Cause Register", 4 },
-	{ PS_CPU::GSREG_EPC,	"EPC",	"EPC Register", 4 },
-        { 0, "------", "", 0xFFFF },
-	{ PS_CPU::GSREG_TAR,	"TAR",	"Target Address Register", 4 },
-	{ PS_CPU::GSREG_BADA,	"BADA",	"Bad Address Register", 4 },
-        { 0, "------", "", 0xFFFF },
-	{ PS_CPU::GSREG_BPC,	"BPC ",	"Breakpoint Program Counter Register", 4 },
-	{ PS_CPU::GSREG_BPCM,	"BPCM",	"Breakpoint Program Counter Mask", 4 },
-	{ PS_CPU::GSREG_BDA,	"BDA ",	"Breakpoint Data Address Register", 4 },
-	{ PS_CPU::GSREG_BDAM,	"BDAM",	"Breakpoint Data Address Mask", 4 },
-	{ PS_CPU::GSREG_DCIC,	"DCIC",	"Debug and Cache Invalidate Control", 4 },
-	{ 0, "", "", 0 }
+ { 0, 0, "-----CPU-----", "", 0xFFFF },
+ { PS_CPU::GSREG_PC,            3,      "PC", "PC", 4 },
+ { PS_CPU::GSREG_PC_NEXT,       2,      "NPC", "Next PC", 4 },
+ { PS_CPU::GSREG_IN_BD_SLOT,    7,      "INBD", "In Branch Delay Slot", 1 },
+ { 0, 0, "-----FLG-----", "", 0xFFFF },
+ { PS_CPU::GSREG_SR,            3,      "SR",   "Status Register", 4 },
+ { PS_CPU::GSREG_CAUSE,         2,      "CAU",  "Cause Register", 4 },
+ { PS_CPU::GSREG_EPC,           2,      "EPC",  "EPC Register", 4 },
+ { 0, 0, "-----REG-----", "", 0xFFFF },
+ { PS_CPU::GSREG_GPR + 1,       3,      "AT", "Assembler Temporary", 4 },
+ { PS_CPU::GSREG_GPR + 2,       3,      "V0", "Return Value 0", 4 },
+ { PS_CPU::GSREG_GPR + 3,       3,      "V1", "Return Value 1", 4 },
+ { PS_CPU::GSREG_GPR + 4,       3,      "A0", "Argument 0", 4 },
+ { PS_CPU::GSREG_GPR + 5,       3,      "A1", "Argument 1", 4 },
+ { PS_CPU::GSREG_GPR + 6,       3,      "A2", "Argument 2", 4 },
+ { PS_CPU::GSREG_GPR + 7,       3,      "A3", "Argument 3", 4 },
+ { PS_CPU::GSREG_GPR + 8,       3,      "T0", "Temporary 0", 4 },
+ { PS_CPU::GSREG_GPR + 9,       3,      "T1", "Temporary 1", 4 },
+ { PS_CPU::GSREG_GPR + 10,      3,      "T2", "Temporary 2", 4 },
+ { PS_CPU::GSREG_GPR + 11,      3,      "T3", "Temporary 3", 4 },
+ { PS_CPU::GSREG_GPR + 12,      3,      "T4", "Temporary 4", 4 },
+ { PS_CPU::GSREG_GPR + 13,      3,      "T5", "Temporary 5", 4 },
+ { PS_CPU::GSREG_GPR + 14,      3,      "T6", "Temporary 6", 4 },
+ { PS_CPU::GSREG_GPR + 15,      3,      "T7", "Temporary 7", 4 },
+ { PS_CPU::GSREG_GPR + 16,      3,      "S0", "Subroutine Reg Var 0", 4 },
+ { PS_CPU::GSREG_GPR + 17,      3,      "S1", "Subroutine Reg Var 1", 4 },
+ { PS_CPU::GSREG_GPR + 18,      3,      "S2", "Subroutine Reg Var 2", 4 },
+ { PS_CPU::GSREG_GPR + 19,      3,      "S3", "Subroutine Reg Var 3", 4 },
+ { PS_CPU::GSREG_GPR + 20,      3,      "S4", "Subroutine Reg Var 4", 4 },
+ { PS_CPU::GSREG_GPR + 21,      3,      "S5", "Subroutine Reg Var 5", 4 },
+ { PS_CPU::GSREG_GPR + 22,      3,      "S6", "Subroutine Reg Var 6", 4 },
+ { PS_CPU::GSREG_GPR + 23,      3,      "S7", "Subroutine Reg Var 7", 4 },
+ { PS_CPU::GSREG_GPR + 24,      3,      "T8", "Temporary 8", 4 },
+ { PS_CPU::GSREG_GPR + 25,      3,      "T9", "Temporary 9", 4 },
+ { PS_CPU::GSREG_GPR + 26,      3,      "K0", "Interrupt/Trap Handler Reg 0", 4 },
+ { PS_CPU::GSREG_GPR + 27,      3,      "K1", "Interrupt/Trap Handler Reg 1", 4 },
+ { PS_CPU::GSREG_GPR + 28,      3,      "GP", "Global Pointer", 4 },
+ { PS_CPU::GSREG_GPR + 29,      3,      "SP", "Stack Pointer", 4 },
+ { PS_CPU::GSREG_GPR + 30,      3,      "S8", "Subroutine Reg Var 8/Frame Pointer", 4 },
+ { PS_CPU::GSREG_GPR + 31,      3,      "RA", "Return Address", 4 },
+ { 0, 0, "----DEBUG----", "", 0xFFFF },
+ { PS_CPU::GSREG_TAR,           2,      "TAR",  "Target Address Register", 4 },
+ { PS_CPU::GSREG_BADA,          1,      "BADA", "Bad Address Register", 4 },
+ { PS_CPU::GSREG_BPC,           2,      "BPC",  "Breakpoint Program Counter Register", 4 },
+ { PS_CPU::GSREG_BPCM,          1,      "BPCM", "Breakpoint Program Counter Mask", 4 },
+ { PS_CPU::GSREG_BDA,           2,      "BDA",  "Breakpoint Data Address Register", 4 },
+ { PS_CPU::GSREG_BDAM,          1,      "BDAM", "Breakpoint Data Address Mask", 4 },
+ { PS_CPU::GSREG_DCIC,          1,      "DCIC", "Debug and Cache Invalidate Control", 4 },
+ { 0, 0, "-------------", "", 0xFFFF },
+ { 0, 0, "", "", 0 }
 };
 
 static uint32 GetRegister_CPU(const unsigned int id, char *special, const uint32 special_len)

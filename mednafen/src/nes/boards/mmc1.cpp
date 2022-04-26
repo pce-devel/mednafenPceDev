@@ -151,13 +151,13 @@ enum
 
 static const RegType DBGMMC1Regs[] =
 {
- { MMC1_GSREG_CONTROL, "Control", "Control(MMC1 register 0)", 1 },
- { MMC1_GSREG_CHRBANK0, "CHRBank0", "CHR Bank Register 0(MMC1 register 1)", 1 },
- { MMC1_GSREG_CHRBANK1, "CHRBank1", "CHR Bank Register 1(MMC1 register 2)", 1 },
- { MMC1_GSREG_PRGBANK, "PRGBank", "PRG Bank Bank Register(MMC1 register 3)", 1 },
- { MMC1_GSREG_BUFFER, "Buffer", "Shifty buffer that takes your moneys!", 1 },
- { MMC1_GSREG_BUFFERSHIFT, "BufferShift", "Place to stick bit in shifty bit buffer", 1 },
- { 0, "", "", 0 },
+ { MMC1_GSREG_CONTROL,		1,	"Control", "Control(MMC1 register 0)", 1 },
+ { MMC1_GSREG_CHRBANK0,		1,	"CHRBank0", "CHR Bank Register 0(MMC1 register 1)", 1 },
+ { MMC1_GSREG_CHRBANK1,		1,	"CHRBank1", "CHR Bank Register 1(MMC1 register 2)", 1 },
+ { MMC1_GSREG_PRGBANK,		1,	"PRGBank", "PRG Bank Bank Register(MMC1 register 3)", 1 },
+ { MMC1_GSREG_BUFFER,		1,	"Buffer", "Shifty buffer that takes your moneys!", 1 },
+ { MMC1_GSREG_BUFFERSHIFT,	1,	"BufferShift", "Place to stick bit in shifty bit buffer", 1 },
+ { 0, 0, "", "", 0 },
 };
 
 static uint32 MMC1DBG_GetRegister(const unsigned int id, char *special, const uint32 special_len)

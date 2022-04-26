@@ -1257,23 +1257,23 @@ enum
 
 static const RegType DBGMMC3Regs[] =
 {
- { MMC3_GSREG_CONTROL, "Control", "Command/Control", 1 },
- { MMC3_GSREG_MIRRORING, "Mirroring", "Mirroring", 1 },
- { MMC3_GSREG_WRAMPROTECT, "WRAMProtect", "Cart WRAM Protect", 1 },
- { MMC3_GSREG_CHRBANK0, "CHRBank0", "CHR Bank(2KiB) Register 0", 1 },
- { MMC3_GSREG_CHRBANK1, "CHRBank1", "CHR Bank(2KiB) Register 1", 1 },
- { MMC3_GSREG_CHRBANK2, "CHRBank2", "CHR Bank(1KiB) Register 2", 1 },
- { MMC3_GSREG_CHRBANK3, "CHRBank3", "CHR Bank(1KiB) Register 3", 1 },
- { MMC3_GSREG_CHRBANK4, "CHRBank4", "CHR Bank(1KiB) Register 4", 1 },
- { MMC3_GSREG_CHRBANK5, "CHRBank5", "CHR Bank(1KiB) Register 5", 1 },
- { MMC3_GSREG_PRGBANK0, "PRGBank0", "PRG Bank(8KiB, @8000 or C000) Register 0", 1 },
- { MMC3_GSREG_PRGBANK1, "PRGBank1", "PRG Bank(8KiB, @A000) Register 1", 1 },
+ { MMC3_GSREG_CONTROL,		1,	"Control", "Command/Control", 1 },
+ { MMC3_GSREG_MIRRORING,	1,	"Mirroring", "Mirroring", 1 },
+ { MMC3_GSREG_WRAMPROTECT,	1,	"WRAMProtect", "Cart WRAM Protect", 1 },
+ { MMC3_GSREG_CHRBANK0,		1,	"CHRBank0", "CHR Bank(2KiB) Register 0", 1 },
+ { MMC3_GSREG_CHRBANK1,		1,	"CHRBank1", "CHR Bank(2KiB) Register 1", 1 },
+ { MMC3_GSREG_CHRBANK2,		1,	"CHRBank2", "CHR Bank(1KiB) Register 2", 1 },
+ { MMC3_GSREG_CHRBANK3,		1,	"CHRBank3", "CHR Bank(1KiB) Register 3", 1 },
+ { MMC3_GSREG_CHRBANK4,		1,	"CHRBank4", "CHR Bank(1KiB) Register 4", 1 },
+ { MMC3_GSREG_CHRBANK5,		1,	"CHRBank5", "CHR Bank(1KiB) Register 5", 1 },
+ { MMC3_GSREG_PRGBANK0,		1,	"PRGBank0", "PRG Bank(8KiB, @8000 or C000) Register 0", 1 },
+ { MMC3_GSREG_PRGBANK1,		1,	"PRGBank1", "PRG Bank(8KiB, @A000) Register 1", 1 },
 
- { MMC3_GSREG_IRQCOUNT, "IRQCount", "IRQ Counter", 1 },
- { MMC3_GSREG_IRQLATCH, "IRQLatch", "IRQ Counter Latch", 1 },
- { MMC3_GSREG_IRQENABLE, "IRQEnable", "IRQ Counter Enable", 1 },
+ { MMC3_GSREG_IRQCOUNT,		1,	"IRQCount", "IRQ Counter", 1 },
+ { MMC3_GSREG_IRQLATCH,		1,	"IRQLatch", "IRQ Counter Latch", 1 },
+ { MMC3_GSREG_IRQENABLE,	1,	"IRQEnable", "IRQ Counter Enable", 1 },
 
- { 0, "", "", 0 },
+ { 0, 0, "", "", 0 },
 };
 
 static uint32 MMC3DBG_GetRegister(const unsigned int id, char *special, const uint32 special_len)

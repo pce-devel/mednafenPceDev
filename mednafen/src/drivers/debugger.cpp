@@ -296,6 +296,8 @@ static uint32 RegsTotalWidth;
 static std::string CurRegLongName;
 static std::string CurRegDetails;
 
+#define CHRS_BETWEEN_COLUMNS 3
+
 static void Regs_Init(const int max_height_hint)
 {
  RegsPosX = RegsPosY = 0;
@@ -331,10 +333,12 @@ static void Regs_Init(const int max_height_hint)
        uint32 tmp_pw = strlen((*CurGame->Debugger->RegGroups)[r]->Regs[x].name);
        unsigned int bsize = (*CurGame->Debugger->RegGroups)[r]->Regs[x].bsize;
 
+       tmp_pw += (*CurGame->Debugger->RegGroups)[r]->Regs[x].outdent;
+
        if(bsize & 0x100)
-	tmp_pw += ((bsize & 0xFF) + 3) / 4 + 2 + 2;
+        tmp_pw += ((bsize & 0xFF) + 3) / 4 + CHRS_BETWEEN_COLUMNS;
        else
-        tmp_pw += bsize * 2 + 2 + 2;
+        tmp_pw += bsize * 2 + CHRS_BETWEEN_COLUMNS;
 
        if(tmp_pw > pw)
         pw = tmp_pw;
@@ -344,7 +348,7 @@ static void Regs_Init(const int max_height_hint)
      }
 
      if(r == (CurGame->Debugger->RegGroups->size() - 1))
-      pw -= 2;
+      pw -= CHRS_BETWEEN_COLUMNS;
 
      //if(x * 7 > max_height_hint)
      //{
@@ -408,12 +412,12 @@ static void Regs_DrawGroup(const RegGroupType* rg, MDFN_Surface *surface, const 
    else
     regfw = rec->bsize * 2;
 
-   trio_snprintf(nubuf, sizeof(nubuf), ": %0*X", regfw, regval);
+   trio_snprintf(nubuf, sizeof(nubuf), "%0*X", regfw, regval);
 
    if(details_ptr && details_string_buf[0])
     *details_ptr = std::string(details_string_buf);
 
-   DrawText(surface, x + rname_width, y_offs, nubuf, eff_rval_color, which_font);
+   DrawText(surface, x + rname_width + rec->outdent * 6, y_offs, nubuf, eff_rval_color, which_font);
   }
 
   y_offs += row_vspacing;
