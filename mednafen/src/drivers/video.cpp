@@ -351,9 +351,9 @@ void Video_MakeSettings(void)
    sysname = (const char *)MDFNSystems[i]->shortname;
   }
 
-  default_scale = ceil(1024 / nominal_width);
+  default_scale = ceil(1152 / nominal_width);
 
-  if(default_scale * nominal_width > 1024)
+  if(default_scale * nominal_width > 1152)
    default_scale--;
 
   if(!default_scale)
