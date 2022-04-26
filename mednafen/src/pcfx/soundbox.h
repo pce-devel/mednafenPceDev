@@ -22,6 +22,8 @@
 #ifndef _PCFX_SOUNDBOX_H
 #define _PCFX_SOUNDBOX_H
 
+#include <mednafen/hw_sound/pce_psg/pce_psg.h>
+
 namespace MDFN_IEN_PCFX
 {
 
@@ -41,6 +43,26 @@ v810_timestamp_t SoundBox_ADPCMUpdate(const v810_timestamp_t timestamp);
 
 void SoundBox_ResetTS(const v810_timestamp_t ts_base);
 
+#ifdef WANT_DEBUGGER
+ enum
+ {
+  SBOX_GSREG_ADPCM_CTRL = _PSG_GSREG_COUNT,
+  SBOX_GSREG_ADPCM0_LVOL,
+  SBOX_GSREG_ADPCM0_RVOL,
+
+  SBOX_GSREG_ADPCM1_LVOL,
+  SBOX_GSREG_ADPCM1_RVOL,
+
+  SBOX_GSREG_ADPCM0_CUR,
+  SBOX_GSREG_ADPCM1_CUR,
+
+  SBOX_GSREG_CDDA_LVOL,
+  SBOX_GSREG_CDDA_RVOL
+ };
+
+ uint32 SBoxDBG_GetRegister(const unsigned int id, char *special, const uint32 special_len);
+ void SBoxDBG_SetRegister(const unsigned int id, uint32 value);
+#endif
 }
 
 #include <mednafen/sound/Blip_Buffer.h>

@@ -30,6 +30,7 @@
 #include "timer.h"
 #include "king.h"
 #include "rainbow.h"
+#include "soundbox.h"
 #include "input.h"
 #include <mednafen/cdrom/scsicd.h>
 
@@ -722,6 +723,26 @@ static const RegType PCFXRegs0[] =
 	{ 0, 0, "", "", 0 },
 };
 
+static uint32 GetRegister_KING(const unsigned int id, char *special, const uint32 special_len)
+{
+ switch(id >> 16)
+ {
+  case 0: return KING_GetRegister(id & 0xFFFF, special, special_len);
+  case 1: return MDFN_IEN_PCFX::SBoxDBG_GetRegister(id & 0xFFFF, special, special_len);
+ }
+
+ return 0xDEADBEEF;
+}
+
+static void SetRegister_KING(const unsigned int id, uint32 value)
+{
+ switch(id >> 16)
+ {
+  case 0: KING_SetRegister(id & 0xFFFF, value); break;
+  case 1: MDFN_IEN_PCFX::SBoxDBG_SetRegister(id & 0xFFFF, value); break;
+ }
+} 
+
 static const RegType KINGRegs0[] =
 {
 	{ 0, 0, "--KING-SYSTEM--", "", 0xFFFF },
@@ -847,6 +868,11 @@ static const RegType KINGRegs1[] =
 	{ KING_GSREG_IO,     8, "IO",    "SCSI IO",                        0x100 | 1 },
 	{ KING_GSREG_CD,     8, "CD",    "SCSI CD",                        0x100 | 1 },
 	{ KING_GSREG_SEL,    7, "SEL",   "SCSI SEL",                       0x100 | 1 },
+
+	{ 0, 0, "---CD-DA---", "", 0xFFFF },
+
+	{ (1 << 16) |  SBOX_GSREG_CDDA_LVOL,     3, "CDLVol",  "CD-DA Left Volume",         1 },
+	{ (1 << 16) |  SBOX_GSREG_CDDA_RVOL,     3, "CDRVol",  "CD-DA Right Volume",        1 },
 
 	{ 0, 0, "-----------", "", 0xFFFF },
 
@@ -1018,16 +1044,16 @@ static const RegGroupType KINGRegs0Group =
 {
  NULL,
  KINGRegs0,
- KING_GetRegister,
- KING_SetRegister
+ GetRegister_KING,
+ SetRegister_KING
 };
 
 static const RegGroupType KINGRegs1Group =
 {
  NULL,
  KINGRegs1,
- KING_GetRegister,
- KING_SetRegister
+ GetRegister_KING,
+ SetRegister_KING
 };
 
 static const RegGroupType VCERAINBOWRegsGroup =
