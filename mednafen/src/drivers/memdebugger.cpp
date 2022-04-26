@@ -490,17 +490,24 @@ INLINE void MemDebugger::DrawAtCursorInfo(MDFN_Surface* surface, const int32 bas
  static const int32 line_spacing = 16;
  static const unsigned fontid = MDFN_FONT_6x13_12x13;
  char cpstr[64];
- uint8 zebytes[4];
+ uint8 zebytes[8];
  uint32 tmpval;
+ int32 width;
+ int32 height;
+ int32 tmpx;
+ int32 tmpy;
+ uint32 notsat = 0;
  uint32 cpplen;
+ uint32 cpplen2;
  uint32 cplen;
+ int32 mid_x = 400;
  int32 x = 4;
  int32 y = base_y;
  const uint64 asz = SizeCache[CurASpace];
  const int curpos_fw = (std::max<int>(12, 63 - MDFN_lzcount64(round_up_pow2(asz))) + 3) / 4;
  const uint32 curpos = ASpacePos[CurASpace] % asz;
 
- ASpace->GetAddressSpaceBytes(ASpace->name.c_str(), curpos, 4, zebytes);
+ ASpace->GetAddressSpaceBytes(ASpace->name.c_str(), curpos, 8, zebytes);
 
  x += 12;
  y += 4;
@@ -574,6 +581,80 @@ INLINE void MemDebugger::DrawAtCursorInfo(MDFN_Surface* surface, const int32 bas
 
    DrawText(surface, x + cpplen, y - 1, textbuf, surface->MakeColor(0xEF, 0xEF, 0xEF, 0xFF), MDFN_FONT_9x18_18x18);
   }
+ }
+
+ notsat = 0;
+ tmpx = (zebytes[0] | (zebytes[1] << 8)) - 32;
+ if ((tmpx < -32) || (tmpx > 1024))
+  notsat = 1;
+
+ tmpy = (zebytes[2] | (zebytes[3] << 8)) - 64;
+ if ((tmpy < -64) || (tmpy > 1024))
+  notsat = 1;
+
+
+ if (notsat == 0)
+ {
+  x = mid_x;
+  y = base_y;
+
+  x += 12;
+  y += 4;
+  trio_snprintf(cpstr, sizeof(cpstr), "< $%0*X / $%llX >", curpos_fw, curpos, (unsigned long long)asz);
+  cpplen = DrawText(surface, x, y, "SAT:  ", surface->MakeColor(0xa0, 0xa0, 0xFF, 0xFF), fontid);
+
+  x += 12;
+  y += line_spacing;
+
+  tmpval = (zebytes[0] | (zebytes[1] << 8)) - 32;
+  trio_snprintf(cpstr, sizeof(cpstr), "  %4d  ", tmpval, (uint16)tmpval, (int16)tmpval);
+  cpplen = DrawText(surface, x, y, "X-Position:   ", surface->MakeColor(0xA0, 0xA0, 0xFF, 0xFF), fontid);
+  cpplen2 = DrawText(surface, x + cpplen, y, cpstr, surface->MakeColor(0xEF, 0xEF, 0xEF, 0xFF), fontid);
+  width = ((zebytes[7] & 0x01) == 1) ? 32: 16;
+  trio_snprintf(cpstr, sizeof(cpstr), "Pix: %d", width, (uint16)width, (int16)width);
+  cpplen2 = DrawText(surface, x + cpplen + cpplen2, y, cpstr, surface->MakeColor(0xEF, 0xEF, 0xEF, 0xFF), fontid);
+  y += line_spacing;
+
+  tmpval = (zebytes[2] | (zebytes[3] << 8)) - 64;
+  trio_snprintf(cpstr, sizeof(cpstr), "  %4d  ", tmpval, (uint16)tmpval, (int16)tmpval);
+  cpplen = DrawText(surface, x, y, "Y-Position:   ", surface->MakeColor(0xA0, 0xA0, 0xFF, 0xFF), fontid);
+  cpplen2 = DrawText(surface, x + cpplen, y, cpstr, surface->MakeColor(0xEF, 0xEF, 0xEF, 0xFF), fontid);
+  height = 16;
+  if ((zebytes[7] & 0x30) == 0x10) {
+   height = 32;
+  } else if ((zebytes[7] & 0x30) == 0x30) {
+   height = 64;
+  }
+  trio_snprintf(cpstr, sizeof(cpstr), "Pix: %d", height, (uint16)height, (int16)height);
+  cpplen2 = DrawText(surface, x + cpplen + cpplen2, y, cpstr, surface->MakeColor(0xEF, 0xEF, 0xEF, 0xFF), fontid);
+  y += line_spacing;
+
+  tmpval = ((zebytes[4] | (zebytes[5] << 8)) & 0x7ff) << 5 ;
+  trio_snprintf(cpstr, sizeof(cpstr), " $%04X  ", tmpval, (uint16)tmpval, (int16)tmpval);
+  cpplen = DrawText(surface, x, y, "Pattern Addr: ", surface->MakeColor(0xA0, 0xA0, 0xFF, 0xFF), fontid);
+  DrawText(surface, x + cpplen, y, cpstr, surface->MakeColor(0xEF, 0xEF, 0xEF, 0xFF), fontid);
+  y += line_spacing;
+
+  if (((tmpy + height) <= 0) || ((tmpx + width) <= 0) || (tmpy > 240) || (tmpx > 512)) {
+   cpplen = DrawText(surface, x, y, "Off Screen", surface->MakeColor(0xFF, 0x7F, 0x7F, 0xFF), fontid);
+  }
+  else if (((tmpx < 0) && ((tmpx+width) > 0))) {
+   cpplen = DrawText(surface, x, y, "Partly On Screen", surface->MakeColor(0xEF, 0xFF, 0x8F, 0xFF), fontid);
+  }
+  else if (((tmpy < 0) && ((tmpy+height) > 0))) {
+   cpplen = DrawText(surface, x, y, "Partly On Screen", surface->MakeColor(0xEF, 0xFF, 0x8F, 0xFF), fontid);
+  }
+  else if (((tmpy < 240) && ((tmpy+height) > 240))) {
+   cpplen = DrawText(surface, x, y, "Partly On Screen", surface->MakeColor(0xEF, 0xFF, 0x8F, 0xFF), fontid);
+  }
+  else if ((tmpx+width) > 256) {
+   cpplen = DrawText(surface, x, y, "Possibly On Screen", surface->MakeColor(0xFF, 0xDF, 0x7F, 0xFF), fontid);
+  }
+  else {
+   cpplen = DrawText(surface, x, y, "On Screen", surface->MakeColor(0x7F, 0xFF, 0x7F, 0xFF), fontid);
+  }
+
+
  }
 }
 
