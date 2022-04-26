@@ -29,6 +29,8 @@
 #include <trio/trio.h>
 #include <map>
 
+#define LOG_NUMLINES	43
+
 typedef struct
 {
  char *type;
@@ -78,7 +80,7 @@ static void TheLogger(const char *type, const char *text)
  NeoDeathLog["All"].entries.push_back(nle);
  NeoDeathLog[std::string(type)].entries.push_back(nle);
 
- if((WhichLog->entries.size() - WhichLog->LogScroll) == 33)
+ if((WhichLog->entries.size() - WhichLog->LogScroll) == (LOG_NUMLINES+1))
   WhichLog->LogScroll++;
 }
 
@@ -143,7 +145,7 @@ void LogDebugger_Draw(MDFN_Surface *surface, const MDFN_Rect *rect, const MDFN_R
 
  y += 13;
 
- for(uint32 i = WhichLog->LogScroll; i < (WhichLog->LogScroll + 32) && i < WhichLog->entries.size(); i++)
+ for(uint32 i = WhichLog->LogScroll; i < (WhichLog->LogScroll + LOG_NUMLINES) && i < WhichLog->entries.size(); i++)
  {
   int32 type_x = 0;
   char tmpbuf[64];
@@ -162,9 +164,9 @@ static void ChangePos(int64 delta)
 {
  int64 NewScroll = (int64)WhichLog->LogScroll + delta;
 
- if(NewScroll > ((int64)WhichLog->entries.size() - 32))
+ if(NewScroll > ((int64)WhichLog->entries.size() - LOG_NUMLINES))
  {
-  NewScroll = (int64)WhichLog->entries.size() - 32;
+  NewScroll = (int64)WhichLog->entries.size() - LOG_NUMLINES;
  }
 
  if(NewScroll < 0) 
@@ -241,10 +243,10 @@ int LogDebugger_Event(const SDL_Event *event)
 	 case SDLK_DOWN: ChangePos(1); 
 			 break;
 
-	 case SDLK_PAGEUP: ChangePos(-32); 
+	 case SDLK_PAGEUP: ChangePos(-LOG_NUMLINES); 
 			   break;
 
-	 case SDLK_PAGEDOWN: ChangePos(32); 
+	 case SDLK_PAGEDOWN: ChangePos(LOG_NUMLINES); 
 			     break;
 
 	 case SDLK_t:LoggingActive = !LoggingActive;

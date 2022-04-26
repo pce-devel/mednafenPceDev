@@ -789,8 +789,8 @@ void Debugger_GT_Draw(void)
 	  break;
 
   /* Debugger Log */
-  case 3: rect->w = 512;
-	  rect->h = 448;
+  case 3: rect->w = 800;
+	  rect->h = 600;
 	  break;
  }
 
