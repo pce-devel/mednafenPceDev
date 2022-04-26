@@ -43,6 +43,7 @@ uint8 Dis6280::GetY(void)
  return(0);
 }
 
+#if 0
 
 static const char *fstrings[20]=
 { 
@@ -468,3 +469,515 @@ void Dis6280::Disassemble(uint16 &a, uint16 SpecialA, char *stringo)
    sprintf(stringo+strlen(stringo),".db $%02X                       ;%02X", buf, buf);
 
 }
+
+#endif
+
+enum eHuC6280ModeNames
+{
+ MODE_xxx, // illegal
+ MODE_NUL, //
+ MODE_ACC, // A
+ MODE_MPR, // #nn
+ MODE_VAL, // #nn
+ MODE_REL, // label
+ MODE_ZPG, // $nn
+ MODE_ZPX, // $nn,x
+ MODE_ZPY, // $nn,y
+ MODE_ZPR, // $nn, label
+ MODE_IZP, // [$nn]
+ MODE_IZX, // [$nn,x]
+ MODE_IZY, // [$nn],y
+ MODE_ABS, // $nnnn
+ MODE_ABX, // $nnnn,x
+ MODE_ABY, // $nnnn,y
+ MODE_JAB, // $nnnn
+ MODE_IAB, // [$nnnn]
+ MODE_IAX, // [$nnnn,x]
+ MODE_VZP, // #nn, $nn
+ MODE_VZX, // #nn, $nn,x
+ MODE_VAB, // #nn, $nnnn
+ MODE_VAX, // #nn, $nnnn,x
+ MODE_BLK  // $nnnn, $nnnn, $nnnn
+};
+
+enum eHuC6280InstNames
+{
+ INST_xxx, INST_ADC,
+ INST_AND, INST_ASL,
+ INST_BBR, INST_BBS,
+ INST_BCC, INST_BCS,
+ INST_BEQ, INST_BIT,
+ INST_BMI, INST_BNE,
+ INST_BPL, INST_BRA,
+ INST_BRK, INST_BSR,
+ INST_BVC, INST_BVS,
+ INST_CLA, INST_CLC,
+ INST_CLD, INST_CLI,
+ INST_CLV, INST_CLX,
+ INST_CLY, INST_CMP,
+ INST_CPX, INST_CPY,
+ INST_CSH, INST_CSL,
+ INST_DEC, INST_DEX,
+ INST_DEY, INST_EOR,
+ INST_INC, INST_INX,
+ INST_INY, INST_JMP,
+ INST_JSR, INST_LDA,
+ INST_LDX, INST_LDY,
+ INST_LSR, INST_NOP,
+ INST_ORA, INST_PHA,
+ INST_PHP, INST_PHX,
+ INST_PHY, INST_PLA,
+ INST_PLP, INST_PLX,
+ INST_PLY, INST_RMB,
+ INST_ROL, INST_ROR,
+ INST_RTI, INST_RTS,
+ INST_SAX, INST_SAY,
+ INST_SBC, INST_SEC,
+ INST_SED, INST_SEI,
+ INST_SET, INST_SMB,
+ INST_ST0, INST_ST1,
+ INST_ST2, INST_STA,
+ INST_STX, INST_STY,
+ INST_STZ, INST_SXY,
+ INST_TAI, INST_TAM,
+ INST_TAX, INST_TAY,
+ INST_TDD, INST_TIA,
+ INST_TII, INST_TIN,
+ INST_TMA, INST_TRB,
+ INST_TSB, INST_TST,
+ INST_TSX, INST_TXA,
+ INST_TXS, INST_TYA
+};
+
+#define PACK_INSTR(a,b,c,d) a, b, c, d
+
+char aHuC6280InstNames [] =
+{
+ PACK_INSTR('-', '-', '-', 0), PACK_INSTR('A', 'D', 'C', 1),
+ PACK_INSTR('A', 'N', 'D', 1), PACK_INSTR('A', 'S', 'L', 3),
+ PACK_INSTR('B', 'B', 'R', 5), PACK_INSTR('B', 'B', 'S', 5),
+ PACK_INSTR('B', 'C', 'C', 0), PACK_INSTR('B', 'C', 'S', 0),
+ PACK_INSTR('B', 'E', 'Q', 0), PACK_INSTR('B', 'I', 'T', 1),
+ PACK_INSTR('B', 'M', 'I', 0), PACK_INSTR('B', 'N', 'E', 0),
+ PACK_INSTR('B', 'P', 'L', 0), PACK_INSTR('B', 'R', 'A', 0),
+ PACK_INSTR('B', 'R', 'K', 0), PACK_INSTR('B', 'S', 'R', 0),
+ PACK_INSTR('B', 'V', 'C', 0), PACK_INSTR('B', 'V', 'S', 0),
+ PACK_INSTR('C', 'L', 'A', 0), PACK_INSTR('C', 'L', 'C', 0),
+ PACK_INSTR('C', 'L', 'D', 0), PACK_INSTR('C', 'L', 'I', 0),
+ PACK_INSTR('C', 'L', 'V', 0), PACK_INSTR('C', 'L', 'X', 0),
+ PACK_INSTR('C', 'L', 'Y', 0), PACK_INSTR('C', 'M', 'P', 1),
+ PACK_INSTR('C', 'P', 'X', 1), PACK_INSTR('C', 'P', 'Y', 1),
+ PACK_INSTR('C', 'S', 'H', 0), PACK_INSTR('C', 'S', 'L', 0),
+ PACK_INSTR('D', 'E', 'C', 3), PACK_INSTR('D', 'E', 'X', 0),
+ PACK_INSTR('D', 'E', 'Y', 0), PACK_INSTR('E', 'O', 'R', 1),
+ PACK_INSTR('I', 'N', 'C', 3), PACK_INSTR('I', 'N', 'X', 0),
+ PACK_INSTR('I', 'N', 'Y', 0), PACK_INSTR('J', 'M', 'P', 0),
+ PACK_INSTR('J', 'S', 'R', 0), PACK_INSTR('L', 'D', 'A', 1),
+ PACK_INSTR('L', 'D', 'X', 1), PACK_INSTR('L', 'D', 'Y', 1),
+ PACK_INSTR('L', 'S', 'R', 3), PACK_INSTR('N', 'O', 'P', 0),
+ PACK_INSTR('O', 'R', 'A', 1), PACK_INSTR('P', 'H', 'A', 2),
+ PACK_INSTR('P', 'H', 'P', 2), PACK_INSTR('P', 'H', 'X', 2),
+ PACK_INSTR('P', 'H', 'Y', 2), PACK_INSTR('P', 'L', 'A', 1),
+ PACK_INSTR('P', 'L', 'P', 1), PACK_INSTR('P', 'L', 'X', 1),
+ PACK_INSTR('P', 'L', 'Y', 1), PACK_INSTR('R', 'M', 'B', 7),
+ PACK_INSTR('R', 'O', 'L', 3), PACK_INSTR('R', 'O', 'R', 3),
+ PACK_INSTR('R', 'T', 'I', 0), PACK_INSTR('R', 'T', 'S', 0),
+ PACK_INSTR('S', 'A', 'X', 0), PACK_INSTR('S', 'A', 'Y', 0),
+ PACK_INSTR('S', 'B', 'C', 1), PACK_INSTR('S', 'E', 'C', 0),
+ PACK_INSTR('S', 'E', 'D', 0), PACK_INSTR('S', 'E', 'I', 0),
+ PACK_INSTR('S', 'E', 'T', 0), PACK_INSTR('S', 'M', 'B', 7),
+ PACK_INSTR('S', 'T', '0', 0), PACK_INSTR('S', 'T', '1', 0),
+ PACK_INSTR('S', 'T', '2', 0), PACK_INSTR('S', 'T', 'A', 2),
+ PACK_INSTR('S', 'T', 'X', 2), PACK_INSTR('S', 'T', 'Y', 2),
+ PACK_INSTR('S', 'T', 'Z', 2), PACK_INSTR('S', 'X', 'Y', 0),
+ PACK_INSTR('T', 'A', 'I', 3), PACK_INSTR('T', 'A', 'M', 4),
+ PACK_INSTR('T', 'A', 'X', 0), PACK_INSTR('T', 'A', 'Y', 0),
+ PACK_INSTR('T', 'D', 'D', 3), PACK_INSTR('T', 'I', 'A', 3),
+ PACK_INSTR('T', 'I', 'I', 3), PACK_INSTR('T', 'I', 'N', 3),
+ PACK_INSTR('T', 'M', 'A', 4), PACK_INSTR('T', 'R', 'B', 3),
+ PACK_INSTR('T', 'S', 'B', 3), PACK_INSTR('T', 'S', 'T', 1),
+ PACK_INSTR('T', 'S', 'X', 0), PACK_INSTR('T', 'X', 'A', 0),
+ PACK_INSTR('T', 'X', 'S', 0), PACK_INSTR('T', 'Y', 'A', 0)
+};
+
+uint8 aHuC6280ModeBytes [] =
+{
+ 0, // MODE_xxx, // illegal
+ 0, // MODE_NUL, //
+ 0, // MODE_ACC, // A
+ 1, // MODE_MPR, // #nn
+ 1, // MODE_VAL, // #nn
+ 1, // MODE_REL, // label
+ 1, // MODE_ZPG, // $nn
+ 1, // MODE_ZPX, // $nn,x
+ 1, // MODE_ZPY, // $nn,y
+ 2, // MODE_ZPR, // $nn, label
+ 1, // MODE_IZP, // [$nn]
+ 1, // MODE_IZX, // [$nn,x]
+ 1, // MODE_IZY, // [$nn],y
+ 2, // MODE_ABS, // $nnnn
+ 2, // MODE_ABX, // $nnnn,x
+ 2, // MODE_ABY, // $nnnn,y
+ 2, // MODE_JAB, // $nnnn
+ 2, // MODE_IAB, // [$nnnn]
+ 2, // MODE_IAX, // [$nnnn,x]
+ 2, // MODE_VZP, // #nn, $nn
+ 2, // MODE_VZX, // #nn, $nn,x
+ 3, // MODE_VAB, // #nn, $nnnn
+ 3, // MODE_VAX, // #nn, $nnnn,x
+ 6  // MODE_BLK  // $nnnn, $nnnn, $nnnn
+};
+
+uint8 aHuC6280InstByOpcode [256] =
+{
+ INST_BRK, INST_ORA, INST_SXY, INST_ST0, INST_TSB, INST_ORA, INST_ASL, INST_RMB,
+ INST_PHP, INST_ORA, INST_ASL, INST_xxx, INST_TSB, INST_ORA, INST_ASL, INST_BBR,
+ INST_BPL, INST_ORA, INST_ORA, INST_ST1, INST_TRB, INST_ORA, INST_ASL, INST_RMB,
+ INST_CLC, INST_ORA, INST_INC, INST_xxx, INST_TRB, INST_ORA, INST_ASL, INST_BBR,
+ INST_JSR, INST_AND, INST_SAX, INST_ST2, INST_BIT, INST_AND, INST_ROL, INST_RMB,
+ INST_PLP, INST_AND, INST_ROL, INST_xxx, INST_BIT, INST_AND, INST_ROL, INST_BBR,
+ INST_BMI, INST_AND, INST_AND, INST_xxx, INST_BIT, INST_AND, INST_ROL, INST_RMB,
+ INST_SEC, INST_AND, INST_DEC, INST_xxx, INST_BIT, INST_AND, INST_ROL, INST_BBR,
+ INST_RTI, INST_EOR, INST_SAY, INST_TMA, INST_BSR, INST_EOR, INST_LSR, INST_RMB,
+ INST_PHA, INST_EOR, INST_LSR, INST_xxx, INST_JMP, INST_EOR, INST_LSR, INST_BBR,
+ INST_BVC, INST_EOR, INST_EOR, INST_TAM, INST_CSL, INST_EOR, INST_LSR, INST_RMB,
+ INST_CLI, INST_EOR, INST_PHY, INST_xxx, INST_xxx, INST_EOR, INST_LSR, INST_BBR,
+ INST_RTS, INST_ADC, INST_CLA, INST_xxx, INST_STZ, INST_ADC, INST_ROR, INST_RMB,
+ INST_PLA, INST_ADC, INST_ROR, INST_xxx, INST_JMP, INST_ADC, INST_ROR, INST_BBR,
+ INST_BVS, INST_ADC, INST_ADC, INST_TII, INST_STZ, INST_ADC, INST_ROR, INST_RMB,
+ INST_SEI, INST_ADC, INST_PLY, INST_xxx, INST_JMP, INST_ADC, INST_ROR, INST_BBR,
+ INST_BRA, INST_STA, INST_CLX, INST_TST, INST_STY, INST_STA, INST_STX, INST_SMB,
+ INST_DEY, INST_BIT, INST_TXA, INST_xxx, INST_STY, INST_STA, INST_STX, INST_BBS,
+ INST_BCC, INST_STA, INST_STA, INST_TST, INST_STY, INST_STA, INST_STX, INST_SMB,
+ INST_TYA, INST_STA, INST_TXS, INST_xxx, INST_STZ, INST_STA, INST_STZ, INST_BBS,
+ INST_LDY, INST_LDA, INST_LDX, INST_TST, INST_LDY, INST_LDA, INST_LDX, INST_SMB,
+ INST_TAY, INST_LDA, INST_TAX, INST_xxx, INST_LDY, INST_LDA, INST_LDX, INST_BBS,
+ INST_BCS, INST_LDA, INST_LDA, INST_TST, INST_LDY, INST_LDA, INST_LDX, INST_SMB,
+ INST_CLV, INST_LDA, INST_TSX, INST_xxx, INST_LDY, INST_LDA, INST_LDX, INST_BBS,
+ INST_CPY, INST_CMP, INST_CLY, INST_TDD, INST_CPY, INST_CMP, INST_DEC, INST_SMB,
+ INST_INY, INST_CMP, INST_DEX, INST_xxx, INST_CPY, INST_CMP, INST_DEC, INST_BBS,
+ INST_BNE, INST_CMP, INST_CMP, INST_TIN, INST_CSH, INST_CMP, INST_DEC, INST_SMB,
+ INST_CLD, INST_CMP, INST_PHX, INST_xxx, INST_xxx, INST_CMP, INST_DEC, INST_BBS,
+ INST_CPX, INST_SBC, INST_xxx, INST_TIA, INST_CPX, INST_SBC, INST_INC, INST_SMB,
+ INST_INX, INST_SBC, INST_NOP, INST_xxx, INST_CPX, INST_SBC, INST_INC, INST_BBS,
+ INST_BEQ, INST_SBC, INST_SBC, INST_TAI, INST_SET, INST_SBC, INST_INC, INST_SMB,
+ INST_SED, INST_SBC, INST_PLX, INST_xxx, INST_xxx, INST_SBC, INST_INC, INST_BBS,
+};
+
+uint8 aHuC6280ModeByOpcode [256] =
+{
+ MODE_NUL, MODE_IZX, MODE_NUL, MODE_VAL, MODE_ZPG, MODE_ZPG, MODE_ZPG, MODE_ZPG,
+ MODE_NUL, MODE_VAL, MODE_ACC, MODE_xxx, MODE_ABS, MODE_ABS, MODE_ABS, MODE_ZPR,
+ MODE_REL, MODE_IZY, MODE_IZP, MODE_VAL, MODE_ZPG, MODE_ZPX, MODE_ZPX, MODE_ZPG,
+ MODE_NUL, MODE_ABY, MODE_ACC, MODE_xxx, MODE_ABS, MODE_ABX, MODE_ABX, MODE_ZPR,
+ MODE_JAB, MODE_IZX, MODE_NUL, MODE_VAL, MODE_ZPG, MODE_ZPG, MODE_ZPG, MODE_ZPG,
+ MODE_NUL, MODE_VAL, MODE_ACC, MODE_xxx, MODE_ABS, MODE_ABS, MODE_ABS, MODE_ZPR,
+ MODE_REL, MODE_IZY, MODE_IZP, MODE_xxx, MODE_ZPX, MODE_ZPX, MODE_ZPX, MODE_ZPG,
+ MODE_NUL, MODE_ABY, MODE_ACC, MODE_xxx, MODE_ABX, MODE_ABX, MODE_ABX, MODE_ZPR,
+ MODE_NUL, MODE_IZX, MODE_NUL, MODE_MPR, MODE_REL, MODE_ZPG, MODE_ZPG, MODE_ZPG,
+ MODE_NUL, MODE_VAL, MODE_ACC, MODE_xxx, MODE_JAB, MODE_ABS, MODE_ABS, MODE_ZPR,
+ MODE_REL, MODE_IZY, MODE_IZP, MODE_MPR, MODE_NUL, MODE_ZPX, MODE_ZPX, MODE_ZPG,
+ MODE_NUL, MODE_ABY, MODE_NUL, MODE_xxx, MODE_xxx, MODE_ABX, MODE_ABX, MODE_ZPR,
+ MODE_NUL, MODE_IZX, MODE_NUL, MODE_xxx, MODE_ZPG, MODE_ZPG, MODE_ZPG, MODE_ZPG,
+ MODE_NUL, MODE_VAL, MODE_ACC, MODE_xxx, MODE_IAB, MODE_ABS, MODE_ABS, MODE_ZPR,
+ MODE_REL, MODE_IZY, MODE_IZP, MODE_BLK, MODE_ZPX, MODE_ZPX, MODE_ZPX, MODE_ZPG,
+ MODE_NUL, MODE_ABY, MODE_NUL, MODE_xxx, MODE_IAX, MODE_ABX, MODE_ABX, MODE_ZPR,
+ MODE_REL, MODE_IZX, MODE_NUL, MODE_VZP, MODE_ZPG, MODE_ZPG, MODE_ZPG, MODE_ZPG,
+ MODE_NUL, MODE_VAL, MODE_NUL, MODE_xxx, MODE_ABS, MODE_ABS, MODE_ABS, MODE_ZPR,
+ MODE_REL, MODE_IZY, MODE_IZP, MODE_VAB, MODE_ZPX, MODE_ZPX, MODE_ZPY, MODE_ZPG,
+ MODE_NUL, MODE_ABY, MODE_NUL, MODE_xxx, MODE_ABS, MODE_ABX, MODE_ABX, MODE_ZPR,
+ MODE_VAL, MODE_IZX, MODE_VAL, MODE_VZX, MODE_ZPG, MODE_ZPG, MODE_ZPG, MODE_ZPG,
+ MODE_NUL, MODE_VAL, MODE_NUL, MODE_xxx, MODE_ABS, MODE_ABS, MODE_ABS, MODE_ZPR,
+ MODE_REL, MODE_IZY, MODE_IZP, MODE_VAX, MODE_ZPX, MODE_ZPX, MODE_ZPY, MODE_ZPG,
+ MODE_NUL, MODE_ABY, MODE_NUL, MODE_xxx, MODE_ABX, MODE_ABX, MODE_ABY, MODE_ZPR,
+ MODE_VAL, MODE_IZX, MODE_NUL, MODE_BLK, MODE_ZPG, MODE_ZPG, MODE_ZPG, MODE_ZPG,
+ MODE_NUL, MODE_VAL, MODE_NUL, MODE_xxx, MODE_ABS, MODE_ABS, MODE_ABS, MODE_ZPR,
+ MODE_REL, MODE_IZY, MODE_IZP, MODE_BLK, MODE_NUL, MODE_ZPX, MODE_ZPX, MODE_ZPG,
+ MODE_NUL, MODE_ABY, MODE_NUL, MODE_xxx, MODE_xxx, MODE_ABX, MODE_ABX, MODE_ZPR,
+ MODE_VAL, MODE_IZX, MODE_xxx, MODE_BLK, MODE_ZPG, MODE_ZPG, MODE_ZPG, MODE_ZPG,
+ MODE_NUL, MODE_VAL, MODE_NUL, MODE_xxx, MODE_ABS, MODE_ABS, MODE_ABS, MODE_ZPR,
+ MODE_REL, MODE_IZY, MODE_IZP, MODE_BLK, MODE_NUL, MODE_ZPX, MODE_ZPX, MODE_ZPG,
+ MODE_NUL, MODE_ABY, MODE_NUL, MODE_xxx, MODE_xxx, MODE_ABX, MODE_ABX, MODE_ZPR
+};
+
+//
+//
+//
+
+#define AT_COLUMN 34
+#define HX_COLUMN 50
+
+void Dis6280::Disassemble(uint16 &addr, uint16 SpecialA, char *stringo, uint8 bank, bool IsCD)
+{
+ uint16 start = addr;
+ uint16 value;
+ uint16 delta;
+ uint16 where;
+
+ char * pString = stringo + sprintf(stringo,"$%02X:%04X\t\t", (unsigned) bank, (unsigned) addr);
+
+ unsigned uByte = Read(addr);
+ unsigned uInst;
+ unsigned uMode;
+ uint8    aArgs[8];
+
+ if (addr >= 0xFFF6)
+ {
+  /* Interrupt Vectors */
+  uInst = INST_xxx;
+  uMode = MODE_xxx;
+  ++addr;
+
+  if ((addr != SpecialA) && (addr & 1)) ++addr;
+ }
+ else
+ {
+  uInst = aHuC6280InstByOpcode[ uByte ];
+  uMode = aHuC6280ModeByOpcode[ uByte ];
+  ++addr;
+
+  for (unsigned i = 0; i != aHuC6280ModeBytes[ uMode ] ; ++i)
+  {
+   if (addr == SpecialA || addr >= 0xFFF6)
+   {
+    uInst = INST_xxx;
+    uMode = MODE_xxx;
+    break;
+   }
+   aArgs[i] = Read(addr++);
+  }
+ }
+
+ const char * pInstName = aHuC6280InstNames + (uInst << 2);
+
+ pString[0] = pInstName[0];
+ pString[1] = pInstName[1];
+ pString[2] = pInstName[2];
+
+ if (pInstName[3] & 4)
+ {
+  if ((uByte == 0x43) || (uByte == 0x53))
+  {
+   /* TAMn, TMAn */
+   uByte = aArgs[0];
+   pString[3] = '0';
+   while ((uByte = uByte >> 1) != 0) pString[3] += 1;
+  }
+  else
+  {
+   /* BBRn, BBSn, RMBn, SMBn */
+   pString[3] = '0' + ((uByte >> 4) & 7);
+  }
+ }
+ else
+ {
+  pString[3] = ' ';
+ }
+
+ pString[4] = ' ';
+ pString += 5;
+
+ bool valid = false;
+
+ switch (uMode)
+ {
+  case MODE_xxx:
+  {
+   break;
+  }
+  case MODE_NUL:
+  case MODE_MPR:
+  {
+   pString[0] = '\0';
+   break;
+  }
+  case MODE_ACC:
+  {
+   *pString++ = 'A';
+   pString[0] = '\0';
+   break;
+  }
+  case MODE_VAL:
+  {
+   value = aArgs[0];
+   pString += sprintf(pString, "#$%02X", value);
+   break;
+  }
+  case MODE_REL:
+  {
+   delta = (aArgs[0] ^ 0x80) - 0x80;
+   delta = addr + delta;
+   pString += sprintf(pString, "$%04X", delta);
+   break;
+  }
+  case MODE_ZPG:
+  {
+   where = aArgs[0];
+   pString += sprintf(pString, "<$%02X", where);
+   where = 0x2000 + where;
+   if(pInstName[3] & 1)
+    valid = true;
+   break;
+  }
+  case MODE_ZPX:
+  {
+   where = aArgs[0];
+   pString += sprintf(pString, "<$%02X, X", where);
+   where = 0x2000 + ((where + GetX()) & 0xff);
+   valid = true;
+   break;
+  }
+  case MODE_ZPY:
+  {
+   where = aArgs[0];
+   pString += sprintf(pString, "<$%02X, Y", where);
+   where = 0x2000 + ((where + GetY()) & 0xff);
+   valid = true;
+   break;
+  }
+  case MODE_ZPR:
+  {
+   where = aArgs[0];
+   delta = (aArgs[1] ^ 0x80) - 0x80;
+   delta = addr + delta;
+   pString += sprintf(pString, "<$%02X, $%04X", where, delta);
+   where = 0x2000 + where;
+   valid = true;
+   break;
+  }
+  case MODE_IZP:
+  {
+   where = aArgs[0];
+   pString += sprintf(pString, "[$%02X]", where);
+   where = Read(0x2000 + where) + 256 * Read(0x2000 + ((where + 1) & 0xff));
+   valid = true;
+   break;
+  }
+  case MODE_IZX:
+  {
+   where = aArgs[0];
+   pString += sprintf(pString, "[$%02X, X]", where);
+   where = (where + GetX()) & 0xff;
+   where = Read(0x2000 + where) + 256 * Read(0x2000 + ((where + 1) & 0xff));
+   valid = true;
+   break;
+  }
+  case MODE_IZY:
+  {
+   where = aArgs[0];
+   pString += sprintf(pString, "[$%02X], Y", where);
+   where = Read(0x2000 + where) + 256 * Read(0x2000 + ((where + 1) & 0xff)) + GetY();
+   valid = true;
+   break;
+  }
+  case MODE_ABS:
+  {
+   where = aArgs[0] + 256 * aArgs[1];
+   pString += sprintf(pString, "$%04X", where);
+   if(pInstName[3] & 1)
+    valid = true;
+   break;
+  }
+  case MODE_ABX:
+  {
+   where = aArgs[0] + 256 * aArgs[1];
+   pString += sprintf(pString, "$%04X, X", where);
+   where = where + GetX();
+   valid = true;
+   break;
+  }
+  case MODE_ABY:
+  {
+   where = aArgs[0] + 256 * aArgs[1];
+   pString += sprintf(pString, "$%04X, Y", where);
+   where = where + GetY();
+   valid = true;
+   break;
+  }
+  case MODE_JAB:
+  {
+   where = aArgs[0] + 256 * aArgs[1];
+   pString += sprintf(pString, "$%04X", where);
+   break;
+  }
+  case MODE_IAB:
+  {
+   where = aArgs[0] + 256 * aArgs[1];
+   pString += sprintf(pString, "[$%04X]", where);
+   where = Read(where) + 256 * Read(where+1);
+   valid = true;
+   break;
+  }
+  case MODE_IAX:
+  {
+   where = aArgs[0] + 256 * aArgs[1];
+   pString += sprintf(pString, "[$%04X, X]", where);
+   where = where + GetX();
+   where = Read(where) + 256 * Read(where+1);
+   valid = true;
+   break;
+  }
+  case MODE_VZP:
+  {
+   value = aArgs[0];
+   where = aArgs[1];
+   pString += sprintf(pString, "#$%02X, <$%02X", value, where);
+   where = 0x2000 + where;
+   valid = true;
+   break;
+  }
+  case MODE_VZX:
+  {
+   value = aArgs[0];
+   where = aArgs[1];
+   pString += sprintf(pString, "#$%02X, <$%02X, X", value, where);
+   where = 0x2000 + ((where + GetX()) & 0xff);
+   valid = true;
+   break;
+  }
+  case MODE_VAB:
+  {
+   value = aArgs[0];
+   where = aArgs[1] + 256 * aArgs[2];
+   pString += sprintf(pString, "#$%02X, $%04X", value, where);
+   valid = true;
+   break;
+  }
+  case MODE_VAX:
+  {
+   value = aArgs[0];
+   where = aArgs[1] + 256 * aArgs[2];
+   pString += sprintf(pString, "#$%02X, $%04X, X", value, where);
+   where = where + GetX();
+   valid = true;
+   break;
+  }
+  case MODE_BLK:
+  {
+   uint16 src;
+   uint16 dst;
+   uint16 len;
+   src = aArgs[0] + 256 * aArgs[1];
+   dst = aArgs[2] + 256 * aArgs[3];
+   len = aArgs[4] + 256 * aArgs[5];
+   pString += sprintf(pString, "$%04X, $%04X, $%04X", src, dst, len);
+   break;
+  }
+ }
+
+ if (valid)
+ {
+  while ((pString - stringo) < AT_COLUMN) *pString++ = ' ';
+
+  pString += sprintf(pString, "; @ $%04X", where);
+
+  if(pInstName[3] & 1)
+   pString += sprintf(pString, " = $%02X", Read(where));
+ }
+
+ while ((pString - stringo) < HX_COLUMN) *pString++ = ' ';
+ *pString++ = ';';
+
+ while (start != addr)
+  pString += sprintf(pString, " %02X", Read(start++));
+};

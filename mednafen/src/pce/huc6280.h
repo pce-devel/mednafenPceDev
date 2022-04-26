@@ -305,6 +305,11 @@ class alignas(128) HuC6280
 	//uint32 GetRegister(const unsigned int id, char *special = NULL, const uint32 special_len = 0);
 	void SetRegister(const unsigned int id, uint32 value);
 
+	INLINE uint8 GetMPR(uint16 address)
+        {
+         return MPR[address >> 13];
+	}
+
         INLINE void PokePhysical(uint32 address, uint8 data, bool hl = false)
         {
 	 address &= 0x1FFFFF;

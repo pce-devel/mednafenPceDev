@@ -8,7 +8,7 @@ class Dis6280
  virtual uint8 GetX(void);
  virtual uint8 GetY(void);
 
- void Disassemble(uint16 &a, uint16 SpecialA, char *);
+ void Disassemble(uint16 &a, uint16 SpecialA, char *, uint8, bool);
 
  private:
 };
