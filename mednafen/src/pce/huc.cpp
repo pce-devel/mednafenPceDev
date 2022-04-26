@@ -211,6 +211,7 @@ uint32 HuC_Load(Stream* s, bool DisableBRAM, SysCardType syscard)
  const uint32 sf2_threshold = 2048 * 1024;
  bool sf2_mapper = false;
  bool mcg_mapper = false;
+ bool ted_mapper = false;
  bool UseBRAM = false;
 
  try
@@ -234,10 +235,16 @@ uint32 HuC_Load(Stream* s, bool DisableBRAM, SysCardType syscard)
    if(!memcmp(buf + 0x1FD0, "MCGENJIN", 8))
     mcg_mapper = true;
 
+   if(!memcmp(buf + 0x1FD0, "TED2CARD", 8))
+   {
+    ted_mapper = true;
+    m_len = 128 * 8192;
+   }
+
    s->seek(-8192, SEEK_CUR);	// Seek backwards so we don't undo skip copier header.
   }
 
-  if(!syscard && m_len >= sf2_threshold && !mcg_mapper)
+  if(!syscard && m_len >= sf2_threshold && !mcg_mapper && !ted_mapper)
   {
    sf2_mapper = true;
 
@@ -368,6 +375,9 @@ uint32 HuC_Load(Stream* s, bool DisableBRAM, SysCardType syscard)
 
     HuCPU.SetFastRead(x, ROMMap[x] + x * 8192);
     HuCPU.SetReadHandler(x, HuCRead);
+
+    if (ted_mapper)
+      HuCPU.SetWriteHandler(x, HuCRAMWrite);
    }
   }
 
