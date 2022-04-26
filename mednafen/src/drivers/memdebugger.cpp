@@ -301,6 +301,55 @@ void MemDebugger::PromptFinish(const std::string &pstring)
 	   }
           }
          }
+         else if(which == DumpHex)
+         {
+          uint32 A1, A2, tmpsize;
+          char fname[256];
+          bool acceptable = false;
+
+          if(trio_sscanf(pstring.c_str(), "%08x %08x %255[^\r\n]", &A1, &A2, fname) == 3)
+           acceptable = true;
+          else if(trio_sscanf(pstring.c_str(), "%08x +%08x %255[^\r\n]", &A1, &tmpsize, fname) == 3)
+          {
+           acceptable = true;
+           A2 = A1 + tmpsize - 1;
+          }
+
+          if (A2 < A1)
+           acceptable = false;
+
+          if(!acceptable)
+           throw MDFN_Error(0, _("Invalid hex dump specification."));
+          else
+          {           
+           FileStream fp(fname, FileStream::MODE_WRITE);
+           uint8 byte_buffer[16];
+           char line_buffer[256];
+
+           const uint64 zemod = SizeCache[CurASpace];
+
+           while(A1 <= A2)
+           {
+            char *line_pointer = line_buffer;
+            size_t to_write;
+            to_write = A2 - A1 + 1;
+            if(to_write > 8) to_write = 8;
+
+            ASpace->GetAddressSpaceBytes(ASpace->name.c_str(), A1, to_write, byte_buffer);
+
+            line_pointer += trio_snprintf(line_pointer, line_buffer + sizeof(line_buffer) - line_pointer, " %0*X:  .db ", (std::max<int>(12, 63 - MDFN_lzcount64(round_up_pow2(zemod))) + 3) / 4, A1);
+
+            for (size_t i = 0; i != to_write; ++i)
+            {
+             line_pointer += trio_snprintf(line_pointer, line_buffer + sizeof(line_buffer) - line_pointer, " $%02X,", byte_buffer[i]);
+            }
+            line_pointer += trio_snprintf(line_pointer, line_buffer + sizeof(line_buffer) - line_pointer, "\n");
+
+            fp.write(line_buffer, strlen(line_buffer));
+            A1 += to_write;
+           }
+          }
+         }
 	 else if(which == TextSearch)
 	 {
           TS_String = pstring;
@@ -871,15 +920,21 @@ int MemDebugger::Event(const SDL_Event *event)
 
 	 case SDLK_d:
                 InPrompt = DumpMem;
-                myprompt = new MemDebuggerPrompt(this, "Dump Memory(start end filename)", "");
+                myprompt = new MemDebuggerPrompt(this, "Dump Memory (start end filename)", "");
 		PromptTAKC = event->key.keysym.sym;
 		break;
 
 	 case SDLK_l:
                 InPrompt = LoadMem;
-                myprompt = new MemDebuggerPrompt(this, "Load Memory(start end filename)", "");
+                myprompt = new MemDebuggerPrompt(this, "Load Memory (start end filename)", "");
 		PromptTAKC = event->key.keysym.sym;
                 break;
+
+	 case SDLK_h:
+                InPrompt = DumpHex;
+                myprompt = new MemDebuggerPrompt(this, "Hex Dump (start end filename)", "");
+		PromptTAKC = event->key.keysym.sym;
+		break;
 
 	 case SDLK_s:
 	        if(SizeCache[CurASpace] > (1 << 24))

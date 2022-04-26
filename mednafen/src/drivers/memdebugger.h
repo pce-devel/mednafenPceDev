@@ -81,6 +81,7 @@ class MemDebugger
   TextSearch,
   DumpMem,
   LoadMem,
+  DumpHex,
   SetCharset,
  } PromptType;
 
