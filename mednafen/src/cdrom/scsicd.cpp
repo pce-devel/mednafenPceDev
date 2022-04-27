@@ -42,6 +42,7 @@
 #include <trio/trio.h>
 #include "scsicd.h"
 #include "SimpleFIFO.h"
+#include "seektime_pce.h"
 
 #if defined(__SSE2__)
 #include <xmmintrin.h>
@@ -205,9 +206,18 @@ static uint32 read_sec_start;
 static uint32 read_sec;
 static uint32 read_sec_end;
 
+static uint32 head_pos; // not added into savestates
+
 static int32 CDReadTimer;
+static int32 CDDASeekTimer; // not added into savestates
+static int32 CDAudioDelay;  // not added into savestates
 static uint32 SectorAddr;
 static uint32 SectorCount;
+
+ // delayed status to send (after seek delay)
+static uint8 delayed_status;            // not added into savestates
+static uint8 delayed_message;           // not added into savestates
+static bool has_delayed_status = false; // not added into savestates
 
 
 enum
@@ -253,6 +263,13 @@ static void VirtualReset(void)
  din->Flush();
 
  CDReadTimer = 0;
+
+ head_pos = 0;
+ CDDASeekTimer = 0;
+ CDAudioDelay = 0;
+ delayed_status = 0;
+ delayed_message = 0;
+ has_delayed_status = false;
 
  pce_lastsapsp_timestamp = monotonic_timestamp;
 
@@ -472,6 +489,13 @@ static void ChangePhase(const unsigned int new_phase)
 		break;
  }
  CurrentPhase = new_phase;
+}
+
+static void DelaySendStatusAndMessage(uint8 status, uint8 message)
+{
+ delayed_status = status;
+ delayed_message = message;
+ has_delayed_status = true;
 }
 
 static void SendStatusAndMessage(uint8 status, uint8 message)
@@ -1563,6 +1587,7 @@ static void DoPABase(const uint32 lba, const uint32 length, unsigned int status 
 
   if(read_sec < toc.tracks[100].lba)
   {
+   //printf("From sec %6.6X to %6.6X (aud)\n", head_pos, read_sec);
    Cur_CDIF->HintReadSector(read_sec);	//, read_sec_end, read_sec_start);
   }
  }
@@ -1783,6 +1808,8 @@ static void DoPAMSF(const uint8 *cdb)
  read_sec = read_sec_start = lba_start;
  read_sec_end = lba_end;
 
+ //printf("From sec %6.6X to %6.6X (aud)\n", head_pos, read_sec);
+
  cdda.CDDAStatus = CDDASTATUS_PLAYING;
  cdda.PlayMode = PLAYMODE_NORMAL;
 
@@ -1844,6 +1871,8 @@ static void DoPATRBase(const uint32 lba, const uint32 length)
   cdda.CDDAReadPos = 588;
   read_sec = read_sec_start = lba;
   read_sec_end = read_sec_start + length;
+
+  //printf("From sec %6.6X to %6.6X (aud)\n", head_pos, read_sec);
 
   cdda.CDDAStatus = CDDASTATUS_PLAYING;
   cdda.PlayMode = PLAYMODE_NORMAL;
@@ -1922,6 +1951,7 @@ static void DoPAUSERESUME(const uint8 *cdb)
 static void DoREADBase(uint32 sa, uint32 sc)
 {
  int track;
+ float seekms;
 
  if(sa > toc.tracks[100].lba) // Another one of those off-by-one PC-FX CD bugs.
  {
@@ -1956,13 +1986,19 @@ static void DoREADBase(uint32 sa, uint32 sc)
  }
  //const uint32 PrevSectorAddr = SectorAddr;
 
+ seekms = get_pce_cd_seek_ms(head_pos, sa);
+ //printf("From sec %6.6X to %6.6X (dat), ms = %.2f\n", head_pos, sa, seekms); 
+
  SectorAddr = sa;
  SectorCount = sc;
  if(SectorCount)
  {
   Cur_CDIF->HintReadSector(sa);	//, sa + sc);
 
-  CDReadTimer = (uint64)((WhichSystem == SCSICD_PCE) ? 8 : 1) * 2048 * System_Clock / CD_DATA_TRANSFER_RATE;
+  if (WhichSystem == SCSICD_PCE)
+    CDReadTimer = (uint64)(System_Clock * seekms / 1000);
+  else
+    CDReadTimer = (uint64)(1 * 2048 * System_Clock / CD_DATA_TRANSFER_RATE);
   //printf("%d\n", SectorAddr - PrevSectorAddr);
   //TODO?: CDReadTimer = (double)((WhichSystem == SCSICD_PCE) ? ((PrevSectorAddr == SectorAddr) ? 0.5 : 8) : 1) * 2048 * System_Clock / CD_DATA_TRANSFER_RATE;
  }
@@ -2484,9 +2520,31 @@ alignas(16) static const int16 OversampleFilter[2][0x10] =
  {    -43,    138,   -323,    645,  -1176,   2074,  -3844,   9724,  29464,  -5661,   2783,  -1562,    877,   -463,    217,    -82,  }, /* sum=32768, sum_abs=59076 */
 };
 
+static INLINE void RunDelayedStat(uint32 system_timestamp, int32 run_time)
+{
+ if (CDDASeekTimer > 0)
+ {
+   CDDASeekTimer -= run_time;
+   if (CDDASeekTimer < 0)
+     CDDASeekTimer = 0;
+ }
+ else if ((CDDASeekTimer == 0) && (has_delayed_status == true))
+ {
+   SendStatusAndMessage(delayed_status, delayed_message);
+   has_delayed_status = false;
+ }
+}
+
 static INLINE void RunCDDA(uint32 system_timestamp, int32 run_time)
 {
- if(cdda.CDDAStatus == CDDASTATUS_PLAYING || cdda.CDDAStatus == CDDASTATUS_SCANNING)
+ if ((CDDASeekTimer == 0) && (CDAudioDelay > 0))
+ {
+   CDAudioDelay -= run_time;
+   if (CDAudioDelay < 0)
+     CDAudioDelay = 0;
+ }
+ else
+ if((cdda.CDDAStatus == CDDASTATUS_PLAYING || cdda.CDDAStatus == CDDASTATUS_SCANNING) && (CDDASeekTimer == 0) && (CDAudioDelay == 0))
  {
   cdda.CDDADiv -= (int64)run_time << 20;
 
@@ -2521,6 +2579,7 @@ static INLINE void RunCDDA(uint32 system_timestamp, int32 run_time)
 
        case PLAYMODE_LOOP:
         read_sec = read_sec_start;
+        //printf("From sec %6.6X to %6.6X (loop)\n", head_pos, read_sec);
         break;
       }
 
@@ -2559,6 +2618,7 @@ static INLINE void RunCDDA(uint32 system_timestamp, int32 run_time)
       uint8 tmpbuf[2352 + 96];
 
       Cur_CDIF->ReadRawSector(tmpbuf, read_sec);	//, read_sec_end, read_sec_start);
+      head_pos = read_sec;
 
       for(int i = 0; i < 588 * 2; i++)
        cdda.CDDASectorBuffer[i] = MDFN_de16lsb(&tmpbuf[i * 2]);
@@ -2799,6 +2859,8 @@ static INLINE void RunCDRead(uint32 system_timestamp, int32 run_time)
     }
     else if(ValidateRawDataSector(tmp_read_buf, SectorAddr))
     {
+     head_pos = SectorAddr;
+
      memcpy(cd.SubPWBuf, tmp_read_buf + 2352, 96);
 
      if(tmp_read_buf[12 + 3] == 0x2)
@@ -2847,6 +2909,7 @@ uint32 SCSICD_Run(scsicd_timestamp_t system_timestamp)
 
  lastts = system_timestamp;
 
+ RunDelayedStat(system_timestamp, run_time);
  RunCDRead(system_timestamp, run_time);
  RunCDDA(system_timestamp, run_time);
 
