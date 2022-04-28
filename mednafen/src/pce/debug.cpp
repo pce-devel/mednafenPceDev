@@ -1063,6 +1063,16 @@ static void GetAddressSpaceBytes(const char *name, uint32 Address, uint32 Length
    Buffer++;
   }
  }
+ else if(!strcmp(name, "mb128"))
+ {
+  while(Length--)
+  {
+   Address &= 0x1FFFF;
+   *Buffer = HuC_PeekMB128(Address);
+   Address++;
+   Buffer++;
+  }
+ }
  else if(!strncmp(name, "psgram", 6))
   psg->PeekWave(name[6] - '0', Address, Length, Buffer);
 
@@ -1118,6 +1128,16 @@ static void PutAddressSpaceBytes(const char *name, uint32 Address, uint32 Length
   {
    Address &= 0x7FF;
    HuC_PokeBRAM(Address, *Buffer);
+   Address++;
+   Buffer++;
+  }
+ }
+ else if(!strcmp(name, "mb128"))
+ {
+  while(Length--)
+  {
+   Address &= 0x1FFFF;
+   HuC_PokeMB128(Address, *Buffer);
    Address++;
    Buffer++;
   }
@@ -1239,6 +1259,11 @@ void PCEDBG_Init(bool sgx, PCE_PSG *new_psg, const uint32 vram_size)
   if(HuC_IsBRAMAvailable())
   {
    ASpace_Add(GetAddressSpaceBytes, PutAddressSpaceBytes, "bram", "BRAM", 11);
+  }
+
+  if(HuC_IsMB128Available())
+  {
+   ASpace_Add(GetAddressSpaceBytes, PutAddressSpaceBytes, "mb128", "Memory Base 128", 17);
   }
 
   for(int x = 0; x < 6; x++)

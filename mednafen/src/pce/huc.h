@@ -34,6 +34,10 @@ MDFN_HIDE extern bool IsTsushin;
 bool HuC_IsBRAMAvailable(void);
 uint8 HuC_PeekBRAM(uint32 A);
 void HuC_PokeBRAM(uint32 A, uint8 V);
+
+bool HuC_IsMB128Available(void);
+uint8 HuC_PeekMB128(uint32 A);
+void HuC_PokeMB128(uint32 A, uint8 V);
 };
 
 #endif

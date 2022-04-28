@@ -33,6 +33,7 @@ namespace MDFN_IEN_PCE
 
 static const uint8 BRAM_Init_String[8] = { 'H', 'U', 'B', 'M', 0x00, 0x88, 0x10, 0x80 }; //"HUBM\x00\x88\x10\x80";
 static bool BRAM_Disabled;       // Cached at game load, don't remove this caching behavior or save game loss may result(if we ever get a GUI).
+static bool MB128_Enabled;
 
 ArcadeCard *arcade_card = NULL;
 
@@ -47,6 +48,7 @@ bool PCE_IsCD;
 static uint8 *TsushinRAM = NULL; // 0x8000
 static uint8 *PopRAM = NULL; // 0x8000
 static uint8 SaveRAM[2048];
+static uint8 MB128RAM[131072];
 static uint8 *CDRAM = NULL; //262144;
 
 static uint8 *SysCardRAM = NULL;
@@ -491,6 +493,33 @@ uint32 HuC_Load(Stream* s, bool DisableBRAM, SysCardType syscard)
    HuCPU.SetReadHandler(0xF7, SaveRAMRead);
    MDFNMP_AddRAM(2048, 0xF7 * 8192, SaveRAM);
   }
+
+  MB128_Enabled = MDFN_GetSettingB("pce.memorybase128_enable");
+
+  if(MB128_Enabled)
+  {
+   // Initialize first, in case the file doesn't actually exist yet
+   //
+   memset(MB128RAM, 0x00, 131072);
+
+   try
+   {
+    std::string ext_save_path = MDFN_MakeFName(MDFNMKF_FIXEDSAV, 0, MDFN_GetSettingS("pce.memorybase128_file"));
+    GZFileStream esavefp(ext_save_path, GZFileStream::MODE::READ);
+    const uint64 efp_size_tmp = esavefp.size();
+
+    if(efp_size_tmp != 131072)
+     throw MDFN_Error(0, _("Memory Base 128 file \"%s\" is an incorrect size(%llu bytes).  The correct size is %llu bytes."), MDFN_strhumesc(ext_save_path).c_str(), (unsigned long long)efp_size_tmp, (unsigned long long)131072);
+    esavefp.read(MB128RAM, 0x20000);
+
+    LoadSaveMemory(MDFN_MakeFName(MDFNMKF_SAV, 0, "sav"), SaveRAM, 131072);
+   }
+   catch(MDFN_Error &e)
+   {
+    if(e.GetErrno() != ENOENT)
+     throw;
+   }
+  }
  }
  catch(...)
  {
@@ -582,6 +611,14 @@ void HuC_SaveNV(void)
  {
   MDFN_DumpToFile(MDFN_MakeFName(MDFNMKF_SAV, 0, "sav"), SaveRAM, 2048);
  }
+
+ if (MB128_Enabled)
+ {
+  FileStream fp_e(MDFN_MakeFName(MDFNMKF_FIXEDSAV, 0, MDFN_GetSettingS("pce.memorybase128_file")), FileStream::MODE_WRITE_INPLACE);
+  fp_e.write(MB128RAM, 0x20000);
+  fp_e.truncate(fp_e.tell());
+  fp_e.close();
+ }
 }
 
 //
@@ -651,5 +688,29 @@ void HuC_PokeBRAM(uint32 A, uint8 V)
  SaveRAM[A & 2047] = V;
 }
 
+bool HuC_IsMB128Available(void)
+{
+ if(IsTsushin)
+  return(false);
+
+ if(MB128_Enabled)
+  return(true);
+
+ return(false);
+}
+
+uint8 HuC_PeekMB128(uint32 A)
+{
+ assert(HuC_IsMB128Available());
+
+ return(MB128RAM[A & 131071]);
+}
+
+void HuC_PokeMB128(uint32 A, uint8 V)
+{
+ assert(HuC_IsMB128Available());
+
+ MB128RAM[A & 131071] = V;
+}
 
 };

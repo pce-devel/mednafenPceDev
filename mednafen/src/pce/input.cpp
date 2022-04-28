@@ -93,6 +93,29 @@ static bool SEL, CLR;
 static uint8 read_index = 0;
 static bool DisableSR = false;
 
+enum
+{
+ MB128_STATE_IDLE       = 0,
+ MB128_STATE_A1         = 1,
+ MB128_STATE_A2         = 2,
+ MB128_STATE_REQ        = 3,
+ MB128_STATE_ADDR       = 4,
+ MB128_STATE_LENBITS    = 5,
+ MB128_STATE_READ       = 6,
+ MB128_STATE_READTRAIL  = 7,
+ MB128_STATE_WRITE      = 8,
+ MB128_STATE_WRITETRAIL = 9,
+};
+
+static uint8  MB128_Shiftreg  = 0xff;
+static bool   MB128_Active    = false;
+static uint8  MB128_State     = MB128_STATE_IDLE;
+static uint8  MB128_Bitnum    = 0;
+static bool   MB128_CmdWrRd   = 0;
+static uint32 MB128_Address   = 0;
+static uint32 MB128_LenBits   = 0;
+static uint8  MB128_RetVal    = 0;
+
 static void RemakeDevices(int which = -1)
 {
  int s = 0;
@@ -239,6 +262,143 @@ static INLINE void MultiTapWrite(int32 timestamp, bool old_SEL, bool new_SEL, bo
  }
 }
 
+
+static const uint8 MB128_IDENT = 0x04; // Ident bit in return value
+
+static INLINE void MB128_Send(bool new_SEL)
+{
+ uint8 temp_byte;
+ uint8 temp_mask;
+
+ switch(MB128_State)
+ {
+   case MB128_STATE_A1:
+     MB128_State   = MB128_STATE_A2;
+     MB128_RetVal  = new_SEL ? MB128_IDENT : 0;
+     break;
+
+   case MB128_STATE_A2:
+     MB128_State   = MB128_STATE_REQ;
+     MB128_RetVal  = new_SEL ? MB128_IDENT : 0;
+     break;
+    
+   case MB128_STATE_REQ:
+     MB128_CmdWrRd = new_SEL;
+     MB128_State   = MB128_STATE_ADDR;
+     MB128_RetVal  = 0;
+     MB128_Bitnum  = 0;
+     MB128_Address = 0;
+     break;
+    
+   case MB128_STATE_ADDR:
+     MB128_Address |= new_SEL ? (1 << (MB128_Bitnum+7)) : 0;
+     MB128_RetVal  = 0;
+     MB128_Bitnum += 1;
+     if (MB128_Bitnum == 10) {
+       MB128_Bitnum  = 0;
+       MB128_LenBits = 0;
+       MB128_State   = MB128_STATE_LENBITS;
+       //printf("Addr = %6.6X\n", MB128_Address);
+     }
+     break;
+    
+   case MB128_STATE_LENBITS:
+     MB128_LenBits |= new_SEL ? (1 << (MB128_Bitnum)) : 0;
+     MB128_RetVal  = 0;
+     MB128_Bitnum += 1;
+     if (MB128_Bitnum == 20) {
+       MB128_Bitnum  = 0;
+       if (MB128_CmdWrRd) {   // Read
+         MB128_State = (MB128_LenBits == 0) ? MB128_STATE_READTRAIL : MB128_STATE_READ;
+       } else {
+         MB128_State = (MB128_LenBits == 0) ? MB128_STATE_WRITETRAIL : MB128_STATE_WRITE;
+       }
+       //printf("Size: Bytes = %4.4X, Bits = %2.2X\n", (MB128_LenBits >> 3), (MB128_LenBits & 7));
+     }
+     break;
+    
+   case MB128_STATE_READ:
+     MB128_RetVal = (HuC_PeekMB128(MB128_Address) & (1 << MB128_Bitnum)) ? 1 : 0;
+     MB128_Bitnum  += 1;
+     MB128_LenBits -= 1;
+     if (MB128_LenBits == 0) {
+       MB128_Bitnum = 0;
+       MB128_State  = MB128_STATE_READTRAIL;
+       break;
+     }
+     if (MB128_Bitnum == 8) {
+       MB128_Bitnum = 0;
+       MB128_Address++;
+     }
+     break;
+
+   case MB128_STATE_WRITE:
+     temp_mask = (1 << MB128_Bitnum);
+     temp_byte = HuC_PeekMB128(MB128_Address) & ~temp_mask;
+     HuC_PokeMB128(MB128_Address, temp_byte | (new_SEL ? temp_mask : 0));
+     MB128_RetVal = 0;
+     MB128_Bitnum  += 1;
+     MB128_LenBits -= 1;
+     if (MB128_LenBits == 0) {
+       MB128_Bitnum = 0;
+       MB128_State  = MB128_STATE_WRITETRAIL;
+       break;
+     }
+     if (MB128_Bitnum == 8) {
+       MB128_Bitnum = 0;
+       MB128_Address++;
+     }
+     break;
+
+   case MB128_STATE_WRITETRAIL:
+     MB128_Bitnum += 1;
+     if (MB128_Bitnum == 2) {
+       MB128_RetVal  = 0;
+     }
+     if (MB128_Bitnum == 3) {
+       MB128_Bitnum  = 0;
+       MB128_State  = MB128_STATE_READTRAIL;
+     }
+     break;
+
+   case MB128_STATE_READTRAIL:
+     MB128_Bitnum += 1;
+     if (MB128_Bitnum == 2) {
+       MB128_RetVal  = 0;
+     }
+     if (MB128_Bitnum == 4) {
+       MB128_Bitnum  = 0;
+       MB128_CmdWrRd = 0;
+       MB128_Address = 0;
+       MB128_LenBits = 0;
+       MB128_State  = MB128_STATE_IDLE;
+       MB128_Active  = false;
+     }
+     break;
+ }
+}
+
+static INLINE void MB128Write(int32 timestamp, bool old_SEL, bool new_SEL, bool old_CLR, bool new_CLR)
+{
+
+ if(!old_CLR && new_CLR)
+ {
+   if (MB128_Active) {
+     MB128_Send(new_SEL);
+   }
+   else
+   {
+     MB128_Shiftreg = (MB128_Shiftreg>>1) | (new_SEL ? 0x80: 0x00);
+     if (MB128_Shiftreg == 0xA8)
+     {
+       MB128_State = MB128_STATE_A1;
+       MB128_Active = true;
+       //printf("Active\n");
+     }
+   }
+ }
+}
+
 uint8 INPUT_Read(int32 timestamp, unsigned int A)
 {
  uint8 ret;
@@ -248,7 +408,10 @@ uint8 INPUT_Read(int32 timestamp, unsigned int A)
  // printf("Input Read: %04x, %d\n", A, vce->GetScanlineNo());
  //}
 
- if(MultiTapEnabled && InputTypes[0] != PCEINPUT_TSUSHINKB)
+ if(HuC_IsMB128Available() && MB128_Active)
+  ret = MB128_RetVal;
+
+ else if(MultiTapEnabled && InputTypes[0] != PCEINPUT_TSUSHINKB)
   ret = MultiTapRead(timestamp);
  else
   ret = RealPortRead(timestamp, 0);
@@ -270,6 +433,9 @@ void INPUT_Write(int32 timestamp, unsigned int A, uint8 V)
  //printf("Input Write: %04x, %02x\n", A, V);
  bool new_SEL = V & 0x1;
  bool new_CLR = V & 0x2;
+
+ if(HuC_IsMB128Available())
+  MB128Write(timestamp, SEL, new_SEL, CLR, new_CLR);
 
  if(MultiTapEnabled)
   MultiTapWrite(timestamp, SEL, new_SEL, CLR, new_CLR);
