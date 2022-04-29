@@ -1098,6 +1098,9 @@ static const MDFNSetting PCESettings[] =
   { "pce.arcadecard", MDFNSF_EMU_STATE | MDFNSF_UNTRUSTED_SAFE, gettext_noop("Enable Arcade Card emulation."), 
 	gettext_noop("Leaving this option enabled is recommended, unless you want to see special warning screens on ACD games, or you prefer the non-enhanced modes of ACD-enhanced SCD games.  Additionally, you may want to disable it you you wish to use state rewinding with a SCD ACD-enhanced game on a slow CPU, as the extra 2MiB of RAM the Arcade Card offers is difficult to compress in real-time."), MDFNST_BOOL, "1" },
 
+  { "pce.memorybase128_enable", MDFNSF_EMU_STATE | MDFNSF_UNTRUSTED_SAFE, gettext_noop("Enable Memory Base 128 emulation."), NULL, MDFNST_BOOL, "0"},
+  { "pce.memorybase128_file", MDFNSF_EMU_STATE | MDFNSF_CAT_PATH, gettext_noop("Path to Memory Base 128 file (Not game-specific)."), NULL, MDFNST_STRING, "pce_mb128.sav" },
+
   { "pce.nospritelimit", MDFNSF_NOFLAGS, gettext_noop("Remove 16-sprites-per-scanline hardware limit."), 
 					 gettext_noop("WARNING: Enabling this option may cause undesirable graphics glitching on some games(such as \"Bloody Wolf\")."), MDFNST_BOOL, "0" },
 
