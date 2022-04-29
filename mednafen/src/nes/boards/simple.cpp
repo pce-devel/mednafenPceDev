@@ -217,8 +217,8 @@ int MHROM_Init(CartInfo *info)
 #ifdef WANT_DEBUGGER
 static const RegType DBGUNROMRegs[] =
 {
- { 0, "PRGBank", "PRG Bank, 16KiB @8000", 1 },
- { 0, "", "", 0 },
+ { 0,	1,	"PRGBank", "PRG Bank, 16KiB @8000", 1 },
+ { 0,	1,	"", "", 0 },
 };
 
 static uint32 UNROMDBG_GetRegister(const unsigned int id, char *special, const uint32 special_len)

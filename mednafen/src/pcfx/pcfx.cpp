@@ -641,8 +641,8 @@ static MDFN_COLD void LoadCommon(std::vector<CDInterface*> *CDInterfaces)
   //fx_vdc_chips[1] = FXVDC_Init(PCFXIRQ_SOURCE_VDCB, MDFN_GetSettingB("pcfx.nospritelimit"));
  }
 
- SoundBox_Init(MDFN_GetSettingB("pcfx.adpcm.emulate_buggy_codec"), MDFN_GetSettingB("pcfx.adpcm.suppress_channel_reset_clicks"));
  RAINBOW_Init(MDFN_GetSettingB("pcfx.rainbow.chromaip"));
+ SoundBox_Init(MDFN_GetSettingB("pcfx.adpcm.emulate_buggy_codec"), MDFN_GetSettingB("pcfx.adpcm.suppress_channel_reset_clicks"));
  FXINPUT_Init();
  FXTIMER_Init();
 

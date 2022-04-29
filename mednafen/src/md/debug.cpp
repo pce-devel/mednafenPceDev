@@ -65,34 +65,34 @@ void M68K_SetRegister(const unsigned int id, uint32 value)
 
 static RegType M68K_Regs[] =
 {
-        { M68K::GSREG_PC, "PC", "Program Counter", 4 },
+        { M68K::GSREG_PC,	1,	"PC", "Program Counter", 4 },
 
-        { 0, "------", "", 0xFFFF },
+        { 0, 0, "------", "", 0xFFFF },
 
-	{ M68K::GSREG_D0 + 0, "D0", "D0(Data Register 0)", 4 },
-        { M68K::GSREG_D0 + 1, "D1", "D1(Data Register 1)", 4 },
-        { M68K::GSREG_D0 + 2, "D2", "D2(Data Register 2)", 4 },
-        { M68K::GSREG_D0 + 3, "D3", "D3(Data Register 3)", 4 },
-        { M68K::GSREG_D0 + 4, "D4", "D4(Data Register 4)", 4 },
-        { M68K::GSREG_D0 + 5, "D5", "D5(Data Register 5)", 4 },
-        { M68K::GSREG_D0 + 6, "D6", "D6(Data Register 6)", 4 },
-        { M68K::GSREG_D0 + 7, "D7", "D7(Data Register 7)", 4 },
+	{ M68K::GSREG_D0 + 0,	1,	"D0", "D0(Data Register 0)", 4 },
+        { M68K::GSREG_D0 + 1,	1,	"D1", "D1(Data Register 1)", 4 },
+        { M68K::GSREG_D0 + 2,	1,	"D2", "D2(Data Register 2)", 4 },
+        { M68K::GSREG_D0 + 3,	1,	"D3", "D3(Data Register 3)", 4 },
+        { M68K::GSREG_D0 + 4,	1,	"D4", "D4(Data Register 4)", 4 },
+        { M68K::GSREG_D0 + 5,	1,	"D5", "D5(Data Register 5)", 4 },
+        { M68K::GSREG_D0 + 6,	1,	"D6", "D6(Data Register 6)", 4 },
+        { M68K::GSREG_D0 + 7,	1,	"D7", "D7(Data Register 7)", 4 },
 
-        { 0, "------", "", 0xFFFF },
+        { 0, 0, "------", "", 0xFFFF },
 
-        { M68K::GSREG_A0 + 0, "A0", "A0(Address Register 0)", 4 },
-        { M68K::GSREG_A0 + 1, "A1", "A1(Address Register 1)", 4 },
-        { M68K::GSREG_A0 + 2, "A2", "A2(Address Register 2)", 4 },
-        { M68K::GSREG_A0 + 3, "A3", "A3(Address Register 3)", 4 },
-        { M68K::GSREG_A0 + 4, "A4", "A4(Address Register 4)", 4 },
-        { M68K::GSREG_A0 + 5, "A5", "A5(Address Register 5)", 4 },
-        { M68K::GSREG_A0 + 6, "A6", "A6(Address Register 6)", 4 },
-        { M68K::GSREG_A0 + 7, "A7", "A7/USP(Address Register 7 / User Stack Pointer)", 4 },
+        { M68K::GSREG_A0 + 0,	1,	"A0", "A0(Address Register 0)", 4 },
+        { M68K::GSREG_A0 + 1,	1,	"A1", "A1(Address Register 1)", 4 },
+        { M68K::GSREG_A0 + 2,	1,	"A2", "A2(Address Register 2)", 4 },
+        { M68K::GSREG_A0 + 3,	1,	"A3", "A3(Address Register 3)", 4 },
+        { M68K::GSREG_A0 + 4,	1,	"A4", "A4(Address Register 4)", 4 },
+        { M68K::GSREG_A0 + 5,	1,	"A5", "A5(Address Register 5)", 4 },
+        { M68K::GSREG_A0 + 6,	1,	"A6", "A6(Address Register 6)", 4 },
+        { M68K::GSREG_A0 + 7,	1,	"A7", "A7/USP(Address Register 7 / User Stack Pointer)", 4 },
 
-        { 0, "------", "", 0xFFFF },
-	{ M68K::GSREG_SR, "SR", "Status Register", 2 },
+        { 0, 0, "------", "", 0xFFFF },
+	{ M68K::GSREG_SR,	1,	"SR", "Status Register", 2 },
 
-        { 0, "", "", 0 },
+        { 0, 0, "", "", 0 },
 };
 
 static const RegGroupType M68K_RegsGroup =

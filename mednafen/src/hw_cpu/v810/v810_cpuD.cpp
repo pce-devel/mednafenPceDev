@@ -210,7 +210,7 @@ static const suboperation fpsuboptable_vb[16] = {
 
 static const char *pretty_preg_names[32] =
 {
- "r0", "r1", "hsp", "sp", "gp", "tp", "r6", "r7",
+ "r0", "r1", "fp", "sp", "gp", "tp", "r6", "r7",
  "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15",
  "r16", "r17", "r18", "r19", "r20", "r21", "r22", "r23",
  "r24", "r25", "r26", "r27", "r28", "r29", "r30", "lp",
@@ -251,7 +251,7 @@ void v810_dis(uint32 &tPC, int num, char *buf, uint16 (*rhword)(uint32), bool vb
 
         if((opcode > 0x4F) | (opcode < 0)) {
             //Error Invalid opcode!
-            sprintf(&buf[strlen(buf)], "0x%04x", hw0);
+            sprintf(&buf[strlen(buf)], "$%04X", hw0);
             tPC += 2;
         }
 
@@ -292,13 +292,13 @@ void v810_dis(uint32 &tPC, int num, char *buf, uint16 (*rhword)(uint32), bool vb
 	    if(opcode == NOP)
              sprintf(&buf[strlen(buf)],"%s", optable[opcode].opname);
 	    else
-             sprintf(&buf[strlen(buf)],"%s    %08x", optable[opcode].opname, tPC + sign_9(arg1));
+             sprintf(&buf[strlen(buf)],"%s    $%08X", optable[opcode].opname, tPC + sign_9(arg1));
             tPC += 2;   // 16 bit instruction
             break;
         case AM_IV:
             arg1 = ((highB & 0x3) << 24) + (lowB << 16) + (highB2 << 8) + lowB2;
 
-            sprintf(&buf[strlen(buf)],"%s    %08x", optable[opcode].opname, tPC + sign_26(arg1));
+            sprintf(&buf[strlen(buf)],"%s    $%08X", optable[opcode].opname, tPC + sign_26(arg1));
 
             tPC += 4;                                               // 32 bit instruction
             break;
@@ -307,11 +307,7 @@ void v810_dis(uint32 &tPC, int num, char *buf, uint16 (*rhword)(uint32), bool vb
             arg2 = (lowB & 0x1F);
             arg3 = (highB2 << 8) + lowB2;
 
-	    // TODO: What would be the best way to disassemble the MOVEA instruction?
-	    //if(opcode == MOVEA)
-            // sprintf(&buf[strlen(buf)],"%s    0x%X, %s, %s", optable[opcode].opname, (uint32)(int32)(int16)(uint16)arg3, pretty_preg_names[arg2], pretty_preg_names[arg1] );
-	    //else
-            sprintf(&buf[strlen(buf)],"%s    0x%X, %s, %s", optable[opcode].opname, arg3, pretty_preg_names[arg2], pretty_preg_names[arg1] );
+            sprintf(&buf[strlen(buf)],"%s    $%04X, %s, %s", optable[opcode].opname, (arg3 & 65535), pretty_preg_names[arg2], pretty_preg_names[arg1] );
             tPC += 4;   // 32 bit instruction
             break;
         case AM_VIa:  // Mode6 form1
@@ -319,13 +315,7 @@ void v810_dis(uint32 &tPC, int num, char *buf, uint16 (*rhword)(uint32), bool vb
             arg2 = (lowB & 0x1F);
             arg3 = (highB2 << 8) + lowB2;
 
-	    if(!arg3) // Don't bother printing offset if it's 0
-             sprintf(&buf[strlen(buf)],"%s    [%s], %s", optable[opcode].opname, pretty_preg_names[arg2], pretty_preg_names[arg1]);
-	    else if(sign_16(arg3) >= 0) // Make disassembly prettier if it's a positive offset
-             sprintf(&buf[strlen(buf)],"%s    0x%04x[%s], %s", optable[opcode].opname, sign_16(arg3), pretty_preg_names[arg2], pretty_preg_names[arg1]);
-	    else
-             sprintf(&buf[strlen(buf)],"%s    %d[%s], %s", optable[opcode].opname, sign_16(arg3), pretty_preg_names[arg2], pretty_preg_names[arg1]);
-
+            sprintf(&buf[strlen(buf)],"%s    $%04X[%s], %s", optable[opcode].opname, (arg3 & 65535), pretty_preg_names[arg2], pretty_preg_names[arg1]);
             tPC += 4;   // 32 bit instruction
             break;
         case AM_VIb:  // Mode6 form2
@@ -333,20 +323,15 @@ void v810_dis(uint32 &tPC, int num, char *buf, uint16 (*rhword)(uint32), bool vb
             arg2 = (lowB & 0x1F);
             arg3 = (highB2 << 8) + lowB2;                              //  whats the order??? 2,3,1 or 1,3,2
 
-	    if(!arg3) // Don't bother printing offset if it's 0
-             sprintf(&buf[strlen(buf)],"%s    %s, [%s]", optable[opcode].opname, pretty_preg_names[arg1], pretty_preg_names[arg2]);
-            else if(sign_16(arg3) >= 0) // Make disassembly prettier if it's a positive offset
-             sprintf(&buf[strlen(buf)],"%s    %s, 0x%04x[%s]", optable[opcode].opname, pretty_preg_names[arg1], sign_16(arg3), pretty_preg_names[arg2]);
-	    else
-             sprintf(&buf[strlen(buf)],"%s    %s, %d[%s]", optable[opcode].opname, pretty_preg_names[arg1], sign_16(arg3), pretty_preg_names[arg2]);
+            sprintf(&buf[strlen(buf)],"%s    %s, $%04X[%s]", optable[opcode].opname, pretty_preg_names[arg1], (arg3 & 65535), pretty_preg_names[arg2]);
             tPC += 4;   // 32 bit instruction
             break;
         case AM_VII:   // Unhandled
-            sprintf(&buf[strlen(buf)],"0x%2x 0x%2x 0x%2x 0x%2x", lowB, highB, lowB2, highB2);
+            sprintf(&buf[strlen(buf)],"$%02X $%02X $%02X $%02X", lowB, highB, lowB2, highB2);
             tPC +=4;        // 32 bit instruction
             break;
         case AM_VIII:  // Unhandled
-            sprintf(&buf[strlen(buf)],"0x%2x 0x%2x 0x%2x 0x%2x", lowB, highB, lowB2, highB2);
+            sprintf(&buf[strlen(buf)],"$%02X $%02X $%02X $%02X", lowB, highB, lowB2, highB2);
             tPC += 4;   // 32 bit instruction
             break;
         case AM_IX:
@@ -360,7 +345,6 @@ void v810_dis(uint32 &tPC, int num, char *buf, uint16 (*rhword)(uint32), bool vb
             if(arg2 > 15) {
                 sprintf(&buf[strlen(buf)],"BError");
             } else {
-                //sprintf(&buf[strlen(buf)],"%s, $%d", bssuboptable[arg2].opname,arg1);
 		sprintf(&buf[strlen(buf)], "%s", bssuboptable[arg2].opname);
             }
             tPC += 2;   // 16 bit instruction
@@ -379,7 +363,7 @@ void v810_dis(uint32 &tPC, int num, char *buf, uint16 (*rhword)(uint32), bool vb
             break;
         case AM_UDEF:  // Invalid opcode.
         default:       // Invalid opcode.
-            sprintf(&buf[strlen(buf)],"0x%04x", hw0);
+            sprintf(&buf[strlen(buf)],"$%04X", hw0);
             tPC += 2;
         }
     }

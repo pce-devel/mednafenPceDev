@@ -395,21 +395,25 @@ void WSwanDBG_ToggleSyntax(void)
 
 static const RegType V30MZ_Regs[] =
 {
-        { NEC_PC, "IP", "Instruction Pointer", 2 },
-        { NEC_FLAGS, "PSW", "Program Status Word", 2 },
-        { NEC_AW, "AX", "Accumulator", 2 },
-        { NEC_BW, "BX", "Base", 2 },
-        { NEC_CW, "CX", "Counter", 2 },
-        { NEC_DW, "DX", "Data", 2 },
-        { NEC_SP, "SP", "Stack Pointer", 2 },
-        { NEC_BP, "BP", "Base Pointer", 2 },
-        { NEC_IX, "SI", "Source Index", 2 },
-        { NEC_IY, "DI", "Dest Index", 2 },
-        { NEC_PS, "CS", "Program Segment", 2 },
-        { NEC_SS, "SS", "Stack Segment", 2 },
-        { NEC_DS0, "DS", "Data Segment", 2 },
-        { NEC_DS1, "ES", "Extra Segment(Destination)", 2 },
-        { 0, "", "", 0 },
+ { 0, 0, "---CPU---", "", 0xFFFF },
+ { NEC_PC,      3,      "IP", "Instruction Pointer", 2 },
+ { NEC_FLAGS,   2,      "PSW", "Program Status Word", 2 },
+ { 0, 0, "---REG---", "", 0xFFFF },
+ { NEC_AW,      3,      "AX", "Accumulator", 2 },
+ { NEC_BW,      3,      "BX", "Base", 2 },
+ { NEC_CW,      3,      "CX", "Counter", 2 },
+ { NEC_DW,      3,      "DX", "Data", 2 },
+ { NEC_IX,      3,      "SI", "Source Index", 2 },
+ { NEC_IY,      3,      "DI", "Dest Index", 2 },
+ { NEC_BP,      3,      "BP", "Base Pointer", 2 },
+ { NEC_SP,      3,      "SP", "Stack Pointer", 2 },
+ { 0, 0, "---SEG---", "", 0xFFFF },
+ { NEC_PS,      3,      "CS", "Program Segment", 2 },
+ { NEC_SS,      3,      "SS", "Stack Segment", 2 },
+ { NEC_DS0,     3,      "DS", "Data Segment", 2 },
+ { NEC_DS1,     3,      "ES", "Extra Segment(Destination)", 2 },
+ { 0, 0, "---------", "", 0xFFFF },
+ { 0, 0, "", "", 0 },
 };
 
 
@@ -437,16 +441,19 @@ static const RegGroupType V30MZRegsGroup =
 
 static const RegType MiscRegs[] =
 {
- { MEMORY_GSREG_ROMBBSLCT, "ROMBBSLCT", "ROM Bank Base Selector for 64KiB banks 0x4-0xF", 1 },
- { MEMORY_GSREG_BNK1SLCT, "BNK1SLCT", "???", 1 },
- { MEMORY_GSREG_BNK2SLCT, "BNK2SLCT", "ROM Bank Selector for 64KiB bank 0x2", 1 },
- { MEMORY_GSREG_BNK3SLCT, "BNK3SLCT", "ROM Bank Selector for 64KiB bank 0x3", 1 },
+ { 0, 0, "------BNK------", "", 0xFFFF },
+ { MEMORY_GSREG_BNK1SLCT,               3,      "Bnk1Select",   "???", 1 },
+ { MEMORY_GSREG_BNK2SLCT,               3,      "Bnk2Select",   "ROM Bank Selector for 64KiB bank 0x2", 1 },
+ { MEMORY_GSREG_BNK3SLCT,               3,      "Bnk3Select",   "ROM Bank Selector for 64KiB bank 0x3", 1 },
+ { MEMORY_GSREG_ROMBBSLCT,              3,      "RomBSelect",   "ROM Bank Base Selector for 64KiB banks 0x4-0xF", 1 },
 
- { 0x8000 | INT_GSREG_IASSERTED, "IAsserted", "Interrupt Asserted", 1 },
- { 0x8000 | INT_GSREG_ISTATUS, "IStatus", "Interrupt Status", 1 },
- { 0x8000 | INT_GSREG_IENABLE, "IEnable", "Interrupt Enable", 1 },
- { 0x8000 | INT_GSREG_IVECTORBASE, "IVectorBase", "Interrupt Vector Base", 1 },
- { 0, "", "", 0 },
+ { 0, 0, "------IRQ------", "", 0xFFFF },
+ { 0x8000 | INT_GSREG_IASSERTED,        4,      "IrqAssert",    "Interrupt Asserted", 1 },
+ { 0x8000 | INT_GSREG_ISTATUS,          4,      "IrqStatus",    "Interrupt Status", 1 },
+ { 0x8000 | INT_GSREG_IENABLE,          4,      "IrqEnable",    "Interrupt Enable", 1 },
+ { 0x8000 | INT_GSREG_IVECTORBASE,      3,      "IrqVectors",   "Interrupt Vector Base", 1 },
+ { 0, 0, "---------------", "", 0xFFFF },
+ { 0, 0, "", "", 0 },
 };
 
 static uint32 Misc_GetRegister(const unsigned int id, char *special, const uint32 special_len)

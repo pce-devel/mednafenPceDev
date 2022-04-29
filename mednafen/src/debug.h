@@ -21,6 +21,7 @@ enum
 struct RegType
 {
 	const unsigned int id;
+	const unsigned int outdent;
 	const char* name;
 	const char* long_name;
 	unsigned int bsize; // Byte size, 1, 2, 4

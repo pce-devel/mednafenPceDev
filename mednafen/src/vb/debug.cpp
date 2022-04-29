@@ -457,53 +457,61 @@ void VBDBG_SetLogFunc(void (*func)(const char *, const char *))
 
 static const RegType V810Regs[] =
 {
-        { V810::GSREG_PC, "PC", "Program Counter", 4 },
-	{ V810::GSREG_PR + 1, "PR1", "Program Register 1", 4 },
-	{ V810::GSREG_PR + 2, "HSP", "Program Register 2(Handler Stack Pointer)", 4 },
-	{ V810::GSREG_PR + 3, "SP", "Program Register 3(Stack Pointer)", 4 },
-	{ V810::GSREG_PR + 4, "GP", "Program Register 4(Global Pointer)", 4 },
-	{ V810::GSREG_PR + 5, "TP", "Program Register 5(Text Pointer)", 4 },
-	{ V810::GSREG_PR + 6, "PR6", "Program Register 6", 4 },
-	{ V810::GSREG_PR + 7, "PR7", "Program Register 7", 4 },
-	{ V810::GSREG_PR + 8, "PR8", "Program Register 8", 4 },
-	{ V810::GSREG_PR + 9, "PR9", "Program Register 9", 4 },
-	{ V810::GSREG_PR + 10, "PR10", "Program Register 10", 4 },
-	{ V810::GSREG_PR + 11, "PR11", "Program Register 11", 4 },
-	{ V810::GSREG_PR + 12, "PR12", "Program Register 12", 4 },
-	{ V810::GSREG_PR + 13, "PR13", "Program Register 13", 4 },
-	{ V810::GSREG_PR + 14, "PR14", "Program Register 14", 4 },
-	{ V810::GSREG_PR + 15, "PR15", "Program Register 15", 4 },
-        { V810::GSREG_PR + 16, "PR16", "Program Register 16", 4 },
-        { V810::GSREG_PR + 17, "PR17", "Program Register 17", 4 },
-        { V810::GSREG_PR + 18, "PR18", "Program Register 18", 4 },
-        { V810::GSREG_PR + 19, "PR19", "Program Register 19", 4 },
-        { V810::GSREG_PR + 20, "PR20", "Program Register 20", 4 },
-        { V810::GSREG_PR + 21, "PR21", "Program Register 21", 4 },
-        { V810::GSREG_PR + 22, "PR22", "Program Register 22", 4 },
-        { V810::GSREG_PR + 23, "PR23", "Program Register 23", 4 },
-        { V810::GSREG_PR + 24, "PR24", "Program Register 24", 4 },
-        { V810::GSREG_PR + 25, "PR25", "Program Register 25", 4 },
-        { V810::GSREG_PR + 26, "PR26", "Program Register 26(String Dest Bit Offset)", 4 },
-        { V810::GSREG_PR + 27, "PR27", "Program Register 27(String Source Bit Offset)", 4 },
-        { V810::GSREG_PR + 28, "PR28", "Program Register 28(String Length)", 4 },
-        { V810::GSREG_PR + 29, "PR29", "Program Register 29(String Dest)", 4 },
-        { V810::GSREG_PR + 30, "PR30", "Program Register 30(String Source)", 4 },
-        { V810::GSREG_PR + 31, "LP", "Program Register 31(Link Pointer)", 4 },
+	{ 0, 0, "-----V810-----", "", 0xFFFF },
 
-        { V810::GSREG_SR + 0, "SR0", "Exception/Interrupt PC", 4 },
-        { V810::GSREG_SR + 1, "SR1", "Exception/Interrupt PSW", 4 },
-        { V810::GSREG_SR + 2, "SR2", "Fatal Error PC", 4 },
-        { V810::GSREG_SR + 3, "SR3", "Fatal Error PSW", 4 },
-        { V810::GSREG_SR + 4, "SR4", "Exception Cause Register", 4 },
-        { V810::GSREG_SR + 5, "SR5", "Program Status Word", 4 },
-        { V810::GSREG_SR + 6, "SR6", "Processor ID Register", 4 },
-        { V810::GSREG_SR + 7, "SR7", "Task Control Word", 4 },
-        { V810::GSREG_SR + 24, "SR24", "Cache Control Word", 4 },
-        { V810::GSREG_SR + 25, "SR25", "Address Trap Register", 4 },
+	{ V810::GSREG_PC,      4, "PC",      "Program Counter",                               4 },
+	{ V810::GSREG_PR +  1, 4, "R1",      "Program Register 1 (Workspace)",                4 },
+	{ V810::GSREG_PR +  2, 4, "FP",      "Program Register 2 (Frame Pointer)",            4 },
+	{ V810::GSREG_PR +  3, 4, "SP",      "Program Register 3 (Stack Pointer)",            4 },
+	{ V810::GSREG_PR +  4, 4, "GP",      "Program Register 4 (Global Pointer)",           4 },
+	{ V810::GSREG_PR +  5, 4, "TP",      "Program Register 5 (Text Pointer)",             4 },
+	{ V810::GSREG_PR +  6, 4, "R6",      "Program Register 6 (Parameter 1)",              4 },
+	{ V810::GSREG_PR +  7, 4, "R7",      "Program Register 7 (Parameter 2)",              4 },
+	{ V810::GSREG_PR +  8, 4, "R8",      "Program Register 8 (Parameter 3)",              4 },
+	{ V810::GSREG_PR +  9, 4, "R9",      "Program Register 9 (Parameter 4)",              4 },
+	{ V810::GSREG_PR + 10, 3, "R10",     "Program Register 10 (Return 1)",                4 },
+	{ V810::GSREG_PR + 11, 3, "R11",     "Program Register 11 (Return 2)",                4 },
+	{ V810::GSREG_PR + 12, 3, "R12",     "Program Register 12 (Workspace)",               4 },
+	{ V810::GSREG_PR + 13, 3, "R13",     "Program Register 13 (Workspace)",               4 },
+	{ V810::GSREG_PR + 14, 3, "R14",     "Program Register 14 (Workspace)",               4 },
+	{ V810::GSREG_PR + 15, 3, "R15",     "Program Register 15 (Workspace)",               4 },
+	{ V810::GSREG_PR + 16, 3, "R16",     "Program Register 16 (Workspace)",               4 },
+	{ V810::GSREG_PR + 17, 3, "R17",     "Program Register 17 (Workspace)",               4 },
+	{ V810::GSREG_PR + 18, 3, "R18",     "Program Register 18 (Workspace)",               4 },
+	{ V810::GSREG_PR + 19, 3, "R19",     "Program Register 19 (Workspace)",               4 },
+	{ V810::GSREG_PR + 20, 3, "R20",     "Program Register 20 (Preserved)",               4 },
+	{ V810::GSREG_PR + 21, 3, "R21",     "Program Register 21 (Preserved)",               4 },
+	{ V810::GSREG_PR + 22, 3, "R22",     "Program Register 22 (Preserved)",               4 },
+	{ V810::GSREG_PR + 23, 3, "R23",     "Program Register 23 (Preserved)",               4 },
+	{ V810::GSREG_PR + 24, 3, "R24",     "Program Register 24 (Preserved)",               4 },
+	{ V810::GSREG_PR + 25, 3, "R25",     "Program Register 25 (Preserved)",               4 },
+	{ V810::GSREG_PR + 26, 3, "R26",     "Program Register 26 (String Dest Bit Offset)",  4 },
+	{ V810::GSREG_PR + 27, 3, "R27",     "Program Register 27 (String Source Bit Offset)",4 },
+	{ V810::GSREG_PR + 28, 3, "R28",     "Program Register 28 (String Length)",           4 },
+	{ V810::GSREG_PR + 29, 3, "R29",     "Program Register 29 (String Dest)",             4 },
+	{ V810::GSREG_PR + 30, 3, "R30",     "Program Register 30 (String Source)",           4 },
+	{ V810::GSREG_PR + 31, 4, "LP",      "Program Register 31 (Link Pointer)",            4 },
 
-	{ V810::GSREG_TIMESTAMP, "TStamp", "Timestamp", 3 },
+	{ 0, 0, "-----SREG-----", "", 0xFFFF },
 
-        { 0, "", "", 0 },
+	{ V810::GSREG_SR +  0, 2, "EIPC",    "Exception/Interrupt PC",                        4 },
+	{ V810::GSREG_SR +  1, 1, "EIPSW",   "Exception/Interrupt PSW",                       4 },
+	{ V810::GSREG_SR +  2, 2, "FEPC",    "Fatal Error PC",                                4 },
+	{ V810::GSREG_SR +  3, 1, "FEPSW",   "Fatal Error PSW",                               4 },
+	{ V810::GSREG_SR +  4, 3, "ECR",     "Exception Cause Register",                      4 },
+	{ V810::GSREG_SR +  5, 3, "PSW",     "Program Status Word",                           4 },
+	{ V810::GSREG_SR +  6, 3, "PIR",     "Processor ID Register",                         4 },
+	{ V810::GSREG_SR +  7, 2, "TKCW",    "Task Control Word",                             4 },
+	{ V810::GSREG_SR + 24, 2, "CHCW",    "Cache Control Word",                            4 },
+	{ V810::GSREG_SR + 25, 1, "ADTRE",   "Address Trap Register",                         4 },
+
+	{ 0, 0, "----TSTAMP----", "", 0xFFFF },
+
+	{ V810::GSREG_TIMESTAMP,             2, "TStamp",  "Timestamp",                       3 },
+
+	{ 0, 0, "--------------", "", 0xFFFF },
+
+	{ 0, 0, "", "", 0 },
 };
 
 
@@ -528,11 +536,16 @@ static void MISC_SetRegister(const unsigned int id, const uint32 value)
 
 static const RegType Regs_Misc[] =
 {
-	{ TIMER_GSREG_TCR,	"TCR", "Timer Control Register", 1 },
-	{ TIMER_GSREG_DIVCOUNTER, "DivCounter", "Timer Clock Divider Counter", 2 },
-	{ TIMER_GSREG_RELOAD_VALUE, "ReloadValue", "Timer Reload Value", 2 },
-	{ TIMER_GSREG_COUNTER, "Counter", "Timer Counter Value", 2 },
-        { 0, "", "", 0 },
+	{ 0, 0, "------TIMER------", "", 0xFFFF },
+
+	{ TIMER_GSREG_TCR,         12, "TCR",         "Timer Control Register",      1 },
+	{ TIMER_GSREG_DIVCOUNTER,   3, "DivCounter",  "Timer Clock Divider Counter", 2 },
+	{ TIMER_GSREG_RELOAD_VALUE, 2, "ReloadValue", "Timer Reload Value",          2 },
+	{ TIMER_GSREG_COUNTER,      6, "Counter",     "Timer Counter Value",         2 },
+
+	{ 0, 0, "-----------------", "", 0xFFFF },
+
+	{ 0, 0, "", "", 0 },
 };
 
 static const RegGroupType RegsGroup_Misc =
@@ -546,36 +559,40 @@ static const RegGroupType RegsGroup_Misc =
 
 static const RegType Regs_VIP[] =
 {
-	{ VIP_GSREG_IPENDING,	"IPending", "Interrupts Pending", 2 },
-	{ VIP_GSREG_IENABLE,	"IEnable", "Interrupts Enabled", 2 },
+	{ 0, 0, "-----VIP-----", "", 0xFFFF },
 
-	{ VIP_GSREG_DPCTRL,	"DPCTRL", "DPCTRL", 2 },
+	{ VIP_GSREG_IPENDING,       1, "IPending",    "Interrupts Pending",          2 },
+	{ VIP_GSREG_IENABLE,        2, "IEnable",     "Interrupts Enabled",          2 },
 
-	{ VIP_GSREG_BRTA,	"BRTA", "BRTA", 1 },
-	{ VIP_GSREG_BRTB,	"BRTB", "BRTB", 1 },
-	{ VIP_GSREG_BRTC,	"BRTC", "BRTC", 1 },
-	{ VIP_GSREG_REST,	"REST", "REST", 1 },
-	{ VIP_GSREG_FRMCYC,	"FRMCYC", "FRMCYC", 1 },
-	{ VIP_GSREG_XPCTRL,	"XPCTRL", "XPCTRL", 2 },
+	{ VIP_GSREG_DPCTRL,         3, "DPCTRL",      "DPCTRL",                      2 },
 
-	{ VIP_GSREG_SPT0,	"SPT0", "SPT0", 2 },
-	{ VIP_GSREG_SPT1,	"SPT1", "SPT1", 2 },
-	{ VIP_GSREG_SPT2,	"SPT2", "SPT2", 2 },
-	{ VIP_GSREG_SPT3,	"SPT3", "SPT3", 2 },
+	{ VIP_GSREG_BRTA,           7, "BRTA",        "BRTA",                        1 },
+	{ VIP_GSREG_BRTB,           7, "BRTB",        "BRTB",                        1 },
+	{ VIP_GSREG_BRTC,           7, "BRTC",        "BRTC",                        1 },
+	{ VIP_GSREG_REST,           7, "REST",        "REST",                        1 },
+	{ VIP_GSREG_FRMCYC,         5, "FRMCYC",      "FRMCYC",                      1 },
+	{ VIP_GSREG_XPCTRL,         3, "XPCTRL",      "XPCTRL",                      2 },
 
-	{ VIP_GSREG_GPLT0,	"GPLT0", "GPLT0", 1 },
-	{ VIP_GSREG_GPLT1,	"GPLT1", "GPLT1", 1 },
-	{ VIP_GSREG_GPLT2,	"GPLT2", "GPLT2", 1 },
-	{ VIP_GSREG_GPLT3,	"GPLT3", "GPLT3", 1 },
+	{ VIP_GSREG_SPT0,           5, "SPT0",        "SPT0",                        2 },
+	{ VIP_GSREG_SPT1,           5, "SPT1",        "SPT1",                        2 },
+	{ VIP_GSREG_SPT2,           5, "SPT2",        "SPT2",                        2 },
+	{ VIP_GSREG_SPT3,           5, "SPT3",        "SPT3",                        2 },
 
-	{ VIP_GSREG_JPLT0,	"JPLT0", "JPLT0", 1 },
-	{ VIP_GSREG_JPLT1,	"JPLT1", "JPLT1", 1 },
-	{ VIP_GSREG_JPLT2,	"JPLT2", "JPLT2", 1 },
-	{ VIP_GSREG_JPLT3,	"JPLT3", "JPLT3", 1 },
+	{ VIP_GSREG_GPLT0,          6, "GPLT0",       "GPLT0",                       1 },
+	{ VIP_GSREG_GPLT1,          6, "GPLT1",       "GPLT1",                       1 },
+	{ VIP_GSREG_GPLT2,          6, "GPLT2",       "GPLT2",                       1 },
+	{ VIP_GSREG_GPLT3,          6, "GPLT3",       "GPLT3",                       1 },
 
-	{ VIP_GSREG_BKCOL,	"BKCOL", "BKCOL", 1 },
+	{ VIP_GSREG_JPLT0,          6, "JPLT0",       "JPLT0",                       1 },
+	{ VIP_GSREG_JPLT1,          6, "JPLT1",       "JPLT1",                       1 },
+	{ VIP_GSREG_JPLT2,          6, "JPLT2",       "JPLT2",                       1 },
+	{ VIP_GSREG_JPLT3,          6, "JPLT3",       "JPLT3",                       1 },
 
-        { 0, "", "", 0 },
+	{ VIP_GSREG_BKCOL,          6, "BKCOL",       "BKCOL",                       1 },
+
+	{ 0, 0, "-------------", "", 0xFFFF },
+
+	{ 0, 0, "", "", 0 },
 };
 
 static const RegGroupType RegsGroup_VIP =
