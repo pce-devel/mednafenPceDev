@@ -505,7 +505,8 @@ typedef enum
  AuxWriteBPS,
  OpBPS,
  ForceInt,
- TraceLogPrompt
+ TraceLogPrompt,
+ DisDump
 } PromptType;
 
 // FIXME, cleanup, less spaghetti:
@@ -687,6 +688,53 @@ class DebuggerPrompt : public HappyPrompt
                     trio_sscanf(tmp_c_str, "%x", &WatchAddrPhys);
                     WatchAddrPhys &= (((uint64)1 << CurGame->Debugger->PhysAddrBits) - 1);
                     WatchAddrPhys &= ~0xF;
+                   }
+                  }
+                  else if(InPrompt == DisDump)
+                  {
+                   uint32 A1, A2, tmpsize;
+                   char fname[256];
+                   bool acceptable = false;
+
+                   if(trio_sscanf(pstring.c_str(), "%08x %08x %255[^\r\n]", &A1, &A2, fname) == 3)
+                    acceptable = true;
+                   else if(trio_sscanf(pstring.c_str(), "%08x +%08x %255[^\r\n]", &A1, &tmpsize, fname) == 3)
+                   {
+                    acceptable = true;
+                    A2 = A1 + tmpsize - 1;
+                   }
+
+                   A1 &= ((1ULL << CurGame->Debugger->LogAddrBits) - 1);
+                   A1 &= ~(CurGame->Debugger->InstructionAlignment - 1);
+                   A2 &= ((1ULL << CurGame->Debugger->LogAddrBits) - 1);
+                   A2 &= ~(CurGame->Debugger->InstructionAlignment - 1);
+
+                   if (A2 < A1)
+                    acceptable = false;
+
+                   if(!acceptable)
+                    MDFND_OutputNotice(MDFN_NOTICE_ERROR, "Invalid disassembly specification.");
+                   else
+                   {           
+                    FileStream fp(fname, FileStream::MODE_WRITE);
+                    char loc_text[64];
+                    char dis_text[256];
+                    char eol_text[16];
+
+                    trio_snprintf(eol_text, sizeof(eol_text), "\n");
+
+                    while(A1 <= A2)
+                    {
+                     uint32 lastA = A1;
+                     CurGame->Debugger->Disassemble(A1, -1U, dis_text); // A1 is passed by reference to Disassemble()
+                     if (strchr(dis_text,'\t') == NULL)
+                     {
+                      trio_snprintf(loc_text, sizeof(loc_text), " %0*X: ", (CurGame->Debugger->LogAddrBits + 3) / 4, lastA);
+                      fp.write(loc_text, strlen(loc_text));
+                     }
+                     fp.write(dis_text, strlen(dis_text));
+                     fp.write(eol_text, strlen(eol_text));
+                    }
                    }
                   }
                   free(tmp_c_str);
@@ -880,8 +928,14 @@ void Debugger_GT_Draw(void)
   //printf("%08x %08x\n", A, DisAddr);
   CurGame->Debugger->Disassemble(A, ResyncAddr, dis_text_buf); // A is passed by reference to Disassemble()
 
+  char * dis_text_excl_addr = strchr(dis_text_buf,'\t');
+  if (dis_text_excl_addr == NULL)
+   dis_text_excl_addr = dis_text_buf;
+  else
+   while (*++dis_text_excl_addr == '\t');
+
   NewEntry.A = lastA;
-  NewEntry.text = std::string(dis_text_buf);
+  NewEntry.text = std::string(dis_text_excl_addr);
   NewEntry.COffs = 0xFFFFFFFF;
 
   const uint64 a_m_la  = (A - lastA) & ((1ULL << CurGame->Debugger->LogAddrBits) - 1);
@@ -964,7 +1018,7 @@ void Debugger_GT_Draw(void)
    uint32 color = pf_cache.MakeColor(0xFF, 0xFF, 0xFF, 0xFF);
    uint32 addr_color = pf_cache.MakeColor(0xA0, 0xA0, 0xFF, 0xFF);
 
-   trio_snprintf(addr_text, sizeof(addr_text), " %0*X%s", (CurGame->Debugger->LogAddrBits + 3) / 4, dis_A, (DisBuffer[dbi].ForcedResync ? "!!" : ": "));
+   trio_snprintf(addr_text, sizeof(addr_text), " %0*X%s", (CurGame->Debugger->LogAddrBits + 3) / 4, dis_A, (DisBuffer[dbi].ForcedResync ? "!! " : ":  "));
 
    if(dis_A == DisAddr && DisBuffer[dbi].COffs == DisCOffs)
    {
@@ -1839,6 +1893,15 @@ void Debugger_GT_Event(const SDL_Event *event)
 		  PromptTAKC = event->key.keysym.sym;
 		 }
 	         break;
+
+	 case SDLK_d:
+	 	if(!InPrompt)
+		{
+		 InPrompt = DisDump;
+		 myprompt = new DebuggerPrompt("Disassemble (start end filename)", "");
+		 PromptTAKC = event->key.keysym.sym;
+		}
+		break;
          }
          break;
   }
