@@ -109,12 +109,12 @@ static DECLFW(AC_PhysWrite)
 
 static DECLFW(SysCardRAMWrite)
 {
- SysCardRAM[A - 0x68 * 8192] = V;
+ SysCardRAM[A - 0x50 * 8192] = V;
 }
 
 static DECLFR(SysCardRAMRead)
 {
- return(SysCardRAM[A - 0x68 * 8192]);
+ return(SysCardRAM[A - 0x50 * 8192]);
 }
 
 static DECLFW(CDRAMWrite)
@@ -375,17 +375,17 @@ uint32 HuC_Load(Stream* s, bool DisableBRAM, SysCardType syscard)
   {
    if(syscard == SYSCARD_3 || syscard == SYSCARD_ARCADE)
    {
-    SysCardRAM = new uint8[24 * 8192];
+    SysCardRAM = new uint8[48 * 8192];
 
-    for(int x = 0x68; x < 0x80; x++)
+    for(int x = 0x50; x < 0x80; x++)
     {
-     ROMMap[x] = &SysCardRAM[(x - 0x68) * 8192] - x * 8192;
+     ROMMap[x] = &SysCardRAM[(x - 0x50) * 8192] - x * 8192;
      HuCPU.SetFastRead(x, ROMMap[x] + x * 8192);
 
      HuCPU.SetReadHandler(x, SysCardRAMRead);
      HuCPU.SetWriteHandler(x, SysCardRAMWrite);
     } 
-    MDFNMP_AddRAM(24 * 8192, 0x68 * 8192, SysCardRAM); 
+    MDFNMP_AddRAM(48 * 8192, 0x50 * 8192, SysCardRAM); 
    }
 
    if(syscard == SYSCARD_ARCADE)
@@ -514,7 +514,7 @@ void HuC_StateAction(StateMem *sm, const unsigned load, const bool data_only)
   SFPTR8(TsushinRAM, IsTsushin ? 32768 : 0, SFORMAT::FORM::NVMEM),
   SFPTR8(SaveRAM, (IsPopulous || IsTsushin || BRAM_Disabled) ? 0 : 2048, SFORMAT::FORM::NVMEM),
   SFPTR8(CDRAM, CDRAM ? (8192 * 8) : 0),
-  SFPTR8(SysCardRAM, SysCardRAM ? (8192 * 24) : 0),
+  SFPTR8(SysCardRAM, SysCardRAM ? (8192 * 48) : 0),
   SFVAR(HuCSF2Latch),
   SFEND
  };
@@ -601,7 +601,7 @@ void HuC_Power(void)
   memset(CDRAM, 0x00, 8 * 8192);
 
  if(SysCardRAM)
-  memset(SysCardRAM, 0x00, 24 * 8192);
+  memset(SysCardRAM, 0x00, 48 * 8192);
 
  if(arcade_card)
   arcade_card->Power();
