@@ -438,14 +438,14 @@ INLINE int32 MemDebugger::DrawWaveform(MDFN_Surface* surface, const int32 base_y
 
 INLINE void MemDebugger::DrawAtCursorInfo(MDFN_Surface* surface, const int32 base_y, const uint32 hcenterw)
 {
- static const int32 line_spacing = 12;
- static const unsigned fontid = MDFN_FONT_6x12;
+ static const int32 line_spacing = 16;
+ static const unsigned fontid = MDFN_FONT_6x13_12x13;
  char cpstr[64];
  uint8 zebytes[4];
  uint32 tmpval;
  uint32 cpplen;
  uint32 cplen;
- int32 x = 0;
+ int32 x = 4;
  int32 y = base_y;
  const uint64 asz = SizeCache[CurASpace];
  const int curpos_fw = (std::max<int>(12, 63 - MDFN_lzcount64(round_up_pow2(asz))) + 3) / 4;
@@ -453,10 +453,10 @@ INLINE void MemDebugger::DrawAtCursorInfo(MDFN_Surface* surface, const int32 bas
 
  ASpace->GetAddressSpaceBytes(ASpace->name.c_str(), curpos, 4, zebytes);
 
- x += 8;
- y += 5;
- trio_snprintf(cpstr, sizeof(cpstr), "<0x%0*X / 0x%llX>", curpos_fw, curpos, (unsigned long long)asz);
- cpplen = DrawText(surface, x, y, "Position: ", surface->MakeColor(0xa0, 0xa0, 0xFF, 0xFF), fontid);
+ x += 12;
+ y += 4;
+ trio_snprintf(cpstr, sizeof(cpstr), "< $%0*X / $%llX >", curpos_fw, curpos, (unsigned long long)asz);
+ cpplen = DrawText(surface, x, y, "Position:  ", surface->MakeColor(0xa0, 0xa0, 0xFF, 0xFF), fontid);
  cplen = DrawText(surface, x + cpplen, y, cpstr, surface->MakeColor(0xFF, 0xFF, 0xFF, 0xFF), fontid);
 
  //
@@ -466,43 +466,43 @@ INLINE void MemDebugger::DrawAtCursorInfo(MDFN_Surface* surface, const int32 bas
  {
   char ggddstr[64];
 
-  trio_snprintf(ggddstr, sizeof(ggddstr), "(0x%0*X+0x%0*X)", curpos_fw, (unsigned)GoGoPowerDD[CurASpace], curpos_fw, (unsigned)(curpos - GoGoPowerDD[CurASpace]));
+  trio_snprintf(ggddstr, sizeof(ggddstr), "($%0*X+$%0*X)", curpos_fw, (unsigned)GoGoPowerDD[CurASpace], curpos_fw, (unsigned)(curpos - GoGoPowerDD[CurASpace]));
   DrawText(surface, x + cpplen + cplen + 8, y, ggddstr, surface->MakeColor(0xFF, 0x80, 0x80, 0xFF), fontid);
  }
- x += 8;
+ x += 12;
  y += line_spacing;
 
  tmpval = zebytes[0];
- trio_snprintf(cpstr, sizeof(cpstr), "      0x%02x(%10u, %11d)", tmpval, (uint8)tmpval, (int8)tmpval);
- cpplen = DrawText(surface, x, y, "   1-byte: ", surface->MakeColor(0xA0, 0xA0, 0xFF, 0xFF), fontid);
+ trio_snprintf(cpstr, sizeof(cpstr), "      $%02x  (%10u, %11d)", tmpval, (uint8)tmpval, (int8)tmpval);
+ cpplen = DrawText(surface, x, y, "   1-byte:  ", surface->MakeColor(0xA0, 0xA0, 0xFF, 0xFF), fontid);
  DrawText(surface, x + cpplen, y, cpstr, surface->MakeColor(0xEF, 0xEF, 0xEF, 0xFF), fontid);
  y += line_spacing;
 
  tmpval = zebytes[0] | (zebytes[1] << 8);
- trio_snprintf(cpstr, sizeof(cpstr), "    0x%04x(%10u, %11d)", tmpval, (uint16)tmpval, (int16)tmpval);
- cpplen = DrawText(surface, x, y, "LE 2-byte: ", surface->MakeColor(0xA0, 0xA0, 0xFF, 0xFF), fontid);
+ trio_snprintf(cpstr, sizeof(cpstr), "    $%04x  (%10u, %11d)", tmpval, (uint16)tmpval, (int16)tmpval);
+ cpplen = DrawText(surface, x, y, "LE 2-byte:  ", surface->MakeColor(0xA0, 0xA0, 0xFF, 0xFF), fontid);
  DrawText(surface, x + cpplen, y, cpstr, surface->MakeColor(0xEF, 0xEF, 0xEF, 0xFF), fontid);
  y += line_spacing;
 
  tmpval = zebytes[0] | (zebytes[1] << 8) | (zebytes[2] << 16) | (zebytes[3] << 24);
- trio_snprintf(cpstr, sizeof(cpstr), "0x%08x(%10u, %11d)", tmpval, (uint32)tmpval, (int32)tmpval);
- cpplen = DrawText(surface, x, y, "LE 4-byte: ", surface->MakeColor(0xA0, 0xA0, 0xFF, 0xFF), fontid);
+ trio_snprintf(cpstr, sizeof(cpstr), "$%08x  (%10u, %11d)", tmpval, (uint32)tmpval, (int32)tmpval);
+ cpplen = DrawText(surface, x, y, "LE 4-byte:  ", surface->MakeColor(0xA0, 0xA0, 0xFF, 0xFF), fontid);
  DrawText(surface, x + cpplen, y, cpstr, surface->MakeColor(0xEF, 0xEF, 0xEF, 0xFF), fontid);
  y += line_spacing;
 
  tmpval = zebytes[1] | (zebytes[0] << 8);
- trio_snprintf(cpstr, sizeof(cpstr), "    0x%04x(%10u, %11d)", tmpval, (uint16)tmpval, (int16)tmpval);
- cpplen = DrawText(surface, x, y, "BE 2-byte: ", surface->MakeColor(0xA0, 0xA0, 0xFF, 0xFF), fontid);
+ trio_snprintf(cpstr, sizeof(cpstr), "    $%04x  (%10u, %11d)", tmpval, (uint16)tmpval, (int16)tmpval);
+ cpplen = DrawText(surface, x, y, "BE 2-byte:  ", surface->MakeColor(0xA0, 0xA0, 0xFF, 0xFF), fontid);
  DrawText(surface, x + cpplen, y, cpstr, surface->MakeColor(0xEF, 0xEF, 0xEF, 0xFF), fontid);
  y += line_spacing;
 
  tmpval = zebytes[3] | (zebytes[2] << 8) | (zebytes[1] << 16) | (zebytes[0] << 24);
- trio_snprintf(cpstr, sizeof(cpstr), "0x%08x(%10u, %11d)", tmpval, (uint32)tmpval, (int32)tmpval);
- cpplen = DrawText(surface, x, y, "BE 4-byte: ", surface->MakeColor(0xA0, 0xA0, 0xFF, 0xFF), fontid);
+ trio_snprintf(cpstr, sizeof(cpstr), "$%08x  (%10u, %11d)", tmpval, (uint32)tmpval, (int32)tmpval);
+ cpplen = DrawText(surface, x, y, "BE 4-byte:  ", surface->MakeColor(0xA0, 0xA0, 0xFF, 0xFF), fontid);
  DrawText(surface, x + cpplen, y, cpstr, surface->MakeColor(0xEF, 0xEF, 0xEF, 0xFF), fontid);
  y += line_spacing;
 
- trio_snprintf(cpstr, sizeof(cpstr), "%s text: ", GameCode.c_str());
+ trio_snprintf(cpstr, sizeof(cpstr), "%s text:  ", GameCode.c_str());
  cpplen = DrawText(surface, x, y, cpstr, surface->MakeColor(0xA0, 0xA0, 0xFF, 0xFF), fontid);
  {
   char rawbuf[64];
@@ -523,31 +523,32 @@ INLINE void MemDebugger::DrawAtCursorInfo(MDFN_Surface* surface, const int32 bas
    iconv(ict_game_to_utf8, (ICONV_CONST char **)&inbuf, &ibl, &outbuf, &obl);
    textbuf[obl_start - obl] = 0;
 
-   DrawText(surface, x + cpplen, y - 2, textbuf, surface->MakeColor(0xEF, 0xEF, 0xEF, 0xFF), MDFN_FONT_9x18_18x18);
+   DrawText(surface, x + cpplen, y - 1, textbuf, surface->MakeColor(0xEF, 0xEF, 0xEF, 0xFF), MDFN_FONT_9x18_18x18);
   }
  }
 }
 
-static const unsigned addr_font = MDFN_FONT_6x12; //5x7;
-static const int32 addr_left_padding = 1;
-static const int32 addr_right_padding = 3;
+static const unsigned addr_font = MDFN_FONT_6x13_12x13; //5x7;
+static const int32 addr_left_padding = 4;
+static const int32 addr_right_padding = 4;
 
-static const int32 byte_vspacing = 12;
+static const int32 byte_vspacing = 18;
 
-static const unsigned byte_hex_font = MDFN_FONT_6x12;
+static const unsigned byte_hex_font = MDFN_FONT_6x13_12x13;
 static const int32 byte_hex_font_width = 6;
 static const int32 byte_hex_spacing = 3 + (byte_hex_font_width * 2);
 static const int32 byte_hex_group_pad = 4; //3;
-static const int32 byte_hex_right_padding = 1;
+static const int32 byte_hex_right_padding = 4;
 
-static const unsigned byte_char_font = MDFN_FONT_5x7;
-static const int32 byte_char_y_adjust = (byte_vspacing - 4) / 2;
-static const int32 byte_char_font_width = 5;
-static const int32 byte_char_spacing = byte_char_font_width;
+static const unsigned byte_char_font = MDFN_FONT_6x13_12x13;
+static const int32 byte_char_y_adjust = 0;
+static const int32 byte_char_font_width = 6;
+static const int32 byte_char_spacing = byte_char_font_width + 1;
 
-static const int32 byte_bpr = 16;	// Bytes per row.
-static const int32 byte_minrows = 4;
-static const int32 byte_maxrows = 16;
+static const int32 byte_bpr = 32;	// Bytes per row.
+static const int32 byte_minrows = 1;
+static const int32 byte_maxrows = 24;
+static const int32 byte_prerows = 8;
 
 
 // Call this function from the game thread
@@ -558,11 +559,11 @@ void MemDebugger::Draw(MDFN_Surface *surface, const MDFN_Rect *rect, const MDFN_
 
  const uint32 curtime = Time::MonoMS();
  const MDFN_PixelFormat pf_cache = surface->format;
- int32 text_y = 0;
+ int32 text_y = 2;
  const uint64 zemod = SizeCache[CurASpace];
 
- DrawText(surface, 0, text_y, ASpace->long_name, pf_cache.MakeColor(0x20, 0xFF, 0x20, 0xFF), MDFN_FONT_6x12, rect->w);
- text_y += 12;
+ DrawText(surface, 0, text_y, ASpace->long_name, pf_cache.MakeColor(0x20, 0xFF, 0x20, 0xFF), MDFN_FONT_9x18_18x18, rect->w);
+ text_y += 21;
 
  if(ASpace->IsWave && SizeCache[CurASpace] <= 128 && ASpace->WaveBits <= 6)
  {
@@ -573,10 +574,13 @@ void MemDebugger::Draw(MDFN_Surface *surface, const MDFN_Rect *rect, const MDFN_
  uint32 A;
  uint32 Ameow; // A meow for a cat
 
- if(ASpacePos[CurASpace] < (byte_bpr * byte_maxrows / 2))
-  A = (SizeCache[CurASpace] - (byte_bpr * byte_maxrows / 2) + ASpacePos[CurASpace]) % SizeCache[CurASpace];
+ if(SizeCache[CurASpace] <= (byte_bpr * byte_maxrows))
+  A = 0;
  else
-  A = ASpacePos[CurASpace] - (byte_bpr * byte_maxrows / 2);
+ if(ASpacePos[CurASpace] < (byte_bpr * byte_prerows))
+  A = (SizeCache[CurASpace] - (byte_bpr * byte_prerows) + ASpacePos[CurASpace]) % SizeCache[CurASpace];
+ else
+  A = ASpacePos[CurASpace] - (byte_bpr * byte_prerows);
 
  Ameow = A - (A % byte_bpr);
 
@@ -601,7 +605,7 @@ void MemDebugger::Draw(MDFN_Surface *surface, const MDFN_Rect *rect, const MDFN_
   uint32 alen = addr_left_padding;
   uint32 addr_color = pf_cache.MakeColor(0xA0, 0xA0, 0xFF, 0xFF);
 
-  if(Ameow == (ASpacePos[CurASpace] & ~0xF))
+  if(Ameow == (ASpacePos[CurASpace] & ~(byte_bpr-1)))
    addr_color = pf_cache.MakeColor(0xB0, 0xC0, 0xFF, 0xFF);
 
   alen += DrawText(surface, alen, text_y, abuf, addr_color, addr_font);
@@ -609,8 +613,27 @@ void MemDebugger::Draw(MDFN_Surface *surface, const MDFN_Rect *rect, const MDFN_
 
   for(int x = 0; x < byte_bpr; x++)
   {
-   uint32 bcolor = pf_cache.MakeColor(0xEF, 0xEF, 0xEF, 0xEF);
-   uint32 acolor = pf_cache.MakeColor(0xA0, 0xB0, 0xA0, 0xFF);
+   uint32 bcolor = pf_cache.MakeColor(0xFF, 0xFF, 0xFF, 0xFF);
+   uint32 acolor = pf_cache.MakeColor(0xA0, 0xA0, 0xA0, 0xFF);
+
+   if (y & 4)
+   {
+    if(!(x & 1))
+    {
+     bcolor = (x & 2) ?
+      pf_cache.MakeColor(0xFF, 0x80, 0xFF, 0xFF):
+      pf_cache.MakeColor(0xA0, 0xFF, 0xFF, 0xFF);
+    }
+   }
+   else
+   {
+    if(!(x & 1))
+    {
+     bcolor = (x & 2) ?
+      pf_cache.MakeColor(0xA0, 0xFF, 0xFF, 0xFF):
+      pf_cache.MakeColor(0xFF, 0x80, 0xFF, 0xFF);
+    }
+   }
 
    char quickbuf[16];
    uint32 test_match_pos;
@@ -651,11 +674,11 @@ void MemDebugger::Draw(MDFN_Surface *surface, const MDFN_Rect *rect, const MDFN_
     if(InTextArea)
     {
      acolor = pf_cache.MakeColor(0xFF, 0x00, 0x00, 0xFF);
-     bcolor = pf_cache.MakeColor(0xFF, 0x80, 0x80, 0xFF);
+     bcolor = pf_cache.MakeColor(0xA0, 0xA0, 0xA0, 0xFF);
     }
     else
     {
-     acolor = pf_cache.MakeColor(0xFF, 0x80, 0x80, 0xFF);
+     acolor = pf_cache.MakeColor(0xFF, 0x80, 0xFF, 0xFF);
      bcolor = pf_cache.MakeColor(0xFF, 0x00, 0x00, 0xFF);
     }
    }
@@ -668,9 +691,10 @@ void MemDebugger::Draw(MDFN_Surface *surface, const MDFN_Rect *rect, const MDFN_
    Ameow++;
   }
   text_y += byte_vspacing;
+  if ((y & 7) == 7) text_y += 6;
  }
 
- DrawAtCursorInfo(surface, 10 + byte_maxrows * byte_vspacing, rect->w);
+ DrawAtCursorInfo(surface, 23 - 3 + 3 * 6 + byte_maxrows * byte_vspacing, rect->w);
  
  if(InPrompt)
   myprompt->Draw(surface, rect);
@@ -935,8 +959,8 @@ int MemDebugger::Event(const SDL_Event *event)
 			 break;
 
 
-         case SDLK_PAGEUP: ChangePos(-byte_bpr * byte_maxrows); break;
-	 case SDLK_PAGEDOWN: ChangePos(byte_bpr * byte_maxrows); break;
+	 case SDLK_PAGEUP: ChangePos(-byte_bpr * 16); break;
+	 case SDLK_PAGEDOWN: ChangePos(byte_bpr * 16); break;
 	 case SDLK_UP: ChangePos(-byte_bpr); break;
 	 case SDLK_DOWN: ChangePos(byte_bpr); break;
 	 case SDLK_LEFT: ChangePos(-1); break;
