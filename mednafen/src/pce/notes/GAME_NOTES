@@ -1,3 +1,26 @@
+---------------------------------------
+Relies on CD-ROM head-seek access time:
+---------------------------------------
+
+Brandish
+	Introduction scene (a few minutes in), female sorceress makes a fireball - switch to ADPCM makes excessive noise
+
+F1 Team Simulation Project F
+	At start, after horn honk, if too fast noise will occur
+
+Downtown Nekketsu Monogatari
+	Choose "fast" speed. Then go into bookstore in first town, and exit immediately. Improper voices continue for a long time
+
+Double Dragon II : The Return
+	Start should announce "Double Dragon" - this is cut short if insufficient time
+
+Mugen Senshi Valis
+	Intro cinema is initially slighlty off, but "after school" (the storm), everythign is off by over a second.
+
+
+
+
+
 ---------------------------------
 Mid-frame dot/pixel clock change:
 ---------------------------------
@@ -7,6 +30,15 @@ Asuka 120%
 Order of the Griffon
 
 Ryuuko no Ken
+
+
+
+----------------------------------------------------------------------------
+Rely on palette memory access to repeat last color for next-displayed pixel:
+----------------------------------------------------------------------------
+
+Dracula X
+	Level 5 has a 'shimmer' effect on the surface of water which takes advantage of this
 
 
 
