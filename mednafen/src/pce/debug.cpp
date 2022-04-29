@@ -304,9 +304,12 @@ static DisPCE DisObj;
 void PCEDBG_Disassemble(uint32 &a, uint32 SpecialA, char *TextBuf)
 {
 	uint16 tmpa = a;
-	std::string ret;
 
-	DisObj.Disassemble(tmpa, SpecialA, TextBuf);
+	PCE_InDebug++;
+	uint8 bank = HuCPU.GetMPR(tmpa);
+	PCE_InDebug--;
+
+	DisObj.Disassemble(tmpa, SpecialA, TextBuf, bank, PCE_IsCD);
 
 	a = tmpa;
 }
