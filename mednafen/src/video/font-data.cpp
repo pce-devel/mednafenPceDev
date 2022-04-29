@@ -29,7 +29,7 @@ const font5x7 FontData5x7[] =
 
 const font6x9 FontData6x9[] =
 {
-	#include "font6x9.h"
+	#include "font6x9-jcb.h"
 };
 /*
 const font6x10 FontData6x10[] =
