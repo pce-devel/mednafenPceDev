@@ -620,6 +620,10 @@ static uint32 GetRegister_HuC6280(const unsigned int id, char *special, const ui
  {
   return(PCE_TimestampBase + HuCPU.GetRegister(id, special, special_len));
  }
+ else if(id == HuC6280::GSREG_SECONDS)
+ {
+  return((uint32)(PCE_TimestampBase/PCE_MASTER_CLOCK));
+ }
  return(HuCPU.GetRegister(id, special, special_len));
 }
 
@@ -724,7 +728,8 @@ static const RegType Regs_HuC6280[] =
 
 	{ 0, 0, "---CLOCK---", "", 0xFFFF },
 
-	{ HuC6280::GSREG_STAMP, 1, "TS",   "Timestamp",         4 },
+	{ HuC6280::GSREG_SECONDS, 4, "Sec",  "Seconds",         2 },
+	{ HuC6280::GSREG_STAMP,   1, "TS",   "Timestamp",       4 },
 
 	{ 0, 0, "-----------", "", 0xFFFF },
 

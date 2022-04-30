@@ -192,6 +192,7 @@ class alignas(128) HuC6280
 	 GSREG_TIMV,
 	 GSREG_TIML,
 	 GSREG_TIMD,
+	 GSREG_SECONDS,
 	 GSREG_STAMP
 	};
 
