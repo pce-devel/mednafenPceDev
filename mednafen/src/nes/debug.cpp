@@ -116,6 +116,11 @@ static std::vector<BranchTraceResult> GetBranchTrace(void)
  return(ret);
 }
 
+uint32 NESDBG_GetStackPtr(void)
+{
+ return((uint32) X.S);
+}
+
 uint32 NESDBG_MemPeek(uint32 A, unsigned int bsize, bool hl, bool logical)
 {
  uint32 ret = 0;
@@ -506,6 +511,8 @@ DebuggerInfoStruct NESDBGInfo =
  16,
  0x0000, // Default watch addr
  0x0000, // ZP
+ 0x0100, // SP
+ NESDBG_GetStackPtr,
  NESDBG_MemPeek,
  NESDBG_Disassemble,
  NULL,

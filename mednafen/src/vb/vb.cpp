@@ -821,7 +821,9 @@ static DebuggerInfoStruct DBGInfo =
  32,
  32,
  0x00000000,
- ~0U,
+ ~0U,           // ZP
+ ~0U,           // SP
+ NULL,          // GetStackPtr
 
  VBDBG_MemPeek,
  VBDBG_Disassemble,

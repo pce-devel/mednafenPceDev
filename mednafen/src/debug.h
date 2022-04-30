@@ -132,6 +132,8 @@ struct DebuggerInfoStruct
  uint32 DefaultWatchAddr;
 
  uint32 ZPAddr; // Set to ~0U to disable
+ uint32 StackPageAddr; // Set to ~0U to disable
+ uint32 (*GetStackPtr)();
 
  // If logical is true, then do the peek/poke on logical address A, else do the
  // peek/poke on physical address A.  For now, this distinction only exists

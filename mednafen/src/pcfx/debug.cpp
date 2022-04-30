@@ -1095,7 +1095,9 @@ DebuggerInfoStruct PCFXDBGInfo =
  32,
  32,
  0x00000000,
- ~0U,
+ ~0U,           // ZP
+ ~0U,           // SP
+ NULL,          // GetStackPtr
 
  PCFXDBG_MemPeek,
  PCFXDBG_Disassemble,

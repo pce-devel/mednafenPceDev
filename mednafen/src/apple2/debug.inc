@@ -123,6 +123,11 @@ static uint8 PeekMem(uint16 A)
  return ret;
 }
 
+static uint32 GetStackPtr(void)
+{
+ return((uint32) CPU.SP);
+}
+
 static uint32 MemPeek(uint32 A, unsigned int bsize, bool hl, bool logical)
 {
  uint32 ret = 0;
@@ -507,6 +512,8 @@ static DebuggerInfoStruct DBGInfo =
  16,
  0x0000, // Default watch addr
  0x0000, // ZP
+ 0x0100, // ZP
+ GetStackPtr,
  MemPeek,
  Disassemble,
  NULL,

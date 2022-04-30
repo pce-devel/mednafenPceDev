@@ -601,7 +601,9 @@ DebuggerInfoStruct DBG_DBGInfo
  24,
 
  0x0000,
- ~0U,
+ ~0U,     // ZP
+ ~0U,     // SP
+ NULL,    // GetStackPtr
 
  MemPeek,
 
