@@ -509,10 +509,8 @@ uint32 HuC_Load(Stream* s, bool DisableBRAM, SysCardType syscard)
     const uint64 efp_size_tmp = esavefp.size();
 
     if(efp_size_tmp != 131072)
-     throw MDFN_Error(0, _("Memory Base 128 file \"%s\" is an incorrect size(%llu bytes).  The correct size is %llu bytes."), MDFN_strhumesc(ext_save_path).c_str(), (unsigned long long)efp_size_tmp, (unsigned long long)131072);
+     throw MDFN_Error(0, _("Memory Base 128 file \"%s\" is an incorrect size(%llu bytes).  The correct size is %llu bytes."), ext_save_path.c_str(), (unsigned long long)efp_size_tmp, (unsigned long long)131072);
     esavefp.read(MB128RAM, 0x20000);
-
-    LoadSaveMemory(MDFN_MakeFName(MDFNMKF_SAV, 0, "sav"), SaveRAM, 131072);
    }
    catch(MDFN_Error &e)
    {
