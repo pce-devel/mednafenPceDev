@@ -400,12 +400,12 @@ void VDC::IncRCR(void)
   switch(VPhase)
   {
    case VPHASE_VDS: VPhaseCounter = VDS_cache + 2;
+		    burst_mode = !(CR & 0xC0);
 		    break;
 
    case VPHASE_VDW: VPhaseCounter = VDW_cache + 1;
 		    //BG_YMoo = BYR - 1;
 		    RCRCount = 0;
-		    burst_mode = !(CR & 0xC0);
 		    NeedVBIRQTest = true;
 		    NeedSATDMATest = true;
 
