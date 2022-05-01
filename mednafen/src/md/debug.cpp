@@ -417,6 +417,8 @@ DebuggerInfoStruct DBGInfo =
  24,		// Physical address bits
  0xFF0000,	// Default watch address
  ~0U,		// ZP
+ ~0U,		// SP
+ NULL,		// GetStackPtr
 
  MemPeek,
  Disassemble,

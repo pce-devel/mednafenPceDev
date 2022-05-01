@@ -443,8 +443,8 @@ static void DrawZP(MDFN_Surface *surface, const int32 base_x, const int32 base_y
  const MDFN_PixelFormat pf_cache = surface->format;
  uint32 addr = CurGame->Debugger->ZPAddr;
 
- for(int y = -1; y < 17; y++)
-  for(int x = -1; x < 17; x++)
+ for(int y = -1; y < 16; y++)
+  for(int x = -1; x < 16; x++)
   {
    uint8 zebyte = CurGame->Debugger->MemPeek(addr, 1, 1, TRUE);
    char tbuf[32];
@@ -487,6 +487,54 @@ static void DrawZP(MDFN_Surface *surface, const int32 base_x, const int32 base_y
     addr++;
   }
 
+}
+
+static void DrawSP(MDFN_Surface *surface, const int32 base_x, const int32 base_y)
+{
+ const MDFN_PixelFormat pf_cache = surface->format;
+ uint32 addr = CurGame->Debugger->StackPageAddr;
+ uint32 sp = CurGame->Debugger->GetStackPtr();
+
+ char tbuf[32];
+ int r, g, b;
+ int y;
+
+ uint8 depth  = 12;    // this indicates how far down the stack the arrow will appear
+
+ uint8 stacktop = 0xff;  // assume it's only one page
+ uint8 stackbot = 0x00;  // assume it's only one page
+
+ uint8 toploc = stacktop;
+ if (toploc > (sp + depth)) toploc = sp + depth;
+ if ((uint32)(sp + depth) < (uint32)(stackbot + 15)) toploc = stackbot + 15;
+
+ y = -1;
+ r = 0x00;
+ g = 0xE0;
+ b = 0xE0;
+ trio_snprintf(tbuf, 32, "Stack");
+ DrawText(surface, base_x, base_y + (y + 1) * (1 * 9 + 2), tbuf, pf_cache.MakeColor(r, g, b, 0xFF), MDFN_FONT_6x9);
+
+ for(y = 0; y < 16; y++)
+ {
+   uint8 zebyte = CurGame->Debugger->MemPeek(addr+(toploc-y), 1, 1, TRUE);
+
+   r = 0x00;
+   g = 0xE0;
+   b = 0xE0;
+   if ((uint8) sp == (toploc-y)) {
+     trio_snprintf(tbuf, 32, ">");
+     DrawText(surface, base_x - 7, base_y + (y + 1) * (1 * 9 + 2), tbuf, pf_cache.MakeColor(r, g, b, 0xFF), MDFN_FONT_6x9);
+   }
+   trio_snprintf(tbuf, 32, "%2.2X", (toploc-y));
+   DrawText(surface, base_x, base_y + (y + 1) * (1 * 9 + 2), tbuf, pf_cache.MakeColor(r, g, b, 0xFF), MDFN_FONT_6x9);
+
+   r = 0xE0;
+   g = 0xE0;
+   b = 0xE0;
+   trio_snprintf(tbuf, 32, "%2.2X", zebyte);
+   DrawText(surface, base_x + (2 * 6 + 5), base_y + (y + 1) * (1 * 9 + 2), tbuf, pf_cache.MakeColor(r, g, b, 0xFF), MDFN_FONT_6x9);
+ }
 }
 
 typedef enum
@@ -1072,8 +1120,11 @@ void Debugger_GT_Draw(void)
  for(unsigned int rp = 0; rp < CurGame->Debugger->RegGroups->size(); rp++)
   Regs_DrawGroup((*CurGame->Debugger->RegGroups)[rp], surface, rect->w - 3 - RegsTotalWidth + RegsColsPixOffset[rp], (InRegs && RegsPosX == rp) ? (int)RegsPosY : -1, RegsWhichFont[rp]); // 175
 
+ if(CurGame->Debugger->StackPageAddr != (uint32)~0UL)
+  DrawSP(surface, 434, 295);
+
  if(CurGame->Debugger->ZPAddr != (uint32)~0UL)
-  DrawZP(surface, 446, 284);
+  DrawZP(surface, 472, 295);
 
  static const int moo = 8;
  static const int fontw = 6;

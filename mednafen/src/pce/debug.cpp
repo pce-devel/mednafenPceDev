@@ -224,6 +224,11 @@ void PCEDBG_CheckBP(int type, uint32 address, unsigned int len)
 }
 
 
+uint32 PCEDBG_GetStackPtr(void)
+{
+ return(HuCPU.GetRegister(HuC6280::GSREG_SP));
+}
+
 uint32 PCEDBG_MemPeek(uint32 A, unsigned int bsize, bool hl, bool logical)
 {
  uint32 ret = 0;
@@ -693,6 +698,7 @@ static const RegType Regs_HuC6280[] =
 	{ HuC6280::GSREG_SP,    7, "SP",   "Stack Pointer",     1 },
 	{ HuC6280::GSREG_P,     8, "P",    "Status",            1 },
 
+	{ 0, 0, "   NVTBDIZC", "", 0xFFFF },
 	{ 0, 0, "----MPR----", "", 0xFFFF },
 
 	{ HuC6280::GSREG_MPR0,  5, "MPR0", "MPR0",              1 },
@@ -1164,6 +1170,8 @@ DebuggerInfoStruct PCEDBGInfo =
  21,
  0x2000,
  0x2000, // ZP
+ 0x2100, // SP
+ PCEDBG_GetStackPtr,
 
  PCEDBG_MemPeek,
  PCEDBG_Disassemble,

@@ -625,7 +625,9 @@ static DebuggerInfoStruct DBGInfo =
  16,
  20,
  0x0000,
- ~0U,
+ ~0U,           // ZP
+ ~0U,           // SP
+ NULL,          // GetStackPtr
 
  WSwanDBG_MemPeek,
  WSwanDBG_Disassemble,

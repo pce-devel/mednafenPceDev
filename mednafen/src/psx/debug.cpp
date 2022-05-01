@@ -424,6 +424,8 @@ DebuggerInfoStruct PSX_DBGInfo =
  32,		// Physical address bits
  0x00000000,	// Default watch addr
  ~0U,		// ZP addr
+ ~0U,		// SP addr
+ NULL,		// GetStackPtr
 
  MemPeek,
  Disassemble,
