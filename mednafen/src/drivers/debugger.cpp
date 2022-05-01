@@ -1121,10 +1121,10 @@ void Debugger_GT_Draw(void)
   Regs_DrawGroup((*CurGame->Debugger->RegGroups)[rp], surface, rect->w - 3 - RegsTotalWidth + RegsColsPixOffset[rp], (InRegs && RegsPosX == rp) ? (int)RegsPosY : -1, RegsWhichFont[rp]); // 175
 
  if(CurGame->Debugger->StackPageAddr != (uint32)~0UL)
-  DrawSP(surface, 434, 295);
+  DrawSP(surface, 434, 306);
 
  if(CurGame->Debugger->ZPAddr != (uint32)~0UL)
-  DrawZP(surface, 472, 295);
+  DrawZP(surface, 472, 306);
 
  static const int moo = 8;
  static const int fontw = 6;
