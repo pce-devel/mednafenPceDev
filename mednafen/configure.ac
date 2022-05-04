@@ -6,7 +6,7 @@ AC_CONFIG_MACRO_DIR([m4])
 #
 # Avoid trailing and leading zeroes in the decimal version components to avoid confusing not-so-learned people.
 #
-MEDNAFEN_VERSION='1.29.0'
+MEDNAFEN_VERSION='1.29.0.pceDev-1.0'
 MEDNAFEN_VERSION_NUMERIC=0x00102900
 #                        0xJJJnnnRR
 
