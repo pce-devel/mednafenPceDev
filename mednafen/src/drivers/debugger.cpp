@@ -60,6 +60,7 @@ static int volatile DMTV_BackBuffer;
 static MDFN_Surface* volatile DMTV_Surface;
 static MDFN_Rect* volatile DMTV_Rect;
 
+static bool HaltOnAltD;
 //
 // Used for translating mouse coordinates and whatnot.  Doesn't really matter if it's not atomically updated, there
 // are sanity checks to prevent dividing by zero, and it'll just cause mouse coordinate translation to be wonky for a tiny fraction of a second.
@@ -160,8 +161,10 @@ static unsigned long long ParsePhysAddr(const char *za)
 
 static void UpdateCoreHooks(void)
 {
+ HaltOnAltD = MDFN_GetSettingB("debugger.haltondebug");
+
  bool BPInUse = PCBreakPoints.size() || ReadBreakpoints.size() || WriteBreakpoints.size() || IOReadBreakpoints.size() ||
-	IOWriteBreakpoints.size() || AuxReadBreakpoints.size() || AuxWriteBreakpoints.size() || OpBreakpoints.size();
+	IOWriteBreakpoints.size() || AuxReadBreakpoints.size() || AuxWriteBreakpoints.size() || OpBreakpoints.size() || HaltOnAltD;
  bool CPUCBNeeded = BPInUse || TraceLog || InSteppingMode || (NeedStep == 2);
 
  CurGame->Debugger->EnableBranchTrace(BPInUse || TraceLog || IsActive);
@@ -1516,8 +1519,12 @@ bool Debugger_IsActive(void)
 bool Debugger_GT_Toggle(void)
 {
  if(CurGame->Debugger)
-  SetActive(!IsActive, WhichMode);
+ {
+  if (HaltOnAltD && !IsActive)
+   Debugger_GT_ForceSteppingMode();
 
+  SetActive(!IsActive, WhichMode);
+ }
  return IsActive;
 }
 
