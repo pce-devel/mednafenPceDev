@@ -7,7 +7,7 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITPCES FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
@@ -30,6 +30,39 @@
 #include <mednafen/cdrom/scsicd.h>
 #include <mednafen/hw_misc/arcade_card/arcade_card.h>
 
+
+#define PCELOG_STDOUT   0
+#define PCEFONT_STRINGSEARCH   0
+
+#define CD_BOOT         0xE000
+#define CD_RESET        0xE003
+#define CD_BASE         0xE006
+#define CD_READ         0xE009
+#define CD_SEEK         0xE00C
+#define CD_EXEC         0xE00F
+#define CD_PLAY         0xE012
+#define CD_SEARCH       0xE015
+#define CD_PAUSE        0xE018
+#define CD_STAT         0xE01B
+#define CD_SUBQ         0xE01E
+#define CD_DINFO        0xE021
+#define CD_CONTNTS      0xE024
+#define CD_SUBRD        0xE027
+#define CD_PCMRD        0xE02A
+#define CD_FADE         0xE02D
+#define AD_RESET        0xE030
+#define AD_TRANS        0xE033
+#define AD_READ         0xE036
+#define AD_WRITE        0xE039
+#define AD_PLAY         0xE03C
+#define AD_CPLAY        0xE03F
+#define AD_STOP         0xE042
+#define AD_STAT         0xE045
+#define EX_GETVER       0xE05A
+#define EX_SETVEC       0xE05D
+#define EX_GETFNT       0xE060
+#define EX_VSYNC        0xE07B
+
 namespace MDFN_IEN_PCE
 {
 
@@ -44,6 +77,7 @@ static PCE_PSG *psg = NULL;
 static bool IsSGX;
 
 static void RedoDH(void);
+static void SyscardFuncLog(uint32 PC);
 
 //
 //
@@ -356,13 +390,9 @@ static bool CPUHandler(uint32 PC)
   CPUCB(PC, FoundBPoint);
  }
 
- if(PC == 0xe060 && PCE_LoggingOn && PCE_IsCD)
- {
-  uint16 sjis_glyph;
+ if((PC >= CD_BOOT && PC <= EX_VSYNC) && PCE_LoggingOn && PCE_IsCD)
+   SyscardFuncLog(PC);
 
-  sjis_glyph = HuCPU.PeekLogical(0x20F8) | (HuCPU.PeekLogical(0x20F9) << 8);
-  PCEDBG_DoLog("BIOS", "Call EX_GETFNT from $%04X, ax=0x%04x = %s", LastPC, sjis_glyph, PCEDBG_ShiftJIS_to_UTF8(sjis_glyph));
- }
  LastPC = PC;
  PCE_InDebug--;
  assert(!PCE_InDebug);
@@ -371,6 +401,553 @@ static bool CPUHandler(uint32 PC)
  MachineStateChanged = 0;
  return(ret);
 }
+
+static int32 FindInMem(uint16 StartAddr, uint16 EndAddr, uint8 *buf, uint16 LenBytes)
+ {
+  uint16 ptr;
+  uint16 cntr;
+  int32 ret = -1;   /* success = addr; fail = -1 */
+  int found = 0;
+
+  for (ptr = StartAddr; ptr < EndAddr; ptr++)
+  {
+   if (HuCPU.PeekLogical(ptr) == *buf)
+   {
+    found = 1;
+    for (cntr = 1; cntr < LenBytes; cntr++)
+    {
+     if (HuCPU.PeekLogical(ptr+cntr) != *(buf+cntr))
+     {
+      found = 0;
+      break;
+     }
+    }
+   }
+   if (found == 1)
+    break;
+  }
+
+  if (found == 1)
+   ret = ptr;
+
+  return(ret);
+ }
+
+ extern uint64 PCE_TimestampBase;
+ static void SyscardFuncLog(uint32 PC)
+ {
+  uint8 AL, AH, BL, BH, CL, CH, DL, DH;
+  uint8 mpr[8];
+  uint16 temp1, temp2;
+  char buf1[128], buf2[128], buf3[128];
+
+  uint64 currtimestamp;
+
+  static uint64 cdstat_lasttimestamp = 0;
+  static uint16 cdstat_freq = 0;
+  uint64 cdstat_threshold = PCE_MASTER_CLOCK / 90;
+
+  static uint64 adstat_lasttimestamp = 0;
+  static uint16 adstat_freq = 0;
+  uint64 adstat_threshold = PCE_MASTER_CLOCK / 90;
+
+  static uint64 getfnt_lasttimestamp = 0;
+  static uint16 getfnt_index = 0;
+  uint64 getfnt_threshold = PCE_MASTER_CLOCK / 90;
+
+  AL = HuCPU.PeekLogical(0x20F8);
+  AH = HuCPU.PeekLogical(0x20F9);
+  BL = HuCPU.PeekLogical(0x20FA);
+  BH = HuCPU.PeekLogical(0x20FB);
+  CL = HuCPU.PeekLogical(0x20FC);
+  CH = HuCPU.PeekLogical(0x20FD);
+  DL = HuCPU.PeekLogical(0x20FE);
+  DH = HuCPU.PeekLogical(0x20FF);
+
+  mpr[0] = HuCPU.GetRegister(HuC6280::GSREG_MPR0);
+  mpr[1] = HuCPU.GetRegister(HuC6280::GSREG_MPR1);
+  mpr[2] = HuCPU.GetRegister(HuC6280::GSREG_MPR2);
+  mpr[3] = HuCPU.GetRegister(HuC6280::GSREG_MPR3);
+  mpr[4] = HuCPU.GetRegister(HuC6280::GSREG_MPR4);
+  mpr[5] = HuCPU.GetRegister(HuC6280::GSREG_MPR5);
+  mpr[6] = HuCPU.GetRegister(HuC6280::GSREG_MPR6);
+  mpr[7] = HuCPU.GetRegister(HuC6280::GSREG_MPR7);
+
+  currtimestamp = PCE_TimestampBase + HuCPU.GetRegister(HuC6280::GSREG_STAMP);
+
+  /* if int32, rollover occurs at ~199 seconds */
+  if (currtimestamp < cdstat_lasttimestamp)
+   cdstat_lasttimestamp = currtimestamp;
+
+  if (currtimestamp < adstat_lasttimestamp)
+   adstat_lasttimestamp = currtimestamp;
+
+  if (currtimestamp < getfnt_lasttimestamp)
+   getfnt_lasttimestamp = currtimestamp;
+
+  /* if beyond threshold, reset counter */
+  if ((currtimestamp - cdstat_lasttimestamp) > cdstat_threshold)
+   cdstat_freq = 0;
+
+  if ((currtimestamp - adstat_lasttimestamp) > adstat_threshold)
+   adstat_freq = 0;
+
+  if ((currtimestamp - getfnt_lasttimestamp) > getfnt_threshold)
+   getfnt_index = 0;
+
+
+  if(PC == CD_READ)
+  {
+   temp1 = (BH << 8) | BL;
+   temp2 = (AH << 8) | AL;
+
+   if (DH == 1)
+    PCEDBG_DoLog("BIOS", "Call CD_READ from $%04X, SRC=%02X%02X%02X, DEST=LOC $%04X (Bank $%02X), LEN=$%02X sectors", LastPC, CL, CH, DL, temp1, mpr[temp1 >>13], AL);
+
+   else if (DH == 0xFE)
+    PCEDBG_DoLog("BIOS", "Call CD_READ from $%04X, SRC=%02X%02X%02X, DEST=VRAM $%04X, LEN=$%04X bytes", LastPC, CL, CH, DL, temp1, temp2);
+
+   else if (DH == 0xFF)
+    PCEDBG_DoLog("BIOS", "Call CD_READ from $%04X, SRC=%02X%02X%02X, DEST=VRAM $%04X, LEN=$%02X sectors", LastPC, CL, CH, DL, temp1, AL);
+
+   else if ((DH > 1) && (DH < 7))
+    PCEDBG_DoLog("BIOS", "Call CD_READ from $%04X, SRC=%02X%02X%02X, DEST=BANK $%02X, LEN=$%02X sectors", LastPC, CL, CH, DL, BL, AL);
+
+   else
+    PCEDBG_DoLog("BIOS", "Call CD_READ from $%04X, BAD parms AL/AH, BL/BH, CL/CH, DL/DH = %02X/%02X, %02X/%02X, %02X/%02X, %02x/%02X", LastPC, AL, AH, BL, BH, CL, CH, DL, DH);
+  }
+
+  if(PC == CD_SEEK)
+  {
+   PCEDBG_DoLog("BIOS", "Call CD_SEEK from $%04X, DEST=%02X%02X%02X", LastPC, CL, CH, DL);
+  }
+
+  if(PC == CD_EXEC)
+  {
+   temp1 = (BH << 8) | BL;
+
+   if (DH == 1)
+    PCEDBG_DoLog("BIOS", "Call CD_EXEC from $%04X, SRC=%02X%02X%02X, DEST=LOC $%04X (Bank $%02X), LEN=$%02X sectors", LastPC, CL, CH, DL, temp1, mpr[temp1>>13], AL);
+
+   else if ((DH > 1) && (DH < 7))
+    PCEDBG_DoLog("BIOS", "Call CD_EXEC from $%04X, SRC=%02X%02X%02X, DEST=BANK $%02X, LEN=$%02X sectors", LastPC, CL, CH, DL, BL, AL);
+
+   else
+    PCEDBG_DoLog("BIOS", "Call CD_EXEC from $%04X, BAD parms AL/AH, BL/BH, CL/CH, DL/DH = %02X/%02X, %02X/%02X, %02X/%02X, %02x/%02X", LastPC, AL, AH, BL, BH, CL, CH, DL, DH);
+  }
+
+  if(PC == CD_PLAY)
+  {
+   if ((BH & 0xC0) == 0)    /* LBA */
+    trio_snprintf(buf1, 128, "Start LBA %02X%02X%02X", AL, AH, BL);
+
+   else if ((BH & 0xC0) == 0x40)    /* MSF */
+    trio_snprintf(buf1, 128, "Start MSF %02X:%02X.%02X", AL, AH, BL);
+
+   else if ((BH & 0xC0) == 0x80)    /* track */
+    trio_snprintf(buf1, 128, "Start Track %02X", AL);
+
+   else if ((BH & 0xC0) == 0xC0)    /* current */
+    trio_snprintf(buf1, 128, "Start Current Loc.");
+
+
+   if ((DH & 0xC0) == 0)    /* LBA */
+    trio_snprintf(buf2, 128, "End LBA %02X%02X%02X", CL, CH, DL);
+
+   else if ((DH & 0xC0) == 0x40)    /* MSF */
+    trio_snprintf(buf2, 128, "End MSF %02X:%02X.%02X", CL, CH, DL);
+
+   else if ((DH & 0xC0) == 0x80)    /* track */
+    trio_snprintf(buf2, 128, "End Track %02X", CL);
+
+   else if ((DH & 0xC0) == 0xC0)    /* current */
+    trio_snprintf(buf2, 128, "End Leadout");
+
+
+   if ((DH & 0xBF) == 0)    /* Mute */
+    trio_snprintf(buf3, 128, "Mode=Mute");
+
+   else if ((DH & 0xBF) == 1)    /* Infinite Repeat */
+    trio_snprintf(buf3, 128, "Mode=Infin. Repeat");
+
+   else if ((DH & 0xBF) == 2)    /* Normal, Drive Busy */
+    trio_snprintf(buf3, 128, "Mode=Normal:Drive Busy");
+
+   else if ((DH & 0xBF) == 3)    /* Normal, Return Immed. */
+    trio_snprintf(buf3, 128, "Mode=Normal:Return Immed.");
+
+   else if ((DH & 0xBF) == 4)    /* Unchanged */
+    trio_snprintf(buf3, 128, "Mode=Unchanged");
+   else    /* Everything else */
+    trio_snprintf(buf3, 128, "Mode= $%02X", DH);
+
+
+   PCEDBG_DoLog("BIOS", "Call CD_PLAY from $%04X %s %s %s", LastPC, buf1, buf2, buf3);
+  }
+
+  if(PC == CD_SEARCH)
+  {
+   if ((BH & 0x1) == 0)    /* Return When Done */
+    trio_snprintf(buf1, 128, "Return When Done");
+   else                    /* Return Immed. */
+    trio_snprintf(buf1, 128, "Return Immed.");
+
+   if ((BH & 0x2) == 0)    /* Pause */
+    trio_snprintf(buf2, 128, "Pause");
+   else                    /* Play */
+    trio_snprintf(buf2, 128, "Play");
+
+   if ((BH & 0xFC) == 0)            /* LBA */
+    PCEDBG_DoLog("BIOS", "Call CD_SEARCH from $%04X, Start LBA %02X%02X%02X, %s, %s", LastPC, AL, AH, BL, buf2, buf1);
+
+   else if ((BH & 0xFC) == 0x40)    /* MSF */
+    PCEDBG_DoLog("BIOS", "Call CD_SEARCH from $%04X, Start MSF %02X:%02X.%02X, %s, %s", LastPC, AL, AH, BL, buf2, buf1);
+
+   else if ((BH & 0xFC) == 0x80)    /* track */
+    PCEDBG_DoLog("BIOS", "Call CD_SEARCH from $%04X, Start Track %02X, %s, %s", LastPC, AL, buf2, buf1);
+
+   else if ((BH & 0xC0) == 0xC0)    /* current */
+    PCEDBG_DoLog("BIOS", "Call CD_SEARCH from $%04X, Bad Parms AL/AH, BL/BH, CL/CH, DL/DH = %02X/%02X, %02X/%02X, %02X/%02X, %02X/%02X", LastPC, AL, AH, BL, BH, CL, CH, DL, DH);
+  }
+
+  if(PC == CD_PAUSE)
+  {
+   PCEDBG_DoLog("BIOS", "Call CD_PAUSE from $%04X", LastPC);
+  }
+
+  if(PC == CD_STAT)
+  {
+   temp1 = HuCPU.GetRegister(HuC6280::GSREG_A);
+
+   trio_snprintf(buf1, 128, " ");
+
+ /*printf("prev = %08X, curr = %08X, diff = %08X, cdstat_freq = %02X\n", cdstat_lasttimestamp, currtimestamp, (currtimestamp - cdstat_lasttimestamp), cdstat_freq);*/
+
+   /* if less than 1/30 sec between calls, mark once then suppress */
+   if ((currtimestamp - cdstat_lasttimestamp) < cdstat_threshold)
+   {
+    if (cdstat_freq > 0)
+     trio_snprintf(buf1, 128, ", Frequent (suppressed)");  /* show message on the second log */
+
+    if (cdstat_freq < 10)
+     cdstat_freq++;
+   }
+
+   if (cdstat_freq <= 2)
+   {
+    if (temp1 == 0)
+     PCEDBG_DoLog("BIOS", "Call CD_STAT from $%04X, Drive busy check%s", LastPC, buf1);
+
+    else
+     PCEDBG_DoLog("BIOS", "Call CD_STAT from $%04X, Drive ready check%s", LastPC, buf1);
+   }
+
+   cdstat_lasttimestamp = currtimestamp;
+  }
+
+  if(PC == CD_SUBQ)
+  {
+   temp1 = (BH << 8) | BL;
+   PCEDBG_DoLog("BIOS", "Call CD_SUBQ from $%04X, Buffer addr = $%04X (Bank $%02X)", LastPC, temp1, mpr[temp1>>13]);
+  }
+
+  if(PC == CD_DINFO)
+  {
+   temp1 = (BH << 8) | BL;
+
+   if (AL == 0)
+    trio_snprintf(buf1, 128, "Min/Max Track");
+
+   else if (AL == 1)
+    trio_snprintf(buf1, 128, "Leadout MSF");
+
+   else if (AL == 2)
+    trio_snprintf(buf1, 128, "Track MSF/SUBQ (Track %02X)", AH);
+
+   else if (AL == 3)
+    trio_snprintf(buf1, 128, "Track LBA/SUBQ (Track %02X)", AH);
+
+   else
+    trio_snprintf(buf1, 128, "Invalid Request ($%02X)", AL);
+
+
+   PCEDBG_DoLog("BIOS", "Call CD_DINFO from $%04X, Buffer=$%04X (Bank $%02X), %s", LastPC, temp1, mpr[temp1>>13], buf1);
+  }
+
+  if(PC == CD_CONTNTS)
+  {
+   PCEDBG_DoLog("BIOS", "Call CD_CONTNTS from $%04X", LastPC);
+  }
+
+  if(PC == CD_SUBRD)
+  {
+   PCEDBG_DoLog("BIOS", "Call CD_SUBRD from $%04X", LastPC);
+  }
+
+  if(PC == CD_PCMRD)
+  {
+   temp1 = HuCPU.GetRegister(HuC6280::GSREG_A);
+
+   if (temp1 == 0)
+    PCEDBG_DoLog("BIOS", "Call CD_PCMRD from $%04X, Right channel", LastPC);
+   else
+    PCEDBG_DoLog("BIOS", "Call CD_PCMRD from $%04X, Left channel", LastPC);
+  }
+
+  if(PC == CD_FADE)
+  {
+   temp1 = HuCPU.GetRegister(HuC6280::GSREG_A);
+
+   if (temp1 == 0)
+    trio_snprintf(buf1, 128, "Cancel Fade");
+
+   else if (temp1 == 8)
+    trio_snprintf(buf1, 128, "PCM Fadeout 6.0 sec");
+
+   else if (temp1 == 0x0A)
+    trio_snprintf(buf1, 128, "ADPCM Fadeout 6.0 sec");
+
+   else if (temp1 == 0x0C)
+    trio_snprintf(buf1, 128, "PCM Fadeout 2.5 sec");
+
+   else if (temp1 == 0x0E)
+    trio_snprintf(buf1, 128, "ADPCM Fadeout 2.5 sec");
+
+   else
+   trio_snprintf(buf1, 128, "Error Value $%02X", temp1);
+
+
+   PCEDBG_DoLog("BIOS", "Call CD_FADE from $%04X, %s", LastPC, buf1);
+  }
+
+  if(PC == AD_RESET)
+  {
+   PCEDBG_DoLog("BIOS", "Call AD_RESET from $%04X", LastPC);
+  }
+
+  if(PC == AD_TRANS)
+  {
+   temp1 = (BH << 8) | BL;
+
+   if (DH == 0)
+    PCEDBG_DoLog("BIOS", "Call AD_TRANS from $%04X, SRC=%02X%02X%02X, DEST=ADPCM $%04X, LEN=$%02X sectors", LastPC, CL, CH, DL, temp1, AL);
+
+   else
+    PCEDBG_DoLog("BIOS", "Call AD_TRANS from $%04X, SRC=%02X%02X%02X, DEST=ADPCM (Current), LEN=$%02X sectors", LastPC, CL, CH, DL, AL);
+  }
+
+  if(PC == AD_READ)
+  {
+   temp1 = (BH << 8) | BL;
+   temp2 = (CH << 8) | CL;
+
+   if (DH == 0)
+    PCEDBG_DoLog("BIOS", "Call AD_READ from $%04X, SRC=ADPCM $%04X, DEST=LOC $%04X (Bank $%02X)", LastPC, temp2, temp1, mpr[temp1>>13]);
+
+   else if (DH == 0xff)
+    PCEDBG_DoLog("BIOS", "Call AD_READ from $%04X, SRC=ADPCM $%04X, DEST=VRAM $%04X", LastPC, temp2, temp1);
+
+   else if ((DH >=2) && (DH <= 6))
+    PCEDBG_DoLog("BIOS", "Call AD_READ from $%04X, SRC=ADPCM $%04X, DEST=Bank $%02X", LastPC, temp2, BL);
+
+   else
+    PCEDBG_DoLog("BIOS", "Call AD_READ from $%04X, bad registers AL/AH = %02X/%02X, BL/BH = %02X/%02X, CL/CH = %02X/%02X, DL/DH = %02X/%02X", LastPC, AL, AH, BL, BH, CL, CH, DL, DH);
+  }
+
+  if(PC == AD_WRITE)
+  {
+   temp1 = (BH << 8) | BL;
+   temp2 = (CH << 8) | CL;
+
+   if (DH == 0)
+    PCEDBG_DoLog("BIOS", "Call AD_WRITE from $%04X, SRC=LOC $%04X (Bank $%02X), DEST=ADPCM $%04X, NUMBYTES=$%04X", LastPC, temp1, mpr[temp1>>13], temp2, ((AH<<8)|AL));
+
+   else if (DH == 0xff)
+    PCEDBG_DoLog("BIOS", "Call AD_WRITE from $%04X, SRC=VRAM $%04X, DEST=ADPCM $%04X, NUMBYTES=$%04X", LastPC, temp1, temp2, ((AH<<8)|AL));
+
+   else if ((DH >=2) && (DH <= 6))
+    PCEDBG_DoLog("BIOS", "Call AD_WRITE from $%04X, SRC=Bank $%02X, DEST=ADPCM $%04X, NUMBYTES=$%04X", LastPC, BL, temp2, ((AH<<8)|AL));
+
+   else
+    PCEDBG_DoLog("BIOS", "Call AD_WRITE from $%04X, bad registers AL/AH = %02X/%02X, BL/BH = %02X/%02X, CL/CH = %02X/%02X, DL/DH = %02X/%02X", LastPC, AL, AH, BL, BH, CL, CH, DL, DH);
+  }
+
+  if(PC == AD_PLAY)
+  {
+   temp1 = (BH << 8) | BL;
+   temp2 = (AH << 8) | AL;
+
+   if ((DL & 0x80) == 0)
+    trio_snprintf(buf1, 128, "Play Mode: Auto-stop");
+   else
+    trio_snprintf(buf1, 128, "Play Mode: Repeat");
+
+   if ((DL & 1) == 0)
+    trio_snprintf(buf2, 128, "Cntr Mode: Set ADR,Len,Rate");
+   else
+    trio_snprintf(buf2, 128, "Cntr Mode: Set PREV ADR,Len,Rate");
+
+   PCEDBG_DoLog("BIOS", "Call AD_PLAY from $%04X, SRC=ADPCM $%04X, LEN=$%04X bytes, FREQ=%dKHz, %s, %s", LastPC, temp1, temp2, 32/(16-(DH & 0x0f)), buf1, buf2);
+  }
+
+  if(PC == AD_CPLAY)
+  {
+   PCEDBG_DoLog("BIOS", "Call AD_CPLAY from $%04X, SRC LBA=%02X%02X%02X, NumRec=%02X%02X%02X, FREQ=%d KHz", LastPC, CL, CH, DL, BL, AH, AL, 32/(16-(DH & 0x0f)) );
+  }
+
+  if(PC == AD_STOP)
+  {
+   PCEDBG_DoLog("BIOS", "Call AD_STOP from $%04X", LastPC);
+  }
+
+  if(PC == AD_STAT)
+  {
+   trio_snprintf(buf1, 128, " ");
+
+   /* if less than 1/30 sec between calls, mark once then suppress */
+   if ((currtimestamp - adstat_lasttimestamp) < adstat_threshold)
+   {
+    if (adstat_freq > 0)
+     trio_snprintf(buf1, 128, ", Frequent (suppressed)");  /* show message on the second log */
+
+    if (adstat_freq < 10)
+     adstat_freq++;
+   }
+
+   if (adstat_freq <= 2)
+   {
+    PCEDBG_DoLog("BIOS", "Call AD_STAT from $%04X%s", LastPC, buf1);
+   }
+
+   adstat_lasttimestamp = currtimestamp;
+  }
+
+  if(PC == EX_GETVER)
+  {
+   PCEDBG_DoLog("BIOS", "Call EX_GETVER from $%04X", LastPC);
+  }
+
+  if(PC == EX_SETVEC)
+  {
+   temp1 = HuCPU.GetRegister(HuC6280::GSREG_A);
+   temp2 = (HuCPU.GetRegister(HuC6280::GSREG_Y) << 8) | HuCPU.GetRegister(HuC6280::GSREG_X);
+
+   if (temp1 == 0)
+    trio_snprintf(buf1, 128, "IRQ2");
+
+   else if (temp1 == 1)
+    trio_snprintf(buf1, 128, "IRQ1");
+
+   else if (temp1 == 2)
+    trio_snprintf(buf1, 128, "TIMER");
+
+   else if (temp1 == 3)
+    trio_snprintf(buf1, 128, "NMI");
+
+   else if (temp1 == 4)
+    trio_snprintf(buf1, 128, "SYNC");
+
+   else if (temp1 == 5)
+    trio_snprintf(buf1, 128, "RCR");
+
+   else if (temp1 == 6)
+    trio_snprintf(buf1, 128, "SOFT RESET");
+
+   else
+    trio_snprintf(buf1, 128, "INVALID ($%02X)", temp1);
+
+   PCEDBG_DoLog("BIOS", "Call EX_SETVEC from $%04X, Set %s to $%04X (Bank $%02X)", LastPC, buf1, temp2, mpr[temp2>>13]);
+  }
+
+  if(PC == EX_GETFNT)
+  {
+   uint16 sjis_glyph;
+   static int32 found_loc1 = -1;
+   static int32 found_loc2 = -1;
+   static int32 ptr_loc = -1;
+   static bool found = FALSE;
+   static uint8 getfnt_buf[2000];
+   uint8 getfnt_ptr[10];
+
+   temp1 = (BH << 8) | BL;
+   sjis_glyph = HuCPU.PeekLogical(0x20F8) | (HuCPU.PeekLogical(0x20F9) << 8);
+
+   if (DH == 0)
+    trio_snprintf(buf1, 128, "16x16");
+
+   else if (DH == 1)
+    trio_snprintf(buf1, 128, "12x12");
+
+   else
+    trio_snprintf(buf1, 128, "     ");
+
+#if PCEFONT_STRINGSEARCH
+   /* if less than 1/30 sec between calls, mark once then suppress */
+   if ((currtimestamp - getfnt_lasttimestamp) > getfnt_threshold)
+   {
+    getfnt_index = 0;
+    getfnt_buf[0] = AH;
+    getfnt_buf[1] = AL;
+    found = FALSE;
+   }
+   else
+   {
+    getfnt_index++;
+    getfnt_buf[(getfnt_index * 2)] = AH;
+    getfnt_buf[(getfnt_index * 2) + 1] = AL;
+
+    if ((getfnt_index >= 3) && !found)
+    {
+
+     found_loc1 = FindInMem(0x0000, 0xFFFF, &getfnt_buf[0], (getfnt_index + 1) * 2);
+
+     if (found_loc1 > -1)
+     {
+      found_loc2 = FindInMem(found_loc1 + 1, 0xFFFF, &getfnt_buf[0], (getfnt_index + 1) * 2);
+
+      if (found_loc2 == -1)  /* found exactly one instance */
+      {
+       found = TRUE;
+       getfnt_ptr[0] = found_loc1 & 0xff;
+       getfnt_ptr[1] = found_loc1 >> 8;
+
+       ptr_loc = FindInMem(0x0000, 0xFFFF, &getfnt_ptr[0], 2);
+       if (ptr_loc > -1)  /* definitve string; also found ptr */
+       {
+        trio_snprintf(buf2, 128, "Found string @ $%04X (Bank $%02X), ptr @ $%04X (Bank $%02X)", found_loc1, mpr[found_loc1>>13], ptr_loc, mpr[ptr_loc>>13]);
+       }
+       else  /* definitve string; ptr not found*/
+       {
+        trio_snprintf(buf2, 128, "Found string @ $%04X (Bank $%02X), ptr not located", found_loc1, mpr[found_loc1>>13]);
+       }
+      }
+      else /* found more than one instance of string */
+      {
+        trio_snprintf(buf2, 128, "Found string candidates @ $%04X (Bank $%02X), @ $%04X (Bank $%02X)", found_loc1, mpr[found_loc1>13], found_loc2, mpr[found_loc2>>13]);
+      }
+     }
+     else /* did not find string in mem */
+     {
+        trio_snprintf(buf2, 128, " ");
+     }
+    }
+    else
+    {
+     found_loc1 = -1;  /* turn off the second line, since the string was already located */
+    }
+   }
+#endif // PCEFONT_STRINGSEARCH
+
+   PCEDBG_DoLog("BIOS", "Call EX_GETFNT from $%04X, Buf=$%04X (Bank $%02X), SJIS=0x%04X = %s, FontNum=%02X (%s)", LastPC, temp1, mpr[temp1>>13], sjis_glyph, PCEDBG_ShiftJIS_to_UTF8(sjis_glyph), DH, buf1);
+
+#if PCEFONT_STRINGSEARCH   
+   if (found_loc1 > -1)
+    PCEDBG_DoLog("BIOS", "     EX_GETFNT String Search:  %s", buf2);
+#endif // PCEFONT_STRINGSEARCH
+
+   getfnt_lasttimestamp = currtimestamp;
+  }
+ }
 
 static DECLFR(ReadHandler)
 {
@@ -545,10 +1122,20 @@ void PCEDBG_DoLog(const char *type, const char *format, ...)
  {
   char *temp;
 
+#if PCELOG_STDOUT
+   uint64 currtimestamp;
+   currtimestamp = PCE_TimestampBase + HuCPU.GetRegister(HuC6280::GSREG_STAMP);
+#endif
+
   va_list ap;
   va_start(ap, format);
 
   temp = trio_vaprintf(format, ap);
+#if PCELOG_STDOUT
+   fprintf(stdout, "%012lu:%s:%s\n", currtimestamp, type, temp);
+   fflush(stdout);
+#endif
+
   LogFunc(type, temp);
   free(temp);
 
