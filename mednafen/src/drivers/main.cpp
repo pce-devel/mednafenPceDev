@@ -178,6 +178,7 @@ static const MDFNSetting DriverSettings[] =
   #ifdef WANT_DEBUGGER
   { "debugger.autostepmode", MDFNSF_NOFLAGS, gettext_noop("Automatically go into the debugger's step mode after a game is loaded."), NULL, MDFNST_BOOL, "0" },
   { "debugger.haltondebug", MDFNSF_NOFLAGS, gettext_noop("Halt (enter step mode) when Alt-D is pressed to enter debug mode."), NULL, MDFNST_BOOL, "1" },
+  { "debugger.opacity", MDFNSF_NOFLAGS, gettext_noop("Opacity of the debug overlay, over top of the game screen"), NULL, MDFNST_UINT, "200", "0", "255" },
   #endif
 
   { "osd.message_display_time", MDFNSF_NOFLAGS, gettext_noop("Length of time, in milliseconds, to display internal status and error messages"), gettext_noop("Time lengths less than 100ms are recommended against unless you understand you may miss important non-fatal error messages, and that the input configuration process may become unusable."), MDFNST_UINT, "2500", "0", "15000" },
