@@ -63,7 +63,7 @@ class MemDebugger
 
  int CurASpace; // Current address space number
 
- bool LowNib;
+ uint8 Nybnum;
  bool InEditMode;
  bool InTextArea; // Right side text vs left side numbers, selected via TAB
 

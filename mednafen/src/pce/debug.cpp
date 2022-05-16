@@ -862,11 +862,13 @@ static int32 FindInMem(uint16 StartAddr, uint16 EndAddr, uint8 *buf, uint16 LenB
   if(PC == EX_GETFNT)
   {
    uint16 sjis_glyph;
+#if PCEFONT_STRINGSEARCH
    static int32 found_loc1 = -1;
    static int32 found_loc2 = -1;
    static int32 ptr_loc = -1;
    static bool found = FALSE;
    static uint8 getfnt_buf[2000];
+#endif
    uint8 getfnt_ptr[10];
 
    temp1 = (BH << 8) | BL;
@@ -1829,20 +1831,20 @@ void PCEDBG_Init(bool sgx, PCE_PSG *new_psg, const uint32 vram_size)
   ASpace_Add(GetAddressSpaceBytes, PutAddressSpaceBytes, "physical", "CPU Physical", 21);
   ASpace_Add(GetAddressSpaceBytes, PutAddressSpaceBytes, "ram", "RAM", IsSGX ? 15 : 13);
 
-  ASpace_Add(Do16BitGet, Do16BitPut, "pram", "VCE Palette RAM", 10);
+  ASpace_Add16(Do16BitGet, Do16BitPut, "pram", "VCE Palette RAM", 10, 0, ENDIAN_LITTLE);
 
   vram_addr_mask = (vram_size - 1);
   if(IsSGX)
   {
-   ASpace_Add(Do16BitGet, Do16BitPut, "vram0", "VDC-A VRAM", MDFN_log2(vram_size) + 1);
-   ASpace_Add(Do16BitGet, Do16BitPut, "sat0", "VDC-A SAT", 8 + 1);
-   ASpace_Add(Do16BitGet, Do16BitPut, "vram1", "VDC-B VRAM", MDFN_log2(vram_size) + 1);
-   ASpace_Add(Do16BitGet, Do16BitPut, "sat1", "VDC-B SAT", 8 + 1);
+   ASpace_Add16(Do16BitGet, Do16BitPut, "vram0", "VDC-A VRAM", MDFN_log2(vram_size) + 1, 0, ENDIAN_LITTLE);
+   ASpace_Add16(Do16BitGet, Do16BitPut, "sat0", "VDC-A SAT", 8 + 1, 0, ENDIAN_LITTLE);
+   ASpace_Add16(Do16BitGet, Do16BitPut, "vram1", "VDC-B VRAM", MDFN_log2(vram_size) + 1, 0, ENDIAN_LITTLE);
+   ASpace_Add16(Do16BitGet, Do16BitPut, "sat1", "VDC-B SAT", 8 + 1, 0, ENDIAN_LITTLE);
   }
   else
   {
-   ASpace_Add(Do16BitGet, Do16BitPut, "vram0", "VDC VRAM", MDFN_log2(vram_size) + 1);
-   ASpace_Add(Do16BitGet, Do16BitPut, "sat0", "VDC SAT", 8 + 1);
+   ASpace_Add16(Do16BitGet, Do16BitPut, "vram0", "VDC VRAM", MDFN_log2(vram_size) + 1, 0, ENDIAN_LITTLE);
+   ASpace_Add16(Do16BitGet, Do16BitPut, "sat0", "VDC SAT", 8 + 1, 0, ENDIAN_LITTLE);
   }
 
   if(PCE_IsCD)
