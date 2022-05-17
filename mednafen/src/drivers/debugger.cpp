@@ -1297,7 +1297,7 @@ static void MDFN_COLD SetActive(bool active, unsigned which_ms)
    if(NeedInit)
    {
     DisFont = MDFN_GetSettingUI(std::string(std::string(CurGame->shortname) + "." + "debugger.disfontsize"));
-    DebuggerOpacity = 0xC8;
+    DebuggerOpacity = MDFN_GetSettingUI("debugger.opacity");
 
     // Debug remove me
 #if 0
@@ -1533,6 +1533,7 @@ void Debugger_GT_ModOpacity(int deltalove)
  DebuggerOpacity += deltalove;
  if(DebuggerOpacity < 0) DebuggerOpacity = 0;
  if(DebuggerOpacity > 0xFF) DebuggerOpacity = 0xFF;
+ MDFNI_SetSettingUI("debugger.opacity", DebuggerOpacity);
 }
 
 void Debugger_GT_Event(const SDL_Event *event)
