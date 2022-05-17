@@ -177,6 +177,7 @@ static const MDFNSetting DriverSettings[] =
 
   #ifdef WANT_DEBUGGER
   { "debugger.autostepmode", MDFNSF_NOFLAGS, gettext_noop("Automatically go into the debugger's step mode after a game is loaded."), NULL, MDFNST_BOOL, "0" },
+  { "debugger.fractionalscaling", MDFNSF_NOFLAGS, gettext_noop("Denominator for debug screen scaling to fit window. '1' for integer multiples only. '2' = halves - 1x, 1.5x, etc."), NULL, MDFNST_UINT, "1", "1", "5" },
   { "debugger.haltondebug", MDFNSF_NOFLAGS, gettext_noop("Halt (enter step mode) when Alt-D is pressed to enter debug mode."), NULL, MDFNST_BOOL, "1" },
   { "debugger.opacity", MDFNSF_NOFLAGS, gettext_noop("Opacity of the debug overlay, over top of the game screen"), NULL, MDFNST_UINT, "200", "0", "255" },
   #endif

@@ -824,8 +824,9 @@ void Debugger_MT_DrawToScreen(const MDFN_PixelFormat& pf, signed screen_w, signe
  MDFN_Surface* debsurf = DMTV_Surface;
  MDFN_Rect* debrect = DMTV_Rect;
  MDFN_Rect zederect;
- int xm = screen_w / debrect->w;
- int ym = screen_h / debrect->h;
+ int scale_fraction = MDFN_GetSettingUI("debugger.fractionalscaling");
+ int xm = (screen_w * scale_fraction) / debrect->w;
+ int ym = (screen_h * scale_fraction) / debrect->h;
 
  debsurf->SetFormat(pf, true);
 
@@ -836,8 +837,8 @@ void Debugger_MT_DrawToScreen(const MDFN_PixelFormat& pf, signed screen_w, signe
  if(xm > ym) xm = ym;
  if(ym > xm) ym = xm;
 
- zederect.w = debrect->w * xm;
- zederect.h = debrect->h * ym;
+ zederect.w = (debrect->w * xm) / scale_fraction;
+ zederect.h = (debrect->h * ym) / scale_fraction;
 
  zederect.x = (screen_w - zederect.w) / 2;
  zederect.y = (screen_h - zederect.h) / 2;
