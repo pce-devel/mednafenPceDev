@@ -47,6 +47,12 @@ typedef enum
  ASPACE_WFMT_SIGNED_ONES,	// Signed one's complement
 } ASpace_WFMT;
 
+typedef enum
+{
+ ENDIAN_LITTLE = 0,	// least signifcant byte first
+ ENDIAN_BIG		// Most significant byte first
+} ASpace_ENDIANNESS;	// Still room for more if weird ones come later
+
 //
 // Visible to CPU, physical, RAM, ROM, ADPCM RAM, etc etc.
 //
@@ -66,6 +72,9 @@ struct AddressSpaceType
 
 	// Non-power-of-2 size.  Normally 0, unless the size of the address space isn't a power of 2!
 	uint32 NP2Size;
+
+	uint8 Wordbytes;
+	uint8 Endianness;
 
 	bool IsWave;
 	ASpace_WFMT WaveFormat;	// TODO
@@ -195,6 +204,10 @@ int ASpace_Add(void (*gasb)(const char *name, uint32 Address, uint32 Length, uin
         uint32 TotalBits, uint32 NP2Size = 0);
 
 int ASpace_Add(const AddressSpaceType &);
+
+int ASpace_Add16(void (*gasb)(const char *name, uint32 Address, uint32 Length, uint8 *Buffer),
+        void (*pasb)(const char *name, uint32 Address, uint32 Length, uint32 Granularity, bool hl, const uint8 *Buffer), const char *name, const char *long_name,
+        uint32 TotalBits, uint32 NP2Size = 0, uint8 Endianness = ENDIAN_LITTLE);
 
 // Removes all registered address spaces.
 void ASpace_Reset(void);

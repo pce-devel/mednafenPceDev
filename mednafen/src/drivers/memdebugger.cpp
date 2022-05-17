@@ -204,10 +204,11 @@ void MemDebugger::PromptFinish(const std::string &pstring)
 
 	  if(trio_sscanf(pstring.c_str(), "%llx", &NewAddie) == 1)
 	  {
-	   ASpacePos[CurASpace] = NewAddie;
-	   LowNib = false;
+	   ASpacePos[CurASpace] = (NewAddie * ASpace->Wordbytes);
+	   Nybnum = ASpace->Wordbytes * 2 - 1;
+
 	   if(which == GotoDD)
-	    GoGoPowerDD[CurASpace] = NewAddie;
+	    GoGoPowerDD[CurASpace] = (NewAddie * ASpace->Wordbytes);
 	  }
          }
 	 else if(which == SetCharset)
@@ -236,7 +237,15 @@ void MemDebugger::PromptFinish(const std::string &pstring)
           {           
 	   FileStream fp(fname, FileStream::MODE_WRITE);
            uint8 write_buffer[256];
-           uint64 a = A1;
+           uint64 a;
+
+	   if (ASpace->Wordbytes == 2)
+	   {
+	    A1 = A1 * 2; // adjust offsets if representing word-size memory
+	    A2 = A2 * 2 + 1;
+	   }
+
+           a = A1;
 
 	   //printf("%08x %08x\n", A1, A2);
 
@@ -275,7 +284,15 @@ void MemDebugger::PromptFinish(const std::string &pstring)
           {
            FileStream fp(fname, FileStream::MODE_READ);
 	   uint8 read_buffer[256];
-	   uint64 a = A1;
+	   uint64 a;
+
+	   if (ASpace->Wordbytes == 2)
+	   {
+	    A1 = A1 * 2; // adjust offsets if representing word-size memory
+	    A2 = A2 * 2 + 1;
+	   }
+
+	   a = A1;
 
 	   while(a <= A2)
 	   {
@@ -326,6 +343,12 @@ void MemDebugger::PromptFinish(const std::string &pstring)
            uint8 byte_buffer[16];
            char line_buffer[256];
 
+	   if (ASpace->Wordbytes == 2)
+	   {
+	    A1 = A1 * 2; // adjust offsets if representing word-size memory
+	    A2 = A2 * 2 + 1;
+	   }
+
            const uint64 zemod = SizeCache[CurASpace];
 
            while(A1 <= A2)
@@ -337,11 +360,33 @@ void MemDebugger::PromptFinish(const std::string &pstring)
 
             ASpace->GetAddressSpaceBytes(ASpace->name.c_str(), A1, to_write, byte_buffer);
 
-            line_pointer += trio_snprintf(line_pointer, line_buffer + sizeof(line_buffer) - line_pointer, " %0*X:  .db ", (std::max<int>(12, 63 - MDFN_lzcount64(round_up_pow2(zemod))) + 3) / 4, A1);
+	    if (ASpace->Wordbytes == 2)
+	    {
+             line_pointer += trio_snprintf(line_pointer, line_buffer + sizeof(line_buffer) - line_pointer, " %0*X:  .dw ", (std::max<int>(12, 63 - MDFN_lzcount64(round_up_pow2(zemod))) + 3) / 4, (A1 / ASpace->Wordbytes) );
+	    }
+	    else
+	    {
+             line_pointer += trio_snprintf(line_pointer, line_buffer + sizeof(line_buffer) - line_pointer, " %0*X:  .db ", (std::max<int>(12, 63 - MDFN_lzcount64(round_up_pow2(zemod))) + 3) / 4, A1);
+	    }
 
-            for (size_t i = 0; i != to_write; ++i)
+            for (size_t i = 0; i < to_write; ++i)
             {
-             line_pointer += trio_snprintf(line_pointer, line_buffer + sizeof(line_buffer) - line_pointer, " $%02X,", byte_buffer[i]);
+             if (i != 0)
+              line_pointer += trio_snprintf(line_pointer, line_buffer + sizeof(line_buffer) - line_pointer - 1, ",");
+
+             if (ASpace->Wordbytes == 2)
+	     {
+              if (ASpace->Endianness == ENDIAN_LITTLE)
+               line_pointer += trio_snprintf(line_pointer, line_buffer + sizeof(line_buffer) - line_pointer, " $%04X", ((byte_buffer[i+1] << 8) + byte_buffer[i]) );
+	      else
+               line_pointer += trio_snprintf(line_pointer, line_buffer + sizeof(line_buffer) - line_pointer, " $%04X", ((byte_buffer[i] << 8) + byte_buffer[i+1]) );
+
+	      i++;
+	     }
+	     else
+	     {
+              line_pointer += trio_snprintf(line_pointer, line_buffer + sizeof(line_buffer) - line_pointer, " $%02X", byte_buffer[i]);
+	     }
             }
             line_pointer += trio_snprintf(line_pointer, line_buffer + sizeof(line_buffer) - line_pointer, "\n");
 
@@ -428,7 +473,7 @@ void MemDebugger::SetActive(bool newia)
   if(!newia)
   {
    InEditMode = false;
-   LowNib = false;
+   Nybnum = ASpace->Wordbytes * 2 - 1;
   }
  }
 }
@@ -511,7 +556,7 @@ INLINE void MemDebugger::DrawAtCursorInfo(MDFN_Surface* surface, const int32 bas
 
  x += 12;
  y += 4;
- trio_snprintf(cpstr, sizeof(cpstr), "< $%0*X / $%llX >", curpos_fw, curpos, (unsigned long long)asz);
+ trio_snprintf(cpstr, sizeof(cpstr), "< $%0*X / $%llX >", curpos_fw, (curpos / ASpace->Wordbytes), (unsigned long long)(asz / ASpace->Wordbytes) );
  cpplen = DrawText(surface, x, y, "Position:  ", surface->MakeColor(0xa0, 0xa0, 0xFF, 0xFF), fontid);
  cplen = DrawText(surface, x + cpplen, y, cpstr, surface->MakeColor(0xFF, 0xFF, 0xFF, 0xFF), fontid);
 
@@ -528,10 +573,13 @@ INLINE void MemDebugger::DrawAtCursorInfo(MDFN_Surface* surface, const int32 bas
  x += 12;
  y += line_spacing;
 
- tmpval = zebytes[0];
- trio_snprintf(cpstr, sizeof(cpstr), "      $%02x  (%10u, %11d)", tmpval, (uint8)tmpval, (int8)tmpval);
- cpplen = DrawText(surface, x, y, "   1-byte:  ", surface->MakeColor(0xA0, 0xA0, 0xFF, 0xFF), fontid);
- DrawText(surface, x + cpplen, y, cpstr, surface->MakeColor(0xEF, 0xEF, 0xEF, 0xFF), fontid);
+ if ( ASpace->Wordbytes == 1)
+ {
+  tmpval = zebytes[0];
+  trio_snprintf(cpstr, sizeof(cpstr), "      $%02x  (%10u, %11d)", tmpval, (uint8)tmpval, (int8)tmpval);
+  cpplen = DrawText(surface, x, y, "   1-byte:  ", surface->MakeColor(0xA0, 0xA0, 0xFF, 0xFF), fontid);
+  DrawText(surface, x + cpplen, y, cpstr, surface->MakeColor(0xEF, 0xEF, 0xEF, 0xFF), fontid);
+ }
  y += line_spacing;
 
  tmpval = zebytes[0] | (zebytes[1] << 8);
@@ -607,16 +655,16 @@ INLINE void MemDebugger::DrawAtCursorInfo(MDFN_Surface* surface, const int32 bas
   y += line_spacing;
 
   tmpval = (zebytes[0] | (zebytes[1] << 8)) - 32;
-  trio_snprintf(cpstr, sizeof(cpstr), "  %4d  ", tmpval, (uint16)tmpval, (int16)tmpval);
+  trio_snprintf(cpstr, sizeof(cpstr), "  %4d  ", tmpval);
   cpplen = DrawText(surface, x, y, "X-Position:   ", surface->MakeColor(0xA0, 0xA0, 0xFF, 0xFF), fontid);
   cpplen2 = DrawText(surface, x + cpplen, y, cpstr, surface->MakeColor(0xEF, 0xEF, 0xEF, 0xFF), fontid);
   width = ((zebytes[7] & 0x01) == 1) ? 32: 16;
-  trio_snprintf(cpstr, sizeof(cpstr), "Pix: %d", width, (uint16)width, (int16)width);
+  trio_snprintf(cpstr, sizeof(cpstr), "Pix: %d", width);
   cpplen2 = DrawText(surface, x + cpplen + cpplen2, y, cpstr, surface->MakeColor(0xEF, 0xEF, 0xEF, 0xFF), fontid);
   y += line_spacing;
 
   tmpval = (zebytes[2] | (zebytes[3] << 8)) - 64;
-  trio_snprintf(cpstr, sizeof(cpstr), "  %4d  ", tmpval, (uint16)tmpval, (int16)tmpval);
+  trio_snprintf(cpstr, sizeof(cpstr), "  %4d  ", tmpval);
   cpplen = DrawText(surface, x, y, "Y-Position:   ", surface->MakeColor(0xA0, 0xA0, 0xFF, 0xFF), fontid);
   cpplen2 = DrawText(surface, x + cpplen, y, cpstr, surface->MakeColor(0xEF, 0xEF, 0xEF, 0xFF), fontid);
   height = 16;
@@ -625,12 +673,12 @@ INLINE void MemDebugger::DrawAtCursorInfo(MDFN_Surface* surface, const int32 bas
   } else if ((zebytes[7] & 0x30) == 0x30) {
    height = 64;
   }
-  trio_snprintf(cpstr, sizeof(cpstr), "Pix: %d", height, (uint16)height, (int16)height);
+  trio_snprintf(cpstr, sizeof(cpstr), "Pix: %d", height);
   cpplen2 = DrawText(surface, x + cpplen + cpplen2, y, cpstr, surface->MakeColor(0xEF, 0xEF, 0xEF, 0xFF), fontid);
   y += line_spacing;
 
   tmpval = ((zebytes[4] | (zebytes[5] << 8)) & 0x7ff) << 5 ;
-  trio_snprintf(cpstr, sizeof(cpstr), " $%04X  ", tmpval, (uint16)tmpval, (int16)tmpval);
+  trio_snprintf(cpstr, sizeof(cpstr), " $%04X  ", tmpval);
   cpplen = DrawText(surface, x, y, "Pattern Addr: ", surface->MakeColor(0xA0, 0xA0, 0xFF, 0xFF), fontid);
   DrawText(surface, x + cpplen, y, cpstr, surface->MakeColor(0xEF, 0xEF, 0xEF, 0xFF), fontid);
   y += line_spacing;
@@ -653,7 +701,6 @@ INLINE void MemDebugger::DrawAtCursorInfo(MDFN_Surface* surface, const int32 bas
   else {
    cpplen = DrawText(surface, x, y, "On Screen", surface->MakeColor(0x7F, 0xFF, 0x7F, 0xFF), fontid);
   }
-
 
  }
 }
@@ -691,6 +738,8 @@ void MemDebugger::Draw(MDFN_Surface *surface, const MDFN_Rect *rect, const MDFN_
  const MDFN_PixelFormat pf_cache = surface->format;
  int32 text_y = 2;
  const uint64 zemod = SizeCache[CurASpace];
+ uint8 wordsize = ASpace->Wordbytes;
+ uint8 endian = ASpace->Endianness;
 
  DrawText(surface, 0, text_y, ASpace->long_name, pf_cache.MakeColor(0x20, 0xFF, 0x20, 0xFF), MDFN_FONT_9x18_18x18, rect->w);
  text_y += 21;
@@ -725,12 +774,18 @@ void MemDebugger::Draw(MDFN_Surface *surface, const MDFN_Rect *rect, const MDFN_
  {
   uint8 byte_buffer[byte_bpr];
   char abuf[32];
+  uint32 disp_addr;
 
   Ameow %= zemod;
 
   ASpace->GetAddressSpaceBytes(ASpace->name.c_str(), Ameow, byte_bpr, byte_buffer);
 
-  trio_snprintf(abuf, 32, "%0*X:", (std::max<int>(12, 63 - MDFN_lzcount64(round_up_pow2(zemod))) + 3) / 4, Ameow);
+  if (wordsize == 2)
+   disp_addr = Ameow >> 1;
+  else
+   disp_addr = Ameow;
+
+  trio_snprintf(abuf, 32, "%0*X:", (std::max<int>(12, 63 - MDFN_lzcount64(round_up_pow2(zemod))) + 3) / 4, disp_addr);
 
   uint32 alen = addr_left_padding;
   uint32 addr_color = pf_cache.MakeColor(0xA0, 0xA0, 0xFF, 0xFF);
@@ -741,10 +796,18 @@ void MemDebugger::Draw(MDFN_Surface *surface, const MDFN_Rect *rect, const MDFN_
   alen += DrawText(surface, alen, text_y, abuf, addr_color, addr_font);
   alen += addr_right_padding;
 
-  for(int x = 0; x < byte_bpr; x++)
+  for(uint32 column = 0; column < byte_bpr; column++)
   {
    uint32 bcolor = pf_cache.MakeColor(0xFF, 0xFF, 0xFF, 0xFF);
    uint32 acolor = pf_cache.MakeColor(0xA0, 0xA0, 0xA0, 0xFF);
+   uint32 x;
+
+   if((wordsize == 2) && (!InTextArea) && ((column & 0x01) == 1)) // if in hex area, only do even-numbered spots
+    column--;
+
+   x = column;
+   if (wordsize == 2)
+     x = x>>1;
 
    if (y & 4)
    {
@@ -765,17 +828,42 @@ void MemDebugger::Draw(MDFN_Surface *surface, const MDFN_Rect *rect, const MDFN_
     }
    }
 
-   char quickbuf[16];
+   char quickbuf[32];
    uint32 test_match_pos;
-   char ascii_str[2];
+   char ascii_str[4];
 
-   ascii_str[1] = 0;
-   ascii_str[0] = byte_buffer[x];
+   if (wordsize == 2)
+   {
+    ascii_str[2] = 0;
+    ascii_str[0] = byte_buffer[(x*2)];
+    ascii_str[1] = byte_buffer[(x*2)+1];
 
-   if((uint8)ascii_str[0] < 0x20 || (uint8)ascii_str[0] >= 128)
-    ascii_str[0] = '.';
+    if((uint8)ascii_str[0] < 0x20 || (uint8)ascii_str[0] >= 128)
+     ascii_str[0] = '.';
 
-   trio_snprintf(quickbuf, 16, "%02X", byte_buffer[x]);
+    if((uint8)ascii_str[1] < 0x20 || (uint8)ascii_str[1] >= 128)
+     ascii_str[1] = '.';
+   }
+   else
+   {
+    ascii_str[1] = 0;
+    ascii_str[0] = byte_buffer[x];
+
+    if((uint8)ascii_str[0] < 0x20 || (uint8)ascii_str[0] >= 128)
+     ascii_str[0] = '.';
+   }
+
+   if (wordsize == 2)
+   {
+    if (endian == ENDIAN_LITTLE)
+     trio_snprintf(quickbuf, 32, "%04X", ((byte_buffer[(x*2)+1] << 8) | byte_buffer[(x*2)]));
+    else
+     trio_snprintf(quickbuf, 32, "%04X", ((byte_buffer[(x*2)] << 8) | byte_buffer[(x*2)+1]));
+   }
+   else if (wordsize == 1)
+   {
+    trio_snprintf(quickbuf, 32, "%02X", byte_buffer[x]);
+   }
 
    test_match_pos = ASpacePos[CurASpace] % zemod;
 
@@ -789,18 +877,29 @@ void MemDebugger::Draw(MDFN_Surface *surface, const MDFN_Rect *rect, const MDFN_
 
       if(InTextArea)
       {
-       pix_offset += byte_bpr * byte_hex_spacing + byte_hex_right_padding + x * byte_char_spacing + ((byte_bpr - 1) / 4) * byte_hex_group_pad;
+       pix_offset += byte_bpr * byte_hex_spacing + byte_hex_right_padding + column * byte_char_spacing + ((byte_bpr - 1) / 4) * byte_hex_group_pad;
        DrawText(surface, pix_offset, text_y + byte_char_y_adjust, "▉", pf_cache.MakeColor(0xFF, 0xFF, 0xFF, 0xFF), byte_char_font); 
       }
       else
       {
-       pix_offset += (LowNib ? byte_hex_font_width : 0) + x * byte_hex_spacing + (x / 4) * byte_hex_group_pad;
+       if (wordsize == 2)
+       {
+        pix_offset += ((3-Nybnum) * byte_hex_font_width) + (x*2) * byte_hex_spacing + (x / 4) * byte_hex_group_pad;
+       }
+       else
+       {
+        pix_offset += ((1-Nybnum) * byte_hex_font_width) + x * byte_hex_spacing + (x / 4) * byte_hex_group_pad;
+       }
        DrawText(surface, pix_offset, text_y, "▉", pf_cache.MakeColor(0xFF, 0xFF, 0xFF, 0xFF), byte_hex_font);
       }
 
      }
     }
+   }
 
+   if ((Ameow == test_match_pos) ||
+	((wordsize == 2) && ((Ameow & 0xFFFFFFFE) == (test_match_pos & 0xFFFFFFFE))))  
+   {
     if(InTextArea)
     {
      acolor = pf_cache.MakeColor(0xFF, 0x00, 0x00, 0xFF);
@@ -814,11 +913,31 @@ void MemDebugger::Draw(MDFN_Surface *surface, const MDFN_Rect *rect, const MDFN_
    }
 
    // hex display
-   DrawText(surface, alen + x * byte_hex_spacing + ((x / 4) * byte_hex_group_pad), text_y, quickbuf, bcolor, byte_hex_font);
+   if (wordsize == 2)
+   {
+     DrawText(surface, alen + (x*2) * byte_hex_spacing + ((x / 4) * byte_hex_group_pad), text_y, quickbuf, bcolor, byte_hex_font);
+   }
+   else
+   {
+     DrawText(surface, alen + x * byte_hex_spacing + ((x / 4) * byte_hex_group_pad), text_y, quickbuf, bcolor, byte_hex_font);
+   }
 
    // ASCII display
-   DrawText(surface, alen + byte_bpr * byte_hex_spacing + byte_hex_right_padding + x * byte_char_spacing + ((byte_bpr - 1) / 4) * byte_hex_group_pad, text_y + byte_char_y_adjust, ascii_str, acolor, byte_char_font);
+   if (wordsize == 2)
+   {
+     DrawText(surface, alen + byte_bpr * byte_hex_spacing + byte_hex_right_padding + (x*2) * byte_char_spacing + ((byte_bpr - 1) / 4) * byte_hex_group_pad, text_y + byte_char_y_adjust, ascii_str, acolor, byte_char_font);
+   }
+   else
+   {
+     DrawText(surface, alen + byte_bpr * byte_hex_spacing + byte_hex_right_padding + x * byte_char_spacing + ((byte_bpr - 1) / 4) * byte_hex_group_pad, text_y + byte_char_y_adjust, ascii_str, acolor, byte_char_font);
+   }
    Ameow++;
+
+   if ((wordsize == 2) && (!InTextArea))
+   {
+     Ameow++;
+     column++;
+   }
   }
   text_y += byte_vspacing;
   if ((y & 7) == 7) text_y += 6;
@@ -865,12 +984,14 @@ void MemDebugger::ChangePos(int64 delta)
  newpos %= SizeCache[CurASpace];
  ASpacePos[CurASpace] = newpos;
 
- LowNib = false;
+ Nybnum = ASpace->Wordbytes * 2 - 1;
 }
 
 // Call this from the game thread
 int MemDebugger::Event(const SDL_Event *event)
 {
+ uint8 wordsize = ASpace->Wordbytes;
+
  if(!InPrompt && myprompt)
  {
   delete myprompt;
@@ -910,7 +1031,8 @@ int MemDebugger::Event(const SDL_Event *event)
 
 	   ASpace->PutAddressSpaceBytes(ASpace->name.c_str(), ASpacePos[CurASpace], to_write_len, 1, true, to_write);
 
-	   LowNib = 0;
+	   Nybnum = ASpace->Wordbytes * 2 - 1;
+
 	   ChangePos(to_write_len);
 	  }
 	 }
@@ -941,23 +1063,47 @@ int MemDebugger::Event(const SDL_Event *event)
 	   (ks >= SDLK_a && ks <= SDLK_f)))
 	{
          uint8 tc = 0;
+         uint8 meowbuf[4];
          uint8 meowbyte = 0;
+         uint32 meowword = 0;
 
          if(event->key.keysym.sym >= SDLK_0 && event->key.keysym.sym <= SDLK_9)
           tc = 0x0 + event->key.keysym.sym - SDLK_0;
          else if(event->key.keysym.sym >= SDLK_a && event->key.keysym.sym <= SDLK_f)
           tc = 0xA + event->key.keysym.sym - SDLK_a;
 
-	 
-         ASpace->GetAddressSpaceBytes(ASpace->name.c_str(), ASpacePos[CurASpace], 1, &meowbyte);
-         meowbyte &= 0xF << ((LowNib) * 4);
-         meowbyte |= tc << ((!LowNib) * 4);
-         ASpace->PutAddressSpaceBytes(ASpace->name.c_str(), ASpacePos[CurASpace], 1, 1, true, &meowbyte);
+         if (wordsize == 2)
+	 {
+          ASpace->GetAddressSpaceBytes(ASpace->name.c_str(), ASpacePos[CurASpace], 2, &meowbuf[0]);
+          meowword = (ASpace->Endianness == ENDIAN_LITTLE) ? ((meowbuf[1] << 8) + meowbuf[0]) : ((meowbuf[0] << 8) + meowbuf[1]);
+          meowword &= ~(0xF << (Nybnum * 4));
+          meowword |= tc << (Nybnum * 4);
+	  if (ASpace->Endianness == ENDIAN_LITTLE)
+	  {
+           meowbuf[0] = (meowword & 0xff);
+           meowbuf[1] = ((meowword >> 8) & 0xff);
+	  }
+	  else
+	  {
+           meowbuf[0] = ((meowword >> 8) & 0xff);
+           meowbuf[1] = (meowword & 0xff);
+	  }
+          ASpace->PutAddressSpaceBytes(ASpace->name.c_str(), ASpacePos[CurASpace], 2, 1, true, &meowbuf[0]); // put it back
+         }
+         else
+	 {
+          ASpace->GetAddressSpaceBytes(ASpace->name.c_str(), ASpacePos[CurASpace], 1, &meowbyte);
+          meowbyte &= ~(0xF << (Nybnum * 4));
+          meowbyte |= tc << (Nybnum * 4);
+          ASpace->PutAddressSpaceBytes(ASpace->name.c_str(), ASpacePos[CurASpace], 1, 1, true, &meowbyte);
+         }
 	 
 
-         LowNib = !LowNib;
-         if(!LowNib)
-	  ChangePos(1);
+         if (Nybnum-- == 0)
+         {
+	    ChangePos(wordsize);
+	    Nybnum = ASpace->Wordbytes * 2 - 1;
+         }
 	}
 	else if(InEditMode && InTextArea && ks != SDLK_TAB && ks != SDLK_RETURN && ks != SDLK_INSERT && ks != SDLK_END && ks != SDLK_HOME &&
 		ks != SDLK_PAGEUP && ks != SDLK_PAGEDOWN && ks != SDLK_UP && ks != SDLK_DOWN && ks != SDLK_LEFT && ks != SDLK_RIGHT)
@@ -972,31 +1118,31 @@ int MemDebugger::Event(const SDL_Event *event)
                           break;
          case SDLK_EQUALS: Debugger_GT_ModOpacity(8);
                            break;
-
 	 case SDLK_BACKSPACE:
 		if(InEditMode && !InTextArea)
 		{
-	         LowNib = !LowNib;
-        	 if(LowNib)
-		 {
-		  ChangePos(-1);
-		  LowNib = true;
-		 }
+	         if (++Nybnum > (ASpace->Wordbytes * 2 - 1))
+	         {
+		  ChangePos(-wordsize);
+	          Nybnum = 0;
+	         }
 		}
 		break;
 
 	 case SDLK_SPACE:
 		if(InEditMode && !InTextArea)
 		{
-	         LowNib = !LowNib;
-        	 if(!LowNib)
-		  ChangePos(1);
+	         if (Nybnum-- == 0)
+	         {
+		  ChangePos(wordsize);
+	          Nybnum = ASpace->Wordbytes * 2 - 1;
+	         }
 		}
 		break;
 
 	 case SDLK_TAB:
 		InTextArea = !InTextArea;
-		LowNib = false;
+	        Nybnum = ASpace->Wordbytes * 2 - 1;
 		break;
 
 	 case SDLK_d:
@@ -1083,15 +1229,15 @@ int MemDebugger::Event(const SDL_Event *event)
 
 	 case SDLK_INSERT:
 		InEditMode = !InEditMode;
-		LowNib = false;
+		Nybnum = ASpace->Wordbytes * 2 - 1;
 		break;
 
 	 case SDLK_END: ASpacePos[CurASpace] = (SizeCache[CurASpace] - (byte_bpr * byte_maxrows / 2)) % SizeCache[CurASpace]; 
-			LowNib = false;
+			Nybnum = ASpace->Wordbytes * 2 - 1;
 			break;
 
 	 case SDLK_HOME: ASpacePos[CurASpace] = 0;
-			 LowNib = false;
+			 Nybnum = ASpace->Wordbytes * 2 - 1;
 			 break;
 
 
@@ -1099,8 +1245,14 @@ int MemDebugger::Event(const SDL_Event *event)
 	 case SDLK_PAGEDOWN: ChangePos(byte_bpr * 16); break;
 	 case SDLK_UP: ChangePos(-byte_bpr); break;
 	 case SDLK_DOWN: ChangePos(byte_bpr); break;
-	 case SDLK_LEFT: ChangePos(-1); break;
-	 case SDLK_RIGHT: ChangePos(1); break;
+
+	 case SDLK_LEFT:
+		ChangePos(-wordsize);
+		break;
+
+	 case SDLK_RIGHT:
+		ChangePos(wordsize);
+		break;
 
 	 case SDLK_COMMA: 
 			if(CurASpace)
@@ -1109,13 +1261,13 @@ int MemDebugger::Event(const SDL_Event *event)
 			 CurASpace = AddressSpaces->size() - 1;
 
 			ASpace = &(*AddressSpaces)[CurASpace];
-			LowNib = false;
+			Nybnum = ASpace->Wordbytes * 2 - 1;
 			break;
 
 	 case SDLK_PERIOD:
 			CurASpace = (CurASpace + 1) % AddressSpaces->size();
 			ASpace = &(*AddressSpaces)[CurASpace];
-			LowNib = false;
+			Nybnum = ASpace->Wordbytes * 2 - 1;
 			break;
 	}
 	break;
@@ -1126,7 +1278,7 @@ int MemDebugger::Event(const SDL_Event *event)
 
 // Called after a game is loaded.
 MemDebugger::MemDebugger() : AddressSpaces(NULL), ASpace(NULL), IsActive(false), CurASpace(0),
-			     LowNib(false), InEditMode(false), InTextArea(false), error_string(NULL), error_time(-1),
+			     Nybnum(1), InEditMode(false), InTextArea(false), error_string(NULL), error_time(-1),
 			     ict_game_to_utf8((iconv_t)-1), ict_utf8_to_game((iconv_t)-1), InPrompt(None), myprompt(NULL), PromptTAKC(SDLK_UNKNOWN)
 {
  if(CurGame->Debugger)

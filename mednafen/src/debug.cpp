@@ -53,7 +53,7 @@ void MDFNDBG_Kill(void)
 
 AddressSpaceType::AddressSpaceType() : TotalBits(0), NP2Size(0), IsWave(false), WaveFormat(ASPACE_WFMT_UNSIGNED), WaveBits(0),
 				GetAddressSpaceBytes(NULL), PutAddressSpaceBytes(NULL), private_data(NULL), EnableUsageMap(NULL),
-				UsageMapRead(NULL), UsageMapWrite(NULL), UsageReadMemUsed(0), UsageWriteMemUsed(0)
+				UsageMapRead(NULL), UsageMapWrite(NULL), UsageReadMemUsed(0), UsageWriteMemUsed(0), Wordbytes(1), Endianness(ENDIAN_LITTLE)
 {
 
 }
@@ -76,6 +76,33 @@ int ASpace_Add(void (*gasb)(const char *name, uint32 Address, uint32 Length, uin
  newt.long_name = std::string(long_name);
  newt.TotalBits = TotalBits;
  newt.NP2Size = NP2Size;
+ newt.Wordbytes = 1;
+ newt.Endianness = ENDIAN_LITTLE;
+
+ AddressSpaces.push_back(newt);
+
+ return(AddressSpaces.size() - 1);
+}
+
+// Added so that all the calls in the system didn't need to be changed all at once
+//
+// Although displayed on-screen as 16-bit words, it is backed by a byte array as always
+//
+int ASpace_Add16(void (*gasb)(const char *name, uint32 Address, uint32 Length, uint8 *Buffer),
+        void (*pasb)(const char *name, uint32 Address, uint32 Length, uint32 Granularity, bool hl, const uint8 *Buffer), const char *name, const char *long_name,
+        uint32 TotalBits, uint32 NP2Size, uint8 Endianness)
+{
+ AddressSpaceType newt;
+
+ newt.GetAddressSpaceBytes = gasb;
+ newt.PutAddressSpaceBytes = pasb;
+
+ newt.name = std::string(name);
+ newt.long_name = std::string(long_name);
+ newt.TotalBits = TotalBits;
+ newt.NP2Size = NP2Size;
+ newt.Wordbytes = 2;
+ newt.Endianness = Endianness;
 
  AddressSpaces.push_back(newt);
 
