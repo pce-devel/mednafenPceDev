@@ -53,6 +53,12 @@ typedef enum
  ENDIAN_BIG		// Most significant byte first
 } ASpace_ENDIANNESS;	// Still room for more if weird ones come later
 
+typedef enum
+{
+ PALETTE_NONE = 0,	// Not a palette
+ PALETTE_PCE		// Only one supported so far
+} ASpace_PALETTETYPE;	// Still room for more if weird ones come later
+
 //
 // Visible to CPU, physical, RAM, ROM, ADPCM RAM, etc etc.
 //
@@ -75,6 +81,10 @@ struct AddressSpaceType
 
 	uint8 Wordbytes;
 	uint8 Endianness;
+	uint8 MaxDigit;  // least-significant digit is 0, etc.  Normally ((Wordbytes * 2) - 1)
+
+	bool IsPalette;
+	uint8 PaletteType;
 
 	bool IsWave;
 	ASpace_WFMT WaveFormat;	// TODO
@@ -208,6 +218,10 @@ int ASpace_Add(const AddressSpaceType &);
 int ASpace_Add16(void (*gasb)(const char *name, uint32 Address, uint32 Length, uint8 *Buffer),
         void (*pasb)(const char *name, uint32 Address, uint32 Length, uint32 Granularity, bool hl, const uint8 *Buffer), const char *name, const char *long_name,
         uint32 TotalBits, uint32 NP2Size = 0, uint8 Endianness = ENDIAN_LITTLE);
+
+int ASpace_AddPalette(void (*gasb)(const char *name, uint32 Address, uint32 Length, uint8 *Buffer),
+        void (*pasb)(const char *name, uint32 Address, uint32 Length, uint32 Granularity, bool hl, const uint8 *Buffer), const char *name, const char *long_name,
+        uint32 TotalBits, uint32 NP2Size = 0, uint8 Wordbytes = 2, uint8 Endianness = ENDIAN_LITTLE, uint8 PalType = PALETTE_PCE);
 
 // Removes all registered address spaces.
 void ASpace_Reset(void);

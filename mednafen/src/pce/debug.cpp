@@ -1831,7 +1831,7 @@ void PCEDBG_Init(bool sgx, PCE_PSG *new_psg, const uint32 vram_size)
   ASpace_Add(GetAddressSpaceBytes, PutAddressSpaceBytes, "physical", "CPU Physical", 21);
   ASpace_Add(GetAddressSpaceBytes, PutAddressSpaceBytes, "ram", "RAM", IsSGX ? 15 : 13);
 
-  ASpace_Add16(Do16BitGet, Do16BitPut, "pram", "VCE Palette RAM", 10, 0, ENDIAN_LITTLE);
+  ASpace_AddPalette(Do16BitGet, Do16BitPut, "pram", "VCE Palette RAM", 10, 0, 2, ENDIAN_LITTLE, PALETTE_PCE);
 
   vram_addr_mask = (vram_size - 1);
   if(IsSGX)
@@ -1884,9 +1884,15 @@ void PCEDBG_Init(bool sgx, PCE_PSG *new_psg, const uint32 vram_size)
      newt.TotalBits = 5;
      newt.NP2Size = 0;
 
+     newt.Wordbytes  = 1;
+     newt.Endianness = ENDIAN_LITTLE;
+     newt.MaxDigit   = 1;
+     newt.IsPalette  = false;
+
      newt.IsWave = true;
      newt.WaveFormat = ASPACE_WFMT_UNSIGNED;
      newt.WaveBits = 5;
+
      ASpace_Add(newt); //PSG_GetAddressSpaceBytes, PSG_PutAddressSpaceBytes, tmpname, tmpinfo, 5);
   }
   MDFNDBG_AddRegGroup(&RegsGroup_PSG);
