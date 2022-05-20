@@ -118,6 +118,8 @@ VCE::VCE(const bool want_sgfx, const uint32 vram_size)
 
  cd_event = 1;
 
+ framenum = 0;
+
  fb = NULL;
  pitch32 = 0;
 
@@ -165,6 +167,7 @@ void VCE::Reset(const int32 timestamp)
  clock_divider = 0;
 
  ws_counter = 0;
+ framenum = 0;
  scanline = 0;
  scanline_out_ptr = NULL;
  CR = 0;
@@ -465,7 +468,10 @@ INLINE void VCE::SyncSub(int32 clocks)
     }
 
     if(NeedSLReset)
+    {
      scanline = 0;
+     framenum++;
+    }
     else
      scanline++;
 
@@ -974,6 +980,10 @@ uint32 VCE::GetRegister(const unsigned int id, char *special, const uint32 speci
 
   case GSREG_CTA:
 		value = ctaddress;
+		break;
+
+  case GSREG_FRAMENUM:
+		value = framenum;
 		break;
 
   case GSREG_SCANLINE:

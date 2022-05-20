@@ -111,6 +111,7 @@ class VCE final
         {
          GSREG_CR = 0,
          GSREG_CTA,
+         GSREG_FRAMENUM,
          GSREG_SCANLINE,
 
 	 // VPC:
@@ -238,6 +239,7 @@ class VCE final
 
 	int32 clock_divider;
 
+	int32 framenum;
 	int32 scanline;
 	uint32 *scanline_out_ptr;	// Pointer into fb
 	int32 pixel_offset;

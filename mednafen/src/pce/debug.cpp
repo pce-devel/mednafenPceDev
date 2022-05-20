@@ -1409,6 +1409,7 @@ static const RegType Regs_VDC[] =
 
 	{ 0, 0, "---VIDEO---", "", 0xFFFF },
 
+	{ 0x8000 | VCE::GSREG_FRAMENUM, 1, "FR",     "Current Frame",                4 },
 	{ 0x8000 | VCE::GSREG_SCANLINE, 3, "Line",   "Current Scanline",                2 },
 
 	{ 0, 0, "-----------", "", 0xFFFF },
