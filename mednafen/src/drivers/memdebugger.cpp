@@ -205,7 +205,7 @@ void MemDebugger::PromptFinish(const std::string &pstring)
 	  if(trio_sscanf(pstring.c_str(), "%llx", &NewAddie) == 1)
 	  {
 	   ASpacePos[CurASpace] = (NewAddie * ASpace->Wordbytes);
-	   Nybnum = ASpace->Wordbytes * 2 - 1;
+	   Digitnum = ASpace->MaxDigit;
 
 	   if(which == GotoDD)
 	    GoGoPowerDD[CurASpace] = (NewAddie * ASpace->Wordbytes);
@@ -473,7 +473,7 @@ void MemDebugger::SetActive(bool newia)
   if(!newia)
   {
    InEditMode = false;
-   Nybnum = ASpace->Wordbytes * 2 - 1;
+   Digitnum = ASpace->MaxDigit;
   }
  }
 }
@@ -632,6 +632,9 @@ INLINE void MemDebugger::DrawAtCursorInfo(MDFN_Surface* surface, const int32 bas
  }
 
  notsat = 0;
+ if (ASpace->IsPalette)
+  notsat = 1;
+
  tmpx = (zebytes[0] | (zebytes[1] << 8)) - 32;
  if ((tmpx < -32) || (tmpx > 1024))
   notsat = 1;
@@ -798,8 +801,15 @@ void MemDebugger::Draw(MDFN_Surface *surface, const MDFN_Rect *rect, const MDFN_
 
   for(uint32 column = 0; column < byte_bpr; column++)
   {
+   uint8 r_digit = 0;
+   uint8 g_digit = 0;
+   uint8 b_digit = 0;
    uint32 bcolor = pf_cache.MakeColor(0xFF, 0xFF, 0xFF, 0xFF);
    uint32 acolor = pf_cache.MakeColor(0xA0, 0xA0, 0xA0, 0xFF);
+
+   uint32 r_color = pf_cache.MakeColor(0xFF, 0xA0, 0xA0, 0xFF);
+   uint32 g_color = pf_cache.MakeColor(0xA0, 0xFF, 0xA0, 0xFF);
+   uint32 b_color = pf_cache.MakeColor(0xA0, 0xA0, 0xFF, 0xFF);
    uint32 x;
 
    if((wordsize == 2) && (!InTextArea) && ((column & 0x01) == 1)) // if in hex area, only do even-numbered spots
@@ -853,6 +863,13 @@ void MemDebugger::Draw(MDFN_Surface *surface, const MDFN_Rect *rect, const MDFN_
      ascii_str[0] = '.';
    }
 
+   if ((ASpace->IsPalette) && (ASpace->PaletteType == PALETTE_PCE))
+   {
+    uint32 tmp_word = ((byte_buffer[(x*2)+1] << 8) | byte_buffer[(x*2)]);
+    g_digit = ((tmp_word >> 6) & 0x07);
+    r_digit = ((tmp_word >> 3) & 0x07);
+    b_digit = (tmp_word & 0x07);
+   }
    if (wordsize == 2)
    {
     if (endian == ENDIAN_LITTLE)
@@ -884,11 +901,11 @@ void MemDebugger::Draw(MDFN_Surface *surface, const MDFN_Rect *rect, const MDFN_
       {
        if (wordsize == 2)
        {
-        pix_offset += ((3-Nybnum) * byte_hex_font_width) + (x*2) * byte_hex_spacing + (x / 4) * byte_hex_group_pad;
+        pix_offset += ((3-Digitnum) * byte_hex_font_width) + (x*2) * byte_hex_spacing + (x / 4) * byte_hex_group_pad;
        }
        else
        {
-        pix_offset += ((1-Nybnum) * byte_hex_font_width) + x * byte_hex_spacing + (x / 4) * byte_hex_group_pad;
+        pix_offset += ((1-Digitnum) * byte_hex_font_width) + x * byte_hex_spacing + (x / 4) * byte_hex_group_pad;
        }
        DrawText(surface, pix_offset, text_y, "▉", pf_cache.MakeColor(0xFF, 0xFF, 0xFF, 0xFF), byte_hex_font);
       }
@@ -909,11 +926,26 @@ void MemDebugger::Draw(MDFN_Surface *surface, const MDFN_Rect *rect, const MDFN_
     {
      acolor = pf_cache.MakeColor(0xFF, 0x80, 0xFF, 0xFF);
      bcolor = pf_cache.MakeColor(0xFF, 0x00, 0x00, 0xFF);
+
+     r_color = pf_cache.MakeColor(0xFF, 0x00, 0x00, 0xFF);
+     g_color = pf_cache.MakeColor(0xFF, 0x00, 0x00, 0xFF);
+     b_color = pf_cache.MakeColor(0xFF, 0x00, 0x00, 0xFF);
     }
    }
 
    // hex display
-   if (wordsize == 2)
+   if ((ASpace->IsPalette) && (ASpace->PaletteType == PALETTE_PCE))
+   {
+     uint32 x_offset = alen + (x*2) * byte_hex_spacing + ((x / 4) * byte_hex_group_pad);
+
+     trio_snprintf(quickbuf, 32, "%1X", g_digit);
+     DrawText(surface, x_offset + byte_hex_font_width, text_y, quickbuf, g_color, byte_hex_font);
+     trio_snprintf(quickbuf, 32, "%1X", r_digit);
+     DrawText(surface, x_offset + (2 * byte_hex_font_width), text_y, quickbuf, r_color, byte_hex_font);
+     trio_snprintf(quickbuf, 32, "%1X", b_digit);
+     DrawText(surface, x_offset + (3 * byte_hex_font_width), text_y, quickbuf, b_color, byte_hex_font);
+   }
+   else if (wordsize == 2)
    {
      DrawText(surface, alen + (x*2) * byte_hex_spacing + ((x / 4) * byte_hex_group_pad), text_y, quickbuf, bcolor, byte_hex_font);
    }
@@ -923,7 +955,20 @@ void MemDebugger::Draw(MDFN_Surface *surface, const MDFN_Rect *rect, const MDFN_
    }
 
    // ASCII display
-   if (wordsize == 2)
+   if ((ASpace->IsPalette) && (ASpace->PaletteType == PALETTE_PCE))
+   {
+    uint32 pal_color = pf_cache.MakeColor(r_digit * 32, g_digit * 32, b_digit * 32, 0xFF);   // approximation
+    uint32 border_color = pal_color;
+
+    if ((Ameow == test_match_pos) ||
+	((wordsize == 2) && ((Ameow & 0xFFFFFFFE) == (test_match_pos & 0xFFFFFFFE))))  
+    {
+     border_color = pf_cache.MakeColor(0xFF, 0x00, 0x00, 0xFF);
+    }
+
+     MDFN_DrawFillRect(surface, alen + byte_bpr * byte_hex_spacing + byte_hex_right_padding + (x*2) * byte_char_spacing + ((byte_bpr - 1) / 4) * byte_hex_group_pad, text_y + byte_char_y_adjust, 2 * byte_char_spacing, byte_vspacing, border_color, pal_color, RectStyle::Rounded);
+   }
+   else if (wordsize == 2)
    {
      DrawText(surface, alen + byte_bpr * byte_hex_spacing + byte_hex_right_padding + (x*2) * byte_char_spacing + ((byte_bpr - 1) / 4) * byte_hex_group_pad, text_y + byte_char_y_adjust, ascii_str, acolor, byte_char_font);
    }
@@ -984,7 +1029,7 @@ void MemDebugger::ChangePos(int64 delta)
  newpos %= SizeCache[CurASpace];
  ASpacePos[CurASpace] = newpos;
 
- Nybnum = ASpace->Wordbytes * 2 - 1;
+ Digitnum = ASpace->MaxDigit;
 }
 
 // Call this from the game thread
@@ -1031,7 +1076,7 @@ int MemDebugger::Event(const SDL_Event *event)
 
 	   ASpace->PutAddressSpaceBytes(ASpace->name.c_str(), ASpacePos[CurASpace], to_write_len, 1, true, to_write);
 
-	   Nybnum = ASpace->Wordbytes * 2 - 1;
+           Digitnum = ASpace->MaxDigit;
 
 	   ChangePos(to_write_len);
 	  }
@@ -1072,12 +1117,27 @@ int MemDebugger::Event(const SDL_Event *event)
          else if(event->key.keysym.sym >= SDLK_a && event->key.keysym.sym <= SDLK_f)
           tc = 0xA + event->key.keysym.sym - SDLK_a;
 
-         if (wordsize == 2)
+         if ((ASpace->IsPalette) && (ASpace->PaletteType == PALETTE_PCE))
+	 {
+          ASpace->GetAddressSpaceBytes(ASpace->name.c_str(), ASpacePos[CurASpace], 2, &meowbuf[0]);
+          meowword = ((meowbuf[1] << 8) + meowbuf[0]);
+	  if (tc < 8)
+	  {
+           meowword &= ~(0x7 << (Digitnum * 3));
+	   meowword |= tc << (Digitnum * 3);
+           
+           meowbuf[0] = (meowword & 0xff);
+           meowbuf[1] = ((meowword >> 8) & 0xff);
+
+           ASpace->PutAddressSpaceBytes(ASpace->name.c_str(), ASpacePos[CurASpace], 2, 1, true, &meowbuf[0]); // put it back
+	  }
+	 }
+	 else if (wordsize == 2)
 	 {
           ASpace->GetAddressSpaceBytes(ASpace->name.c_str(), ASpacePos[CurASpace], 2, &meowbuf[0]);
           meowword = (ASpace->Endianness == ENDIAN_LITTLE) ? ((meowbuf[1] << 8) + meowbuf[0]) : ((meowbuf[0] << 8) + meowbuf[1]);
-          meowword &= ~(0xF << (Nybnum * 4));
-          meowword |= tc << (Nybnum * 4);
+          meowword &= ~(0xF << (Digitnum * 4));
+          meowword |= tc << (Digitnum * 4);
 	  if (ASpace->Endianness == ENDIAN_LITTLE)
 	  {
            meowbuf[0] = (meowword & 0xff);
@@ -1093,16 +1153,16 @@ int MemDebugger::Event(const SDL_Event *event)
          else
 	 {
           ASpace->GetAddressSpaceBytes(ASpace->name.c_str(), ASpacePos[CurASpace], 1, &meowbyte);
-          meowbyte &= ~(0xF << (Nybnum * 4));
-          meowbyte |= tc << (Nybnum * 4);
+          meowbyte &= ~(0xF << (Digitnum * 4));
+          meowbyte |= tc << (Digitnum * 4);
           ASpace->PutAddressSpaceBytes(ASpace->name.c_str(), ASpacePos[CurASpace], 1, 1, true, &meowbyte);
          }
 	 
 
-         if (Nybnum-- == 0)
+         if (Digitnum-- == 0)
          {
 	    ChangePos(wordsize);
-	    Nybnum = ASpace->Wordbytes * 2 - 1;
+            Digitnum = ASpace->MaxDigit;
          }
 	}
 	else if(InEditMode && InTextArea && ks != SDLK_TAB && ks != SDLK_RETURN && ks != SDLK_INSERT && ks != SDLK_END && ks != SDLK_HOME &&
@@ -1121,10 +1181,10 @@ int MemDebugger::Event(const SDL_Event *event)
 	 case SDLK_BACKSPACE:
 		if(InEditMode && !InTextArea)
 		{
-	         if (++Nybnum > (ASpace->Wordbytes * 2 - 1))
+	         if (++Digitnum > ASpace->MaxDigit)
 	         {
 		  ChangePos(-wordsize);
-	          Nybnum = 0;
+	          Digitnum = 0;
 	         }
 		}
 		break;
@@ -1132,17 +1192,19 @@ int MemDebugger::Event(const SDL_Event *event)
 	 case SDLK_SPACE:
 		if(InEditMode && !InTextArea)
 		{
-	         if (Nybnum-- == 0)
+	         if (Digitnum-- == 0)
 	         {
 		  ChangePos(wordsize);
-	          Nybnum = ASpace->Wordbytes * 2 - 1;
+                  Digitnum = ASpace->MaxDigit;
 	         }
 		}
 		break;
 
 	 case SDLK_TAB:
 		InTextArea = !InTextArea;
-	        Nybnum = ASpace->Wordbytes * 2 - 1;
+		if (ASpace->IsPalette)
+		 InTextArea = false; 
+                Digitnum = ASpace->MaxDigit;
 		break;
 
 	 case SDLK_d:
@@ -1229,15 +1291,15 @@ int MemDebugger::Event(const SDL_Event *event)
 
 	 case SDLK_INSERT:
 		InEditMode = !InEditMode;
-		Nybnum = ASpace->Wordbytes * 2 - 1;
+                Digitnum = ASpace->MaxDigit;
 		break;
 
 	 case SDLK_END: ASpacePos[CurASpace] = (SizeCache[CurASpace] - (byte_bpr * byte_maxrows / 2)) % SizeCache[CurASpace]; 
-			Nybnum = ASpace->Wordbytes * 2 - 1;
+                        Digitnum = ASpace->MaxDigit;
 			break;
 
 	 case SDLK_HOME: ASpacePos[CurASpace] = 0;
-			 Nybnum = ASpace->Wordbytes * 2 - 1;
+                         Digitnum = ASpace->MaxDigit;
 			 break;
 
 
@@ -1261,13 +1323,17 @@ int MemDebugger::Event(const SDL_Event *event)
 			 CurASpace = AddressSpaces->size() - 1;
 
 			ASpace = &(*AddressSpaces)[CurASpace];
-			Nybnum = ASpace->Wordbytes * 2 - 1;
+                        Digitnum = ASpace->MaxDigit;
+			if (ASpace->IsPalette)
+			  InTextArea = false; 
 			break;
 
 	 case SDLK_PERIOD:
 			CurASpace = (CurASpace + 1) % AddressSpaces->size();
 			ASpace = &(*AddressSpaces)[CurASpace];
-			Nybnum = ASpace->Wordbytes * 2 - 1;
+                        Digitnum = ASpace->MaxDigit;
+			if (ASpace->IsPalette)
+			  InTextArea = false; 
 			break;
 	}
 	break;
@@ -1278,7 +1344,7 @@ int MemDebugger::Event(const SDL_Event *event)
 
 // Called after a game is loaded.
 MemDebugger::MemDebugger() : AddressSpaces(NULL), ASpace(NULL), IsActive(false), CurASpace(0),
-			     Nybnum(1), InEditMode(false), InTextArea(false), error_string(NULL), error_time(-1),
+			     Digitnum(1), InEditMode(false), InTextArea(false), error_string(NULL), error_time(-1),
 			     ict_game_to_utf8((iconv_t)-1), ict_utf8_to_game((iconv_t)-1), InPrompt(None), myprompt(NULL), PromptTAKC(SDLK_UNKNOWN)
 {
  if(CurGame->Debugger)
