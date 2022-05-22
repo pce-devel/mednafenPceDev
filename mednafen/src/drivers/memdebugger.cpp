@@ -1016,6 +1016,14 @@ void MemDebugger::Draw(MDFN_Surface *surface, const MDFN_Rect *rect, const MDFN_
  }
 }
 
+void MemDebugger::AlignPos(int64 align)
+{
+ if (align == 1)
+  return;
+
+ ASpacePos[CurASpace] = ASpacePos[CurASpace] & (~(align >> 1));
+}
+
 void MemDebugger::ChangePos(int64 delta)
 {
  int64 prevpos = ASpacePos[CurASpace];
@@ -1202,6 +1210,8 @@ int MemDebugger::Event(const SDL_Event *event)
 
 	 case SDLK_TAB:
 		InTextArea = !InTextArea;
+		if (!InTextArea)
+		 AlignPos(wordsize);
 		if (ASpace->IsPalette)
 		 InTextArea = false; 
                 Digitnum = ASpace->MaxDigit;
