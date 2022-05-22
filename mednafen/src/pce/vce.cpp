@@ -384,9 +384,9 @@ INLINE void VCE::SyncSub(int32 clocks)
       vdc2_pixel = vdc1_pixel = 0;
 
       if(pb & 1)
-       vdc1_pixel = pixel_buffer[0][i];
+       vdc1_pixel = pixel_buffer[0][i] & 0x3FF;
       if(pb & 2)
-       vdc2_pixel = pixel_buffer[1][i];
+       vdc2_pixel = pixel_buffer[1][i] & 0x3FF;
 
       /* Dai MakaiMura uses setting 1, and expects VDC #2 sprites in front of VDC #1 background, but
         behind VDC #1's sprites.
@@ -402,7 +402,10 @@ INLINE void VCE::SyncSub(int32 clocks)
                         vdc1_pixel = 0; //|= amask;
                 break;
       }
-      pix = color_table_cache[((vdc1_pixel & 0xF) ? vdc1_pixel : vdc2_pixel) & 0x1FF];
+      if ( (pixel_buffer[0][i] & VDC_BOUND_BOX_MASK) || (pixel_buffer[1][i] & VDC_BOUND_BOX_MASK) )
+       pix = boundbox_color;  // magenta bound box
+      else
+       pix = color_table_cache[((vdc1_pixel & 0xF) ? vdc1_pixel : vdc2_pixel) & 0x1FF];
 
       if(TA_AwesomeMode)
       {
@@ -427,7 +430,11 @@ INLINE void VCE::SyncSub(int32 clocks)
       {
        for(int32 si = 0; si < dot_clock_ratio; si++)
        {
-        uint32 pix = color_table_cache[pixel_buffer[0][i] & 0x3FF];
+        uint32 pix;
+        if (pixel_buffer[0][i] & VDC_BOUND_BOX_MASK)
+         pix = boundbox_color;  // magenta bound box
+        else
+         pix = color_table_cache[pixel_buffer[0][i] & 0x3FF];
 
         scanline_out_ptr[pixel_offset & 2047] = pix;
         pixel_offset++;
@@ -438,7 +445,11 @@ INLINE void VCE::SyncSub(int32 clocks)
      {
       for(int32 i = 0; MDFN_LIKELY(i < div_clocks); i++) // * vce_ratios[dot_clock]; i++)
       {
-       uint32 pix = color_table_cache[pixel_buffer[0][i] & 0x3FF];
+       uint32 pix;
+       if (pixel_buffer[0][i] & VDC_BOUND_BOX_MASK)
+        pix = boundbox_color;  // magenta bound box
+       else
+        pix = color_table_cache[pixel_buffer[0][i] & 0x3FF];
        scanline_out_ptr[pixel_offset & 2047] = pix;
        pixel_offset++;
       }
@@ -872,6 +883,11 @@ void VCE::SetLayerEnableMask(uint64 mask)
  for(unsigned chip = 0; chip < chip_count; chip++)
  {
   vdc[chip].SetLayerEnableMask((mask >> (chip * 2)) & 0x3);
+
+  if ((mask >> 9) & 1)  // anti-sense sprite bound box
+    vdc[chip].SetSprBoundBox(false);
+  else
+    vdc[chip].SetSprBoundBox(true);
  }
 }
 

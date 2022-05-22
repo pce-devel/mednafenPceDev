@@ -11,6 +11,9 @@ namespace Mednafen
 // This bit will be set for a non-sprite pixel if the BG layer is disabled(via ToggleLayer()),
 #define VDC_BGDISABLE_OUT_MASK	0x0200
 
+// This bit will be set when displaying a bounding box (i.e. around sprites),
+#define VDC_BOUND_BOX_MASK	0x0400
+
 // HSync and VSync out bits are only valid when the EX bits in VDC's CR 
 // are set so that the VDC will output sync signals rather than
 // input them.  If it is not configured in this manner, the bit(s) shall always be 0.
@@ -35,7 +38,7 @@ typedef struct
         uint32 x;
         uint32 flags;
         uint8 palette_index;
-        uint16 pattern_data[4];
+        uint16 pattern_data[5]; // pattern_data[4] is used for special purposes
 } SPRLE;
 
 typedef struct
@@ -260,6 +263,7 @@ class VDC
 
 	void FixTileCache(uint16);
 	void SetLayerEnableMask(uint64 mask);
+	void SetSprBoundBox(bool enable);
 
 	void RunDMA(int32, bool force_completion = false);
 	void RunSATDMA(int32, bool force_completion = false);
@@ -420,7 +424,7 @@ class VDC
 
 	void CalcWidthStartEnd(uint32 &display_width, uint32 &start, uint32 &end);
 	void DrawBG(uint16 *target, int enabled);
-	void DrawSprites(uint16 *target, int enabled);
+	void DrawSprites(uint16 *target, int enabled, int boundbox_enable);
 	void FetchSpriteData(void);
 
 
@@ -520,6 +524,7 @@ class VDC
 	uint32 pixel_desu;
 	int32 pixel_copy_count;
 	uint32 userle; // User layer enable.
+	bool boundbox_enable;
 	bool unlimited_sprites;
 
 	int active_sprites;
