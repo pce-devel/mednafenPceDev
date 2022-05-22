@@ -278,6 +278,8 @@ class VCE final
         uint16 color_table[0x200];
 	uint32 surf_clut[2][512];
 
+	const uint32 boundbox_color = 0xFFFF00F0;  // magenta bound box
+
 	VDC vdc[2];
 
 	#ifdef WANT_DEBUGGER

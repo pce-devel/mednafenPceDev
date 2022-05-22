@@ -287,6 +287,11 @@ void VDC::SetRegister(const unsigned int id, const uint32 value)
  }
 }
 
+void VDC::SetSprBoundBox(bool enable)
+{
+ boundbox_enable = enable;
+}
+
 void VDC::SetLayerEnableMask(uint64 mask)
 {
  userle = mask;
@@ -709,7 +714,7 @@ int32 VDC::Run(int32 clocks, uint16 *pixels, bool skip)
    if(VPhase == VPHASE_VSW && M_vdc_EX >= 0x2)
     pix |= VDC_VSYNC_OUT_MASK;
 
-   if(!(userle & 1))
+   if(!(userle & ULE_BG))
     pix |= VDC_BGDISABLE_OUT_MASK;
 
    if(!skip)
@@ -797,7 +802,7 @@ int32 VDC::Run(int32 clocks, uint16 *pixels, bool skip)
 			}
 			//printf("%d %02x %02x\n", RCRCount, CR, CR_cache);
 		       if(CR_cache & 0x40)
-		        DrawSprites(linebuf, (userle & ULE_SPR) && !skip);
+		        DrawSprites(linebuf, (userle & ULE_SPR) && !skip, boundbox_enable);
 		      }
 		     }
 		     break;
@@ -994,6 +999,33 @@ void VDC::FetchSpriteData(void)
 
 
    {
+    uint32 left_edge  = 0x0000;
+    uint32 right_edge = 0x0000;
+
+    if((width == 32) && (flags & SPRF_HFLIP))
+    {
+      left_edge = second_half ? 0x0000 : 0x0001;
+      right_edge = second_half ? 0x8000 : 0x0000;
+    }
+    else if( (width == 32) && !(flags & SPRF_HFLIP))
+    {
+      left_edge = second_half ? 0x0000 : 0x8000;
+      right_edge = second_half ? 0x0001 : 0x0000;
+    }
+    else if (width == 16)
+    {
+      left_edge = 0x8000;
+      right_edge = 0x0001;
+    }
+
+    // set up bounding box in pattern_data[4]
+    SpriteList[active_sprites].pattern_data[4] = 0;
+    if ((y_offset == 0) || (y_offset == (height - 1)))
+      SpriteList[active_sprites].pattern_data[4] = 0xffff;
+
+    SpriteList[active_sprites].pattern_data[4] |= (left_edge | right_edge);
+
+
     if(flags & SPRF_VFLIP)
      y_offset = height - 1 - y_offset;
 
@@ -1057,7 +1089,7 @@ void VDC::FetchSpriteData(void)
  sprite_cg_fetch_counter = ((active_sprites < 16) ? active_sprites : 16) * 4;
 }
 
-void VDC::DrawSprites(uint16 *target, int enabled)
+void VDC::DrawSprites(uint16 *target, int enabled, int boundbox_enabled)
 {
  alignas(16) uint16 sprite_line_buf[1024];
 
@@ -1083,6 +1115,7 @@ void VDC::DrawSprites(uint16 *target, int enabled)
     uint32 raw_pixel;
     uint32 pi = SpriteList[i].palette_index;
     uint32 rev_x = 15 - x;
+    bool pix_outline = false;
 
     if(SpriteList[i].flags & SPRF_HFLIP)
      rev_x = x;
@@ -1092,7 +1125,10 @@ void VDC::DrawSprites(uint16 *target, int enabled)
     raw_pixel |= ((SpriteList[i].pattern_data[2] >> rev_x) & 1) << 2;
     raw_pixel |= ((SpriteList[i].pattern_data[3] >> rev_x) & 1) << 3;
 
-    if(raw_pixel)
+    if (boundbox_enabled)
+     pix_outline = (SpriteList[i].pattern_data[4] >> rev_x)  & 1;
+
+    if((raw_pixel) || (pix_outline))
     {
      pi |= 0x100;
      uint32 tx = pos + x;
@@ -1106,7 +1142,7 @@ void VDC::DrawSprites(uint16 *target, int enabled)
       VDC_DEBUG("Sprite hit IRQ");
       IRQHook(true);
      }
-     sprite_line_buf[tx] = pi | raw_pixel | prio_or;
+     sprite_line_buf[tx] = pi | raw_pixel | prio_or | (pix_outline ? VDC_BOUND_BOX_MASK : 0);
     }
    }
   } // End sprite hit loop
@@ -1117,6 +1153,7 @@ void VDC::DrawSprites(uint16 *target, int enabled)
     uint32 raw_pixel;
     uint32 pi = SpriteList[i].palette_index;
     uint32 rev_x = 15 - x;
+    bool pix_outline = false;
 
     if(SpriteList[i].flags & SPRF_HFLIP)
      rev_x = x;
@@ -1126,14 +1163,17 @@ void VDC::DrawSprites(uint16 *target, int enabled)
     raw_pixel |= ((SpriteList[i].pattern_data[2] >> rev_x) & 1) << 2;
     raw_pixel |= ((SpriteList[i].pattern_data[3] >> rev_x) & 1) << 3;
 
-    if(raw_pixel)
+    if (boundbox_enabled)
+     pix_outline = (SpriteList[i].pattern_data[4] >> rev_x)  & 1;
+
+    if((raw_pixel) || (pix_outline))
     {
      pi |= 0x100;
      uint32 tx = pos + x;
 
      if(tx >= end) // Covers negative and overflowing the right side.
       continue;
-     sprite_line_buf[tx] = pi | raw_pixel | prio_or;
+     sprite_line_buf[tx] = pi | raw_pixel | prio_or | (pix_outline ? VDC_BOUND_BOX_MASK : 0);
     }
    }
   } // End non-sprite-hit loop
@@ -1148,6 +1188,8 @@ void VDC::DrawSprites(uint16 *target, int enabled)
     if(!(target[x] & 0x0F) || (sprite_line_buf[x] & 0x200))
      target[x] = sprite_line_buf[x] & 0x1FF;
    }
+   if (boundbox_enabled && (sprite_line_buf[x] & VDC_BOUND_BOX_MASK) )
+     target[x] = (sprite_line_buf[x] & 0x1FF) | VDC_BOUND_BOX_MASK;
   }
  }
  active_sprites = 0;
@@ -1685,6 +1727,7 @@ VDC::VDC()
  SetUnlimitedSprites(false);
  SetVRAMSize(65536);
  userle = ~0;
+ boundbox_enable = false;
 
  WSHook = NULL;
  IRQHook = NULL;

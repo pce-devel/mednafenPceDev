@@ -52,6 +52,8 @@ static unsigned int ckdelay;
 static bool fftoggle_setting;
 static bool sftoggle_setting;
 
+static uint64 le_mask = ~0ULL; // FIXME/TODO: Init to ~0ULL on game load.
+
 enum ICType
 {
 	none,
@@ -1123,7 +1125,7 @@ enum CommandKey
 	CK_STATE_REWIND_TOGGLE,
 	CK_0,CK_1,CK_2,CK_3,CK_4,CK_5,CK_6,CK_7,CK_8,CK_9,
 	CK_M0,CK_M1,CK_M2,CK_M3,CK_M4,CK_M5,CK_M6,CK_M7,CK_M8,CK_M9,
-	CK_TL1, CK_TL2, CK_TL3, CK_TL4, CK_TL5, CK_TL6, CK_TL7, CK_TL8, CK_TL9,
+	CK_TL1, CK_TL2, CK_TL3, CK_TL4, CK_TL5, CK_TL6, CK_TL7, CK_TL8, CK_TL9, CK_TL0,
 	CK_TAKE_SNAPSHOT,
 	CK_TAKE_SCALED_SNAPSHOT,
 	CK_TOGGLE_FS,
@@ -1244,6 +1246,7 @@ static const COKE CKeys[_CK_COUNT]	=
         CKEYDEF( "tl7", "Toggle graphics layer 7", 0, MK_CK_CTRL(7) ),
         CKEYDEF( "tl8", "Toggle graphics layer 8", 0, MK_CK_CTRL(8) ),
         CKEYDEF( "tl9", "Toggle graphics layer 9", 0, MK_CK_CTRL(9) ),
+        CKEYDEF( "tl10", "Toggle graphics layer 10", 0, MK_CK_CTRL(0) ),
 
 	CKEYDEF( "take_snapshot", 	 "Take screen snapshot", 0, MK_CK(F9) ),
 	CKEYDEF( "take_scaled_snapshot", "Take scaled(and filtered) screen snapshot", 0, MK_CK_SHIFT(F9) ),
@@ -1431,10 +1434,37 @@ static void RedoFFSF(void)
 }
 
 
+static void ToggleSuppLayer(int which) // These are anti-sense layers, disabled at start
+{
+  const char *goodies = CurGame->LayerNames;
+  int x = 0;
+
+  while(x != which)
+  {
+   while(*goodies)
+    goodies++;
+
+   goodies++;
+   x++;
+  }
+  if(!*goodies)
+  {
+   // ack, this layer doesn't exist.
+   MDFN_Notify(MDFN_NOTICE_STATUS, _("Layer %u not available to toggle."), which);
+   return;
+  }
+
+  le_mask ^= (1ULL << which);
+  MDFNI_SetLayerEnableMask(le_mask);
+
+  if(le_mask & (1ULL << which))
+   MDFN_Notify(MDFN_NOTICE_STATUS, _("%s disabled."), _(goodies));
+  else
+   MDFN_Notify(MDFN_NOTICE_STATUS, _("%s enabled."), _(goodies));
+}
+
 static void ToggleLayer(int which)
 {
- static uint64 le_mask = ~0ULL; // FIXME/TODO: Init to ~0ULL on game load.
-
  if(CurGame && CurGame->LayerNames && CurGame->SetLayerEnableMask)
  {
   const char *goodies = CurGame->LayerNames;
@@ -1878,6 +1908,8 @@ static void CheckCommandKeys(void)
     ToggleLayer(7);
   if(CK_Check(CK_TL9))
     ToggleLayer(8);
+  if(CK_Check(CK_TL0))
+    ToggleSuppLayer(9);  // sprite bound box; currently only used by PCE's huc6270
 
   if(CK_Check(CK_STATE_SLOT_INC))
   {

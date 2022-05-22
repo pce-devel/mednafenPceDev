@@ -486,7 +486,7 @@ static MDFN_COLD int LoadCommon(void)
 
  PCE_Power();
 
- MDFNGameInfo->LayerNames = IsSGX ? "BG0\0SPR0\0BG1\0SPR1\0" : "Background\0Sprites\0";
+ MDFNGameInfo->LayerNames = IsSGX ? "BG0\0SPR0\0BG1\0SPR1\0\0\0\0\0\0Spr Bound Box\0" : "Background\0Sprites\0\0\0\0\0\0\0\0Spr Bound Box\0";
  MDFNGameInfo->fps = (uint32)((double)7159090.90909090 / 455 / 263 * 65536 * 256);
  MDFNGameInfo->CPInfoActiveBF = IsHES ? 0 : 1 << 0;
 
