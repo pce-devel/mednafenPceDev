@@ -402,6 +402,7 @@ static bool CPUHandler(uint32 PC)
  return(ret);
 }
 
+#if PCEFONT_STRINGSEARCH
 static int32 FindInMem(uint16 StartAddr, uint16 EndAddr, uint8 *buf, uint16 LenBytes)
  {
   uint16 ptr;
@@ -432,6 +433,7 @@ static int32 FindInMem(uint16 StartAddr, uint16 EndAddr, uint8 *buf, uint16 LenB
 
   return(ret);
  }
+#endif
 
  extern uint64 PCE_TimestampBase;
  static void SyscardFuncLog(uint32 PC)
@@ -868,8 +870,8 @@ static int32 FindInMem(uint16 StartAddr, uint16 EndAddr, uint8 *buf, uint16 LenB
    static int32 ptr_loc = -1;
    static bool found = FALSE;
    static uint8 getfnt_buf[2000];
-#endif
    uint8 getfnt_ptr[10];
+#endif
 
    temp1 = (BH << 8) | BL;
    sjis_glyph = HuCPU.PeekLogical(0x20F8) | (HuCPU.PeekLogical(0x20F9) << 8);
