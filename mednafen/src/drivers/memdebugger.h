@@ -41,6 +41,7 @@ class MemDebugger
 
  void ICV_Init(const char *newcode);
  void ChangePos(int64 delta);
+ void AlignPos(int64 align);
 
  std::vector<uint8> TextToBS(const std::string& text);
  void PromptFinish(const std::string& pstring);
