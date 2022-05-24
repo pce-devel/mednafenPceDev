@@ -83,6 +83,8 @@ struct AddressSpaceType
 	uint8 Endianness;
 	uint8 MaxDigit;  // least-significant digit is 0, etc.  Normally ((Wordbytes * 2) - 1)
 
+	bool PossibleSATB; // only certain types of memory should bother to attempt to interpret as SATB
+
 	bool IsPalette;
 	uint8 PaletteType;
 
@@ -211,17 +213,17 @@ struct DebuggerInfoStruct
 // An address space should only be added during Load() or LoadCD().
 int ASpace_Add(void (*gasb)(const char *name, uint32 Address, uint32 Length, uint8 *Buffer),
         void (*pasb)(const char *name, uint32 Address, uint32 Length, uint32 Granularity, bool hl, const uint8 *Buffer), const char *name, const char *long_name,
-        uint32 TotalBits, uint32 NP2Size = 0);
+        uint32 TotalBits, uint32 NP2Size = 0, bool PossibleSATB = false);
 
 int ASpace_Add(const AddressSpaceType &);
 
 int ASpace_Add16(void (*gasb)(const char *name, uint32 Address, uint32 Length, uint8 *Buffer),
         void (*pasb)(const char *name, uint32 Address, uint32 Length, uint32 Granularity, bool hl, const uint8 *Buffer), const char *name, const char *long_name,
-        uint32 TotalBits, uint32 NP2Size = 0, uint8 Endianness = ENDIAN_LITTLE);
+        uint32 TotalBits, uint32 NP2Size = 0, bool PossibleSATB = false, uint8 Endianness = ENDIAN_LITTLE);
 
 int ASpace_AddPalette(void (*gasb)(const char *name, uint32 Address, uint32 Length, uint8 *Buffer),
         void (*pasb)(const char *name, uint32 Address, uint32 Length, uint32 Granularity, bool hl, const uint8 *Buffer), const char *name, const char *long_name,
-        uint32 TotalBits, uint32 NP2Size = 0, uint8 Wordbytes = 2, uint8 Endianness = ENDIAN_LITTLE, uint8 PalType = PALETTE_PCE);
+        uint32 TotalBits, uint32 NP2Size = 0, bool PossibleSATB = false, uint8 Wordbytes = 2, uint8 Endianness = ENDIAN_LITTLE, uint8 PalType = PALETTE_PCE);
 
 // Removes all registered address spaces.
 void ASpace_Reset(void);

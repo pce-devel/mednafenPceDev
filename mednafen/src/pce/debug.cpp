@@ -1830,45 +1830,45 @@ void PCEDBG_Init(bool sgx, PCE_PSG *new_psg, const uint32 vram_size)
   if(IsSGX)
    MDFNDBG_AddRegGroup(&RegsGroup_SGXVDC);
 
-  ASpace_Add(GetAddressSpaceBytes, PutAddressSpaceBytes, "cpu", "CPU Logical", 16);
-  ASpace_Add(GetAddressSpaceBytes, PutAddressSpaceBytes, "physical", "CPU Physical", 21);
-  ASpace_Add(GetAddressSpaceBytes, PutAddressSpaceBytes, "ram", "RAM", IsSGX ? 15 : 13);
+  ASpace_Add(GetAddressSpaceBytes, PutAddressSpaceBytes, "cpu", "CPU Logical", 16, 0, true);
+  ASpace_Add(GetAddressSpaceBytes, PutAddressSpaceBytes, "physical", "CPU Physical", 21, 0, true);
+  ASpace_Add(GetAddressSpaceBytes, PutAddressSpaceBytes, "ram", "RAM", IsSGX ? 15 : 13, 0, true);
 
-  ASpace_AddPalette(Do16BitGet, Do16BitPut, "pram", "VCE Palette RAM", 10, 0, 2, ENDIAN_LITTLE, PALETTE_PCE);
+  ASpace_AddPalette(Do16BitGet, Do16BitPut, "pram", "VCE Palette RAM", 10, 0, false, 2, ENDIAN_LITTLE, PALETTE_PCE);
 
   vram_addr_mask = (vram_size - 1);
   if(IsSGX)
   {
-   ASpace_Add16(Do16BitGet, Do16BitPut, "vram0", "VDC-A VRAM", MDFN_log2(vram_size) + 1, 0, ENDIAN_LITTLE);
-   ASpace_Add16(Do16BitGet, Do16BitPut, "sat0", "VDC-A SAT", 8 + 1, 0, ENDIAN_LITTLE);
-   ASpace_Add16(Do16BitGet, Do16BitPut, "vram1", "VDC-B VRAM", MDFN_log2(vram_size) + 1, 0, ENDIAN_LITTLE);
-   ASpace_Add16(Do16BitGet, Do16BitPut, "sat1", "VDC-B SAT", 8 + 1, 0, ENDIAN_LITTLE);
+   ASpace_Add16(Do16BitGet, Do16BitPut, "vram0", "VDC-A VRAM", MDFN_log2(vram_size) + 1, 0, true, ENDIAN_LITTLE);
+   ASpace_Add16(Do16BitGet, Do16BitPut, "sat0", "VDC-A SAT", 8 + 1, 0, true, ENDIAN_LITTLE);
+   ASpace_Add16(Do16BitGet, Do16BitPut, "vram1", "VDC-B VRAM", MDFN_log2(vram_size) + 1, 0, true, ENDIAN_LITTLE);
+   ASpace_Add16(Do16BitGet, Do16BitPut, "sat1", "VDC-B SAT", 8 + 1, 0, true, ENDIAN_LITTLE);
   }
   else
   {
-   ASpace_Add16(Do16BitGet, Do16BitPut, "vram0", "VDC VRAM", MDFN_log2(vram_size) + 1, 0, ENDIAN_LITTLE);
-   ASpace_Add16(Do16BitGet, Do16BitPut, "sat0", "VDC SAT", 8 + 1, 0, ENDIAN_LITTLE);
+   ASpace_Add16(Do16BitGet, Do16BitPut, "vram0", "VDC VRAM", MDFN_log2(vram_size) + 1, 0, true, ENDIAN_LITTLE);
+   ASpace_Add16(Do16BitGet, Do16BitPut, "sat0", "VDC SAT", 8 + 1, 0, true, ENDIAN_LITTLE);
   }
 
   if(PCE_IsCD)
   {
-   ASpace_Add(GetAddressSpaceBytes, PutAddressSpaceBytes, "adpcm", "ADPCM RAM", 16);
+   ASpace_Add(GetAddressSpaceBytes, PutAddressSpaceBytes, "adpcm", "ADPCM RAM", 16, 0, false);
    MDFNDBG_AddRegGroup(&RegsGroup_CD);
   }
 
   if(arcade_card)
   {
-   ASpace_Add(GetAddressSpaceBytes, PutAddressSpaceBytes, "acram", "Arcade Card RAM", 21);
+   ASpace_Add(GetAddressSpaceBytes, PutAddressSpaceBytes, "acram", "Arcade Card RAM", 21, 0, false);
   }
 
   if(HuC_IsBRAMAvailable())
   {
-   ASpace_Add(GetAddressSpaceBytes, PutAddressSpaceBytes, "bram", "BRAM", 11);
+   ASpace_Add(GetAddressSpaceBytes, PutAddressSpaceBytes, "bram", "BRAM", 11, 0, false);
   }
 
   if(HuC_IsMB128Available())
   {
-   ASpace_Add(GetAddressSpaceBytes, PutAddressSpaceBytes, "mb128", "Memory Base 128", 17);
+   ASpace_Add(GetAddressSpaceBytes, PutAddressSpaceBytes, "mb128", "Memory Base 128", 17, 0, false);
   }
 
   for(int x = 0; x < 6; x++)
@@ -1886,6 +1886,7 @@ void PCEDBG_Init(bool sgx, PCE_PSG *new_psg, const uint32 vram_size)
      newt.long_name = std::string(tmpinfo);
      newt.TotalBits = 5;
      newt.NP2Size = 0;
+     newt.PossibleSATB = false;
 
      newt.Wordbytes  = 1;
      newt.Endianness = ENDIAN_LITTLE;
