@@ -14,8 +14,8 @@ x86_64-w64-mingw32-strip libgcc_s_seh-1.dll libcharset-1.dll libiconv-2.dll SDL2
 mkdir -p de/LC_MESSAGES ru/LC_MESSAGES && \
 cp ../mednafen/po/de.gmo de/LC_MESSAGES/mednafen.mo && \
 cp ../mednafen/po/ru.gmo ru/LC_MESSAGES/mednafen.mo && \
-7za a -mtc- -mx9 -mfb=258 -mpass=15 ../mednafen-"$VERSION"-happyeyes-win64.zip mednafen.exe libgcc_s_seh-1.dll libcharset-1.dll libiconv-2.dll SDL2.dll de/ ru/ && \
+7za a -mtc- -mx9 -mfb=258 -mpass=15 ../mednafen-"$VERSION"-win64.zip mednafen.exe libgcc_s_seh-1.dll libcharset-1.dll libiconv-2.dll SDL2.dll de/ ru/ && \
 cd ../mednafen && \
-7za a -mtc- -mx9 -mfb=258 -mpass=15 ../mednafen-"$VERSION"-happyeyes-win64.zip COPYING ChangeLog Documentation/*.html Documentation/*.css Documentation/*.png Documentation/*.txt && \
+7za a -mtc- -mx9 -mfb=258 -mpass=15 ../mednafen-"$VERSION"-win64.zip COPYING ChangeLog Documentation/*.html Documentation/*.css Documentation/*.png Documentation/*.txt && \
 cd ..
 
