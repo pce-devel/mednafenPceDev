@@ -166,6 +166,7 @@ void MDFN_DispMessage(const char *format, ...) noexcept MDFN_FORMATSTR(gnu_print
 int MDFNI_DatachSet(const uint8 *rcode);
 
 void MDFNI_SetLayerEnableMask(uint64 mask);
+void MDFNI_SetChanEnableMask(uint64 mask);
 
 
 //TODO(need to work out how it'll interact with port device type settings):

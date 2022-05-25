@@ -53,6 +53,7 @@ static bool fftoggle_setting;
 static bool sftoggle_setting;
 
 static uint64 le_mask = ~0ULL; // FIXME/TODO: Init to ~0ULL on game load.
+static uint64 sc_mask = ~0ULL; // FIXME/TODO: Init to ~0ULL on game load.
 
 enum ICType
 {
@@ -1126,6 +1127,7 @@ enum CommandKey
 	CK_0,CK_1,CK_2,CK_3,CK_4,CK_5,CK_6,CK_7,CK_8,CK_9,
 	CK_M0,CK_M1,CK_M2,CK_M3,CK_M4,CK_M5,CK_M6,CK_M7,CK_M8,CK_M9,
 	CK_TL1, CK_TL2, CK_TL3, CK_TL4, CK_TL5, CK_TL6, CK_TL7, CK_TL8, CK_TL9, CK_TL0,
+	CK_SC1, CK_SC2, CK_SC3, CK_SC4, CK_SC5, CK_SC6, CK_SC7, CK_SC8, CK_SC9, CK_SC0,
 	CK_TAKE_SNAPSHOT,
 	CK_TAKE_SCALED_SNAPSHOT,
 	CK_TOGGLE_FS,
@@ -1247,6 +1249,17 @@ static const COKE CKeys[_CK_COUNT]	=
         CKEYDEF( "tl8", "Toggle graphics layer 8", 0, MK_CK_CTRL(8) ),
         CKEYDEF( "tl9", "Toggle graphics layer 9", 0, MK_CK_CTRL(9) ),
         CKEYDEF( "tl10", "Toggle graphics layer 10", 0, MK_CK_CTRL(0) ),
+
+        CKEYDEF( "sc1", "Toggle sound channel 1", 0, MK_CK_ALT(1) ),
+        CKEYDEF( "sc2", "Toggle sound channel 2", 0, MK_CK_ALT(2) ),
+        CKEYDEF( "sc3", "Toggle sound channel 3", 0, MK_CK_ALT(3) ),
+        CKEYDEF( "sc4", "Toggle sound channel 4", 0, MK_CK_ALT(4) ),
+        CKEYDEF( "sc5", "Toggle sound channel 5", 0, MK_CK_ALT(5) ),
+        CKEYDEF( "sc6", "Toggle sound channel 6", 0, MK_CK_ALT(6) ),
+        CKEYDEF( "sc7", "Toggle sound channel 7", 0, MK_CK_ALT(7) ),
+        CKEYDEF( "sc8", "Toggle sound channel 8", 0, MK_CK_ALT(8) ),
+        CKEYDEF( "sc9", "Toggle sound channel 9", 0, MK_CK_ALT(9) ),
+        CKEYDEF( "sc10", "Toggle sound channel 10", 0, MK_CK_ALT(0) ),
 
 	CKEYDEF( "take_snapshot", 	 "Take screen snapshot", 0, MK_CK(F9) ),
 	CKEYDEF( "take_scaled_snapshot", "Take scaled(and filtered) screen snapshot", 0, MK_CK_SHIFT(F9) ),
@@ -1496,6 +1509,38 @@ static void ToggleLayer(int which)
   MDFN_Notify(MDFN_NOTICE_STATUS, _("No toggleable layers available."));
 }
 
+static void ToggleSoundChnl(int which)
+{
+ if(CurGame && CurGame->ChanNames && CurGame->SetChanEnableMask)
+ {
+  const char *goodies = CurGame->ChanNames;
+  int x = 0;
+
+  while(x != which)
+  {
+   while(*goodies)
+    goodies++;
+   goodies++;
+   if(!*goodies)
+   {
+    // ack, this layer doesn't exist.
+    MDFN_Notify(MDFN_NOTICE_STATUS, _("Channel %u not available to toggle."), which);
+    return;
+   }
+   x++;
+  }
+
+  sc_mask ^= (1ULL << which);
+  MDFNI_SetChanEnableMask(sc_mask);
+
+  if(sc_mask  & (1ULL << which))
+   MDFN_Notify(MDFN_NOTICE_STATUS, _("%s enabled."), _(goodies));
+  else
+   MDFN_Notify(MDFN_NOTICE_STATUS, _("%s disabled."), _(goodies));
+ }
+ else
+  MDFN_Notify(MDFN_NOTICE_STATUS, _("No toggleable channels available."));
+}
 
 // TODO: Remove this in the future when digit-string input devices are better abstracted.
 static uint8 BarcodeWorldData[1 + 13];
@@ -1910,6 +1955,27 @@ static void CheckCommandKeys(void)
     ToggleLayer(8);
   if(CK_Check(CK_TL0))
     ToggleSuppLayer(9);  // sprite bound box; currently only used by PCE's huc6270
+
+  if(CK_Check(CK_SC1))
+    ToggleSoundChnl(0);
+  if(CK_Check(CK_SC2))
+    ToggleSoundChnl(1);
+  if(CK_Check(CK_SC3))
+    ToggleSoundChnl(2);
+  if(CK_Check(CK_SC4))
+    ToggleSoundChnl(3);
+  if(CK_Check(CK_SC5))
+    ToggleSoundChnl(4);
+  if(CK_Check(CK_SC6))
+    ToggleSoundChnl(5);
+  if(CK_Check(CK_SC7))
+    ToggleSoundChnl(6);
+  if(CK_Check(CK_SC8))
+    ToggleSoundChnl(7);
+  if(CK_Check(CK_SC9))
+    ToggleSoundChnl(8);
+  if(CK_Check(CK_SC0))
+    ToggleSoundChnl(9);
 
   if(CK_Check(CK_STATE_SLOT_INC))
   {

@@ -2432,6 +2432,14 @@ void MDFNI_SetLayerEnableMask(uint64 mask)
  }
 }
 
+void MDFNI_SetChanEnableMask(uint64 mask)
+{
+ if(MDFNGameInfo && MDFNGameInfo->SetChanEnableMask)
+ {
+  MDFNGameInfo->SetChanEnableMask(mask);
+ }
+}
+
 uint8* MDFNI_SetInput(const uint32 port, const uint32 type)
 {
  if(MDFNGameInfo)
