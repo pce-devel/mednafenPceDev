@@ -487,6 +487,7 @@ static MDFN_COLD int LoadCommon(void)
  PCE_Power();
 
  MDFNGameInfo->LayerNames = IsSGX ? "BG0\0SPR0\0BG1\0SPR1\0\0\0\0\0\0Spr Bound Box\0" : "Background\0Sprites\0\0\0\0\0\0\0\0Spr Bound Box\0";
+ MDFNGameInfo->ChanNames = "PSG0\0PSG1\0PSG2\0PSG3\0PSG4\0PSG5\0";
  MDFNGameInfo->fps = (uint32)((double)7159090.90909090 / 455 / 263 * 65536 * 256);
  MDFNGameInfo->CPInfoActiveBF = IsHES ? 0 : 1 << 0;
 
@@ -1163,6 +1164,11 @@ static void SetLayerEnableMask(uint64 mask)
  vce->SetLayerEnableMask(mask);
 }
 
+static void SetChanEnableMask(uint64 mask)
+{
+ psg->SetChanEnableMask(mask);
+}
+
 static const FileExtensionSpecStruct KnownExtensions[] =
 {
  { ".pce",   0, gettext_noop("PC Engine ROM Image") },
@@ -1233,7 +1239,7 @@ MDFN_HIDE extern const MDFNGI EmulatedPCE =
  SetLayerEnableMask,
  NULL,
 
- NULL,
+ SetChanEnableMask,
  NULL,
 
  CPInfo,

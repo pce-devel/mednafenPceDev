@@ -50,6 +50,7 @@ struct psg_channel
 
         uint16 frequency;       /* Channel frequency */
         uint8 balance;          /* Channel balance */
+        bool  emu_enable;       /* whether disabled from being audible by the emulator */
 };
 
 // Only CH4 and CH5 have NCTRL and LFSR, but it's here for the other channels for "consistency".
@@ -144,6 +145,8 @@ class PCE_PSG
 	// TODO: timestamp
 	uint32 GetRegister(const unsigned int id, char *special, const uint32 special_len);
 	void SetRegister(const unsigned int id, const uint32 value);
+
+	void SetChanEnableMask(uint64 mask);
 
 	void PeekWave(const unsigned int ch, uint32 Address, uint32 Length, uint8 *Buffer);
 	void PokeWave(const unsigned int ch, uint32 Address, uint32 Length, const uint8 *Buffer);

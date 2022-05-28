@@ -157,7 +157,8 @@ void PCE_PSG::RecalcUOFunc(int chnum)
 
  //printf("UO Update: %d, %02x\n", chnum, ch->control);
 
- if((revision != REVISION_HUC6280 && !(ch->control & 0xC0)) || (revision == REVISION_HUC6280 && !(ch->control & 0x80)))
+ if((revision != REVISION_HUC6280 && !(ch->control & 0xC0)) || (revision == REVISION_HUC6280 && !(ch->control & 0x80))
+	|| (ch->emu_enable == false)  )
   ch->UpdateOutput = &PCE_PSG::UpdateOutput_Off;
  else if(ch->noisectrl & ch->control & 0x80)
   ch->UpdateOutput = &PCE_PSG::UpdateOutput_Noise;
@@ -205,6 +206,15 @@ void PCE_PSG::RecalcNoiseFreqCache(int chnum)
 
  ch->noise_freq_cache = freq;
 }
+
+void PCE_PSG::SetChanEnableMask(uint64 mask)
+{
+ for(unsigned chnl = 0; chnl < 6; chnl++)
+ {
+  channel[chnl].emu_enable = (mask >> chnl) & 0x01;
+ }
+}
+
 
 void PCE_PSG::PeekWave(const unsigned int ch, uint32 Address, uint32 Length, uint8 *Buffer)
 {
@@ -428,6 +438,7 @@ PCE_PSG::PCE_PSG(int32* hr_l, int32* hr_r, int want_revision)
 	lastts = 0;
 	for(int ch = 0; ch < 6; ch++)
 	{
+	 channel[ch].emu_enable = true;
 	 channel[ch].blip_prev_samp[0] = 0;
 	 channel[ch].blip_prev_samp[1] = 0;
 	 channel[ch].lastts = 0;
@@ -787,6 +798,8 @@ void PCE_PSG::Power(const int32 timestamp)
 
  for(int ch = 0; ch < 6; ch++)
  {
+  channel[ch].emu_enable = true;
+
   channel[ch].frequency = 0;
   channel[ch].control = 0x00;
   channel[ch].balance = 0;
@@ -874,6 +887,8 @@ void PCE_PSG::StateAction(StateMem *sm, const unsigned load, const bool data_onl
 
   for(int ch = 0; ch < 6; ch++)
   {
+   channel[ch].emu_enable = true;
+
    channel[ch].waveform_index &= 0x1F;
    channel[ch].frequency &= 0xFFF;
    channel[ch].dda &= 0x1F;
