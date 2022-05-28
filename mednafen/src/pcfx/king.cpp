@@ -541,12 +541,19 @@ static void Do16BitGet(const char *name, uint32 Address, uint32 Length, uint8 *B
   wc = 0;
  else if(!strcmp(name, "vdcvram1"))
   wc = 1;
+ else if(!strcmp(name, "vdcsat0"))
+  wc = 2;
+ else if(!strcmp(name, "vdcsat1"))
+  wc = 3;
 
  while(Length)
  {
   uint16 data;
 
-  data = fx_vdc_chips[wc & 1]->PeekVRAM((Address >> 1) & 0xFFFF);
+  if(wc & 2)
+   data = fx_vdc_chips[wc & 1]->PeekSAT((Address >> 1) & 0xFF);
+  else
+   data = fx_vdc_chips[wc & 1]->PeekVRAM((Address >> 1) & 0xFFFF);
 
   if((Address & 1) || Length == 1)
   {
@@ -575,6 +582,10 @@ static void Do16BitPut(const char *name, uint32 Address, uint32 Length, uint32 G
   wc = 0;
  else if(!strcmp(name, "vdcvram1"))
   wc = 1;
+ else if(!strcmp(name, "vdcsat0"))
+  wc = 2;
+ else if(!strcmp(name, "vdcsat1"))
+  wc = 3;
 
  while(Length)
  {
@@ -583,7 +594,10 @@ static void Do16BitPut(const char *name, uint32 Address, uint32 Length, uint32 G
 
   if((Address & 1) || Length == 1)
   {
-   data = fx_vdc_chips[wc & 1]->PeekVRAM((Address >> 1) & 0xFFFF);
+   if(wc & 2)
+    data = fx_vdc_chips[wc & 1]->PeekSAT((Address >> 1) & 0xFF);
+   else
+    data = fx_vdc_chips[wc & 1]->PeekVRAM((Address >> 1) & 0xFFFF);
 
    data &= ~(0xFF << ((Address & 1) << 3));
    data |= *Buffer << ((Address & 1) << 3);
@@ -596,7 +610,10 @@ static void Do16BitPut(const char *name, uint32 Address, uint32 Length, uint32 G
    inc_amount = 2;
   }
 
-  fx_vdc_chips[wc & 1]->PokeVRAM((Address >> 1) & 0xFFFF, data);
+  if(wc & 2)
+   fx_vdc_chips[wc & 1]->PokeSAT((Address >> 1) & 0xFF, data);
+  else
+   fx_vdc_chips[wc & 1]->PokeVRAM((Address >> 1) & 0xFFFF, data);
 
   Buffer += inc_amount;
   Address += inc_amount;
@@ -1814,8 +1831,10 @@ void KING_Init(void)
   #ifdef WANT_DEBUGGER
   ASpace_Add(KING_GetAddressSpaceBytes, KING_PutAddressSpaceBytes, "kram0", "KRAM Page 0", 19);
   ASpace_Add(KING_GetAddressSpaceBytes, KING_PutAddressSpaceBytes, "kram1", "KRAM Page 1", 19);
-  ASpace_Add(Do16BitGet, Do16BitPut, "vdcvram0", "VDC-A VRAM", 17);
-  ASpace_Add(Do16BitGet, Do16BitPut, "vdcvram1", "VDC-B VRAM", 17);
+  ASpace_Add16(Do16BitGet, Do16BitPut, "vdcvram0", "VDC-A VRAM", 17, 0, true, ENDIAN_LITTLE);
+  ASpace_Add16(Do16BitGet, Do16BitPut, "vdcsat0", "VDC-A SAT", 8 + 1, 0, true, ENDIAN_LITTLE);  // SATB to show ?
+  ASpace_Add16(Do16BitGet, Do16BitPut, "vdcvram1", "VDC-B VRAM", 17, 0, true, ENDIAN_LITTLE);
+  ASpace_Add16(Do16BitGet, Do16BitPut, "vdcsat1", "VDC-B SAT", 8 + 1, 0, true, ENDIAN_LITTLE);  // SATB to show ?
   ASpace_Add(KING_GetAddressSpaceBytes, KING_PutAddressSpaceBytes, "vce", "VCE Palette RAM", 10);
   #endif
 
