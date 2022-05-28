@@ -53,8 +53,8 @@ void MDFNDBG_Kill(void)
 
 AddressSpaceType::AddressSpaceType() : TotalBits(0), NP2Size(0), IsWave(false), WaveFormat(ASPACE_WFMT_UNSIGNED), WaveBits(0),
 				GetAddressSpaceBytes(NULL), PutAddressSpaceBytes(NULL), private_data(NULL), EnableUsageMap(NULL),
-				UsageMapRead(NULL), UsageMapWrite(NULL), UsageReadMemUsed(0), UsageWriteMemUsed(0), Wordbytes(1),
-			       	Endianness(ENDIAN_LITTLE), IsPalette(false), PaletteType(PALETTE_NONE)
+				UsageMapRead(NULL), UsageMapWrite(NULL), UsageReadMemUsed(0), UsageWriteMemUsed(0), PossibleSATB(false),
+			       	Wordbytes(1), Endianness(ENDIAN_LITTLE), IsPalette(false), PaletteType(PALETTE_NONE)
 {
 
 }
@@ -66,7 +66,7 @@ AddressSpaceType::~AddressSpaceType()
 
 int ASpace_Add(void (*gasb)(const char *name, uint32 Address, uint32 Length, uint8 *Buffer),
         void (*pasb)(const char *name, uint32 Address, uint32 Length, uint32 Granularity, bool hl, const uint8 *Buffer), const char *name, const char *long_name,
-        uint32 TotalBits, uint32 NP2Size)
+        uint32 TotalBits, uint32 NP2Size, bool PossibleSATB)
 {
  AddressSpaceType newt;
 
@@ -77,6 +77,7 @@ int ASpace_Add(void (*gasb)(const char *name, uint32 Address, uint32 Length, uin
  newt.long_name = std::string(long_name);
  newt.TotalBits = TotalBits;
  newt.NP2Size = NP2Size;
+ newt.PossibleSATB = PossibleSATB;
  newt.Wordbytes = 1;
  newt.Endianness = ENDIAN_LITTLE;
  newt.MaxDigit = (newt.Wordbytes * 2) - 1;
@@ -94,7 +95,7 @@ int ASpace_Add(void (*gasb)(const char *name, uint32 Address, uint32 Length, uin
 //
 int ASpace_Add16(void (*gasb)(const char *name, uint32 Address, uint32 Length, uint8 *Buffer),
         void (*pasb)(const char *name, uint32 Address, uint32 Length, uint32 Granularity, bool hl, const uint8 *Buffer), const char *name, const char *long_name,
-        uint32 TotalBits, uint32 NP2Size, uint8 Endianness)
+        uint32 TotalBits, uint32 NP2Size, bool PossibleSATB, uint8 Endianness)
 {
  AddressSpaceType newt;
 
@@ -105,6 +106,7 @@ int ASpace_Add16(void (*gasb)(const char *name, uint32 Address, uint32 Length, u
  newt.long_name = std::string(long_name);
  newt.TotalBits = TotalBits;
  newt.NP2Size = NP2Size;
+ newt.PossibleSATB = PossibleSATB;
  newt.Wordbytes = 2;
  newt.Endianness = Endianness;
  newt.MaxDigit = (newt.Wordbytes * 2) - 1;
@@ -122,7 +124,7 @@ int ASpace_Add16(void (*gasb)(const char *name, uint32 Address, uint32 Length, u
 //
 int ASpace_AddPalette(void (*gasb)(const char *name, uint32 Address, uint32 Length, uint8 *Buffer),
         void (*pasb)(const char *name, uint32 Address, uint32 Length, uint32 Granularity, bool hl, const uint8 *Buffer), const char *name, const char *long_name,
-        uint32 TotalBits, uint32 NP2Size, uint8 Wordbytes, uint8 Endianness, uint8 PaletteType)
+        uint32 TotalBits, uint32 NP2Size, bool PossibleSATB, uint8 Wordbytes, uint8 Endianness, uint8 PaletteType)
 {
  AddressSpaceType newt;
 
@@ -133,6 +135,7 @@ int ASpace_AddPalette(void (*gasb)(const char *name, uint32 Address, uint32 Leng
  newt.long_name = std::string(long_name);
  newt.TotalBits = TotalBits;
  newt.NP2Size = NP2Size;
+ newt.PossibleSATB = PossibleSATB;
  newt.Wordbytes = Wordbytes;
  newt.Endianness = Endianness;
  newt.MaxDigit = (newt.Wordbytes * 2) - 1;

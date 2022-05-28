@@ -631,9 +631,7 @@ INLINE void MemDebugger::DrawAtCursorInfo(MDFN_Surface* surface, const int32 bas
   }
  }
 
- notsat = 0;
- if (ASpace->IsPalette)
-  notsat = 1;
+ notsat = ASpace->PossibleSATB ? 0 : 1;
 
  tmpx = (zebytes[0] | (zebytes[1] << 8)) - 32;
  if ((tmpx < -32) || (tmpx > 1024))
