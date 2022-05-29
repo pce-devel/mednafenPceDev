@@ -778,15 +778,15 @@ int32 VDC::Run(int32 clocks, uint16 *pixels, bool skip)
 		       pixel_desu = 0;
 		       pixel_copy_count = (HDW_cache + 1) * 8;
 
-		       // BG off, sprite on: fill = 0x100.  bg off, sprite off: fill = 0x000
+		       // BG off, sprite on: fill = 0x000.  bg off, sprite off: fill = 0x100
 		       if(!(CR_cache & 0x80))
 		       {
 		        uint16 fill_val;
 
 		        if(!(CR_cache & 0xC0))	// Sprites and BG off
-			 fill_val = 0x000;			
+			 fill_val = 0x100;			
 		        else	// Only BG off
-			 fill_val = 0x100 | ((userle & ULE_BG) ? 0 : VDC_BGDISABLE_OUT_MASK);
+			 fill_val = 0x000;
 
 			if(!(userle & ULE_BG))
 			 fill_val |= VDC_BGDISABLE_OUT_MASK;
