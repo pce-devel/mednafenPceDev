@@ -6,7 +6,7 @@
 
 Mednafen is built upon a number of external libraries which are required in order to compile.
 
-Assuming that you already have a working in stall of gcc/make and other basic devloepre tools,
+Assuming that you already have a working install of gcc/make and other basic developer tools,
 the following command(s) may still be needed:
 
 ```
@@ -24,7 +24,7 @@ for the compile; the procedure is as follows:
 make
 ```
 
-At this point, the mednafen binary can be found in the mednafen/src/ folder; you may manually copy/move it
+At this point, the Mednafen binary can be found in the mednafen/src/ folder; you may manually copy/move it
 from there, or use the prescribed:
 ```
 sudo make install
@@ -32,7 +32,7 @@ sudo make install
 
 ## Common Problems:
 
-It is possible that the sound device may not be properly identified by mednafen; if this is the case, the original
-mednafen documentation has some hints here:
+It is possible that the sound device may not be properly identified by Mednafen; if this is the case, the original
+Mednafen documentation has some hints here:
 [https://mednafen.github.io/documentation/#Section_troubleshooting_nosoundlinux](https://mednafen.github.io/documentation/#Section_troubleshooting_nosoundlinux)
 
