@@ -1,6 +1,6 @@
 # Release Notes
 
-## New release 2022/05/28
+## New release 2022/06/05
 
 ### New Features/Improvements:
 
@@ -22,7 +22,7 @@
  - Add 'frame' counter to debug screen
 
 #### General
- - Significant improvements to debugger from jbrandwood's 'mednafen-happyeyes' modificiations
+ - Significant improvements to debugger from jbrandwood's 'mednafen-happyeyes' modifications
  - Display memory near stack pointer for systems with zero-page and single-page stack pointers
  - Add option to halt execution on "Alt-D" to enter debug screen (debugger.haltondebug)
  - Make debug overlay opacity persist between runs (debugger.opacity)
