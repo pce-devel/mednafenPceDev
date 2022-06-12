@@ -364,6 +364,7 @@ class VDC
 	enum
 	{
 	 HPHASE_HDS = 0,
+	 HPHASE_LATCH_VBL,
 	 HPHASE_HDS_PART2,
 	 HPHASE_HDS_PART3,
 	 HPHASE_HDW,
@@ -502,6 +503,8 @@ class VDC
 
 	uint32 HSW_cache, HDS_cache, HDW_cache, HDE_cache;
 
+	uint32 HSW_end_pos, HDS_end_pos, HDISP_end_pos, OFFS_latch, VBL_latch;
+
 	uint32 VDS_cache;
 	uint32 VSW_cache;
 	uint32 VDW_cache;
@@ -512,7 +515,9 @@ class VDC
 	uint32 BG_YMoo;
 	bool NeedRCRInc, NeedVBIRQTest, NeedSATDMATest, NeedBGYInc;
 	int HPhase, VPhase;
+	int HNextEvent;
 	int32 HPhaseCounter, VPhaseCounter;
+	int32 Scanline_from_VSYNC;
 
 	int32 sprite_cg_fetch_counter;
 

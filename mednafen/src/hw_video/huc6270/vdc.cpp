@@ -398,6 +398,7 @@ void VDC::IncRCR(void)
  RCRCount++;
 
  VPhaseCounter--;
+ Scanline_from_VSYNC++;
 
  if(VPhaseCounter <= 0)
  {
@@ -410,7 +411,6 @@ void VDC::IncRCR(void)
    case VPHASE_VDW: VPhaseCounter = VDW_cache + 1;
 		    //BG_YMoo = BYR - 1;
 		    RCRCount = 0;
-		    burst_mode = !(CR & 0xC0);
 		    NeedVBIRQTest = true;
 		    NeedSATDMATest = true;
 
@@ -435,6 +435,7 @@ void VDC::IncRCR(void)
 		    break;
 
    case VPHASE_VSW: VPhaseCounter = VSW_cache + 1;
+		    Scanline_from_VSYNC = 0;
 		    MWR_cache = MWR;
 		    VDS_cache = M_vdc_VDS;
 		    VSW_cache = M_vdc_VSW;
@@ -508,16 +509,10 @@ void VDC::HDS_Start(void)
   CheckAndCommitPending();
  }
 
- HSW_cache = M_vdc_HSW;
- HDS_cache = M_vdc_HDS;
- HDW_cache = M_vdc_HDW;
- HDE_cache = M_vdc_HDE;
-
- VDC_DEBUG("HDS Start!  HSW: %d, HDW: %d, HDW: %d, HDE: %d\n", HSW_cache, HDS_cache, HDW_cache, HDE_cache);
-
  CR_cache = CR;
 
  HPhase = HPHASE_HDS;
+ HNextEvent = HPHASE_HDS_PART2;
  HPhaseCounter = TimeFromHDSStartToBYRLatch();
 }
 
@@ -534,11 +529,29 @@ int32 VDC::HSync(bool hb)
  {
   mystery_counter = 48;
   mystery_phase = false;
+
+//  HSW_cache = M_vdc_HSW;  // sync width value seems to be ignored/fixed when coming from HuC6260
+  HSW_cache = 3; // may need to be 4 if 7 MHz dot-clock
+  HDS_cache = M_vdc_HDS;
+  HDW_cache = M_vdc_HDW;
+  HDE_cache = M_vdc_HDE;
+  VDC_DEBUG("HDS Start!  HSW: %d, HDW: %d, HDW: %d, HDE: %d\n", HSW_cache, HDS_cache, HDW_cache, HDE_cache);
+
+//  HPhase = HPHASE_HSW;
+
+  HSW_end_pos = HSW_cache;
+  HDS_end_pos = HSW_cache + 1 + HDS_cache;
+  HDISP_end_pos = HSW_cache + 1 + HDS_cache + 1 + HDW_cache;
+
+  OFFS_latch = (HDS_end_pos-3)*8 + 7;
+  VBL_latch = (HDS_end_pos-2)*8 + 7;
+
  }
  else // Leaving hsync
  {
   HPhase = HPHASE_HSW;
   HPhaseCounter = 8;
+  HNextEvent = HPHASE_HDS;
 
   //HDS_Start();
   //HPhaseCounter += 8;
@@ -578,6 +591,7 @@ int32 VDC::VSync(bool vb)
   VCR_cache = M_vdc_VCR;
 
   VPhase = VPHASE_VSW;
+  Scanline_from_VSYNC = 0;
   VPhaseCounter = VSW_cache + 1;
  }
  else	// Leaving vsync
@@ -730,16 +744,43 @@ int32 VDC::Run(int32 clocks, uint16 *pixels, bool skip)
 
   while(HPhaseCounter <= 0)
   {
-   HPhase = (HPhase + 1) % HPHASE_COUNT;
-  
-   switch(HPhase)
+   switch(HNextEvent)
    { 
-    case HPHASE_HDS: HDS_Start();
+    case HPHASE_HSW:				// HSW = Horizontal Sync width
+		     HPhase = HPHASE_HSW;
+		     HPhaseCounter = (HSW_cache + 1) * 8;
+		     HNextEvent = HPHASE_HDS;
+		     break;
+
+    case HPHASE_LATCH_VBL:			// VBL = VBLANK latch (roughed-in for now)
+		     //HPhase = HPHASE_LATCH_VBL;
+
+		     //if(VPhase != VPHASE_VDW && NeedVBIRQTest)
+		     //{
+		     // DoVBIRQTest();
+		     // NeedVBIRQTest = false;
+		     //}
+                     //CheckAndCommitPending();
+
+  		     //if (VBL_latch < (HSW_end_pos*8) )
+		     //{
+		     // HPhaseCounter = (HSW_end_pos*8) - VBL_latch;
+		     // HNextEvent = HPHASE_HDS;
+		     //}
+		     break;
+
+
+    case HPHASE_HDS:				// HDS = Horizontal Display Start
+		     HPhase = HPHASE_HDS;
+		     HDS_Start();
+		     HNextEvent = HPHASE_HDS_PART2;
 		     break;
 
 
     case HPHASE_HDS_PART2:
+		     HPhase = HPHASE_HDS_PART2;
                      HPhaseCounter = TimeFromBYRLatchToBXRLatch();	
+		     HNextEvent = HPHASE_HDS_PART3;
 
 		     if(NeedBGYInc && !in_exhsync)
 		     {
@@ -754,14 +795,18 @@ int32 VDC::Run(int32 clocks, uint16 *pixels, bool skip)
 		     break;
 
     case HPHASE_HDS_PART3:
+		     HPhase = HPHASE_HDS_PART3;
 		     HPhaseCounter = (HDS_cache + 1) * 8 - TimeFromHDSStartToBYRLatch() - TimeFromBYRLatchToBXRLatch();
+		     HNextEvent = HPHASE_HDW;
 
 		     assert(HPhaseCounter > 0);
 
 		     BG_XOffset = BXR;
 		     break;
 
-    case HPHASE_HDW: 
+    case HPHASE_HDW: 				// HDW = Horizontal Display Width
+		     HPhase = HPHASE_HDW;
+
 		     NeedRCRInc = true;
 		     if(VPhase != VPHASE_VDW && NeedVBIRQTest)
 		     {
@@ -771,6 +816,8 @@ int32 VDC::Run(int32 clocks, uint16 *pixels, bool skip)
                      CheckAndCommitPending();
 
 		     HPhaseCounter = (HDW_cache + 1) * 8 - Cycles_Between_RCRIRQ_And_HDWEnd;
+		     HNextEvent = HPHASE_HDW_FINAL;
+
 		     if(VPhase == VPHASE_VDW)
 		     {
 		      if(!burst_mode)
@@ -808,22 +855,30 @@ int32 VDC::Run(int32 clocks, uint16 *pixels, bool skip)
 		     break;
 
     case HPHASE_HDW_FINAL:
+		     if (Scanline_from_VSYNC == (VSW_cache+1))
+		     {
+		      burst_mode = !(CR & 0xC0);
+		     }
+		     HPhase = HPHASE_HDW_FINAL;
 		     if(NeedRCRInc)
 		     {
 		      IncRCR();
 		      NeedRCRInc = false;
 		     }
 		     HPhaseCounter = Cycles_Between_RCRIRQ_And_HDWEnd;
+		     HNextEvent = HPHASE_HDE;
 		     break;
 
-    case HPHASE_HDE: //if(!burst_mode) //if(VPhase == VPHASE_VDW)	//if(!burst_mode)
+    case HPHASE_HDE:
+		     HPhase = HPHASE_HDE;
+		     //if(!burst_mode) //if(VPhase == VPHASE_VDW)	//if(!burst_mode)
 		     // lastats = 16;	// + 16;
 		     //else
 		     // lastats = 16;
 		     HPhaseCounter = (HDE_cache + 1) * 8;
+		     HNextEvent = HPHASE_HSW;
 		     break;
 
-    case HPHASE_HSW: HPhaseCounter = (HSW_cache + 1) * 8; break;
    }
   }
   pixels += chunk_clocks;
