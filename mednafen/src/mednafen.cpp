@@ -137,7 +137,7 @@ static const MDFNSetting MednafenSettings[] =
   { "qtrecord.w_double_threshold", MDFNSF_NOFLAGS, gettext_noop("Double the raw image's width if it's below this threshold."), NULL, MDFNST_UINT, "384", "0", "1073741824" },
   { "qtrecord.h_double_threshold", MDFNSF_NOFLAGS, gettext_noop("Double the raw image's height if it's below this threshold."), NULL, MDFNST_UINT, "256", "0", "1073741824" },
 
-  { "qtrecord.vcodec", MDFNSF_NOFLAGS, gettext_noop("Video codec to use."), NULL, MDFNST_ENUM, "cscd", NULL, NULL, NULL, NULL, VCodec_List },
+  { "qtrecord.vcodec", MDFNSF_NOFLAGS, gettext_noop("Video codec to use."), NULL, MDFNST_ENUM, "png", NULL, NULL, NULL, NULL, VCodec_List },
 
   { "video.deinterlacer", MDFNSF_CAT_VIDEO, gettext_noop("Deinterlacer to use for interlaced video."), NULL, MDFNST_ENUM, "weave", NULL, NULL, NULL, SettingChanged, Deinterlacer_List },
 
