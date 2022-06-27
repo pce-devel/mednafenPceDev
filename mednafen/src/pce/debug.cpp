@@ -63,6 +63,10 @@
 #define EX_GETFNT       0xE060
 #define EX_VSYNC        0xE07B
 
+extern bool IsHSYNCBreakPoint();
+extern bool IsVSYNCBreakPoint();
+
+
 namespace MDFN_IEN_PCE
 {
 
@@ -378,7 +382,7 @@ static bool CPUHandler(uint32 PC)
 
  PCE_InDebug++;
 
- FoundBPoint = TestPCBP(PC) | TestOpBP(HuCPU.PeekLogical(PC));
+ FoundBPoint = TestPCBP(PC) | TestOpBP(HuCPU.PeekLogical(PC)) | IsVSYNCBreakPoint() | IsHSYNCBreakPoint();
 
  if(NeedExecSimu)
   TestRWBP();

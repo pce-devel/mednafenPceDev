@@ -32,6 +32,9 @@
 #include "pcecd.h"
 #include <trio/trio.h>
 
+extern bool DebugHSyncFlag;
+extern bool DebugVSyncFlag;
+
 namespace MDFN_IEN_PCE
 {
 
@@ -482,9 +485,13 @@ INLINE void VCE::SyncSub(int32 clocks)
     {
      scanline = 0;
      framenum++;
+     DebugVSyncFlag = true;
     }
     else
+    {
      scanline++;
+     DebugHSyncFlag = true;
+    }
 
     if(scanline == 14 + 240) // does this need to be 242 as well?
      FrameDone = true;

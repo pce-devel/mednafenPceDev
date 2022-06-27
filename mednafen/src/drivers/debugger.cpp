@@ -31,6 +31,9 @@
 #include "prompt.h"
 #include "video.h"
 
+bool DebugHSyncFlag = false;
+bool DebugVSyncFlag = false;
+
 static MemDebugger* memdbg = NULL;
 static std::unique_ptr<FileStream> TraceLog;
 static std::string TraceLogSpec;
@@ -47,6 +50,8 @@ static bool NeedPCBPToggle;
 static int NeedStep;	// 0 =, 1 = , 2 = 
 static int NeedRun;
 static bool InSteppingMode;
+static bool WaitForVSYNC = false;
+static bool WaitForHSYNC = false;
 
 static std::vector<uint32> PCBreakPoints;
 static std::string ReadBreakpoints, IOReadBreakpoints, AuxReadBreakpoints;
@@ -164,7 +169,7 @@ static void UpdateCoreHooks(void)
  HaltOnAltD = MDFN_GetSettingB("debugger.haltondebug");
 
  bool BPInUse = PCBreakPoints.size() || ReadBreakpoints.size() || WriteBreakpoints.size() || IOReadBreakpoints.size() ||
-	IOWriteBreakpoints.size() || AuxReadBreakpoints.size() || AuxWriteBreakpoints.size() || OpBreakpoints.size() || HaltOnAltD;
+	IOWriteBreakpoints.size() || AuxReadBreakpoints.size() || AuxWriteBreakpoints.size() || OpBreakpoints.size() || HaltOnAltD || WaitForHSYNC || WaitForVSYNC;
  bool CPUCBNeeded = BPInUse || TraceLog || InSteppingMode || (NeedStep == 2);
 
  CurGame->Debugger->EnableBranchTrace(BPInUse || TraceLog || IsActive);
@@ -182,7 +187,29 @@ static void UpdatePCBreakpoints(void)
  UpdateCoreHooks();
 }
 
-static INLINE bool IsPCBreakPoint(uint32 A)
+bool IsVSYNCBreakPoint()
+{
+ bool VSync_Trigger = Debugger_GT_VSyncIsSet();
+ Debugger_GT_ResetVSync();
+
+ if (WaitForVSYNC && VSync_Trigger)
+  return(true);
+ else
+  return(false);
+}
+
+bool IsHSYNCBreakPoint()
+{
+ bool HSync_Trigger = Debugger_GT_HSyncIsSet();
+ Debugger_GT_ResetHSync();
+
+ if (WaitForHSYNC && HSync_Trigger)
+  return(true);
+ else
+  return(false);
+}
+
+INLINE bool IsPCBreakPoint(uint32 A)
 {
  unsigned int max = PCBreakPoints.size();
 
@@ -1479,6 +1506,13 @@ static void CPUCallback(uint32 PC, bool bpoint)
   DoTraceLog(PC);
 }
 
+INLINE void Debugger_GT_SetHSync(void) { DebugHSyncFlag = true; }
+INLINE void Debugger_GT_ResetHSync(void) { DebugHSyncFlag = false; }
+INLINE bool Debugger_GT_HSyncIsSet(void) { return(DebugHSyncFlag); }
+
+INLINE void Debugger_GT_SetVSync(void) { DebugVSyncFlag = true; }
+INLINE void Debugger_GT_ResetVSync(void) { DebugVSyncFlag = false; };
+INLINE bool Debugger_GT_VSyncIsSet(void) { return(DebugVSyncFlag); }
 
 // Function called from game thread, input driver code.
 void Debugger_GT_ForceStepIfStepping(void)
@@ -1810,8 +1844,29 @@ void Debugger_GT_Event(const SDL_Event *event)
 		break;
 
 	 case SDLK_s:
-		NeedStep = 2;
-		UpdateCoreHooks();
+                if(event->key.keysym.mod & KMOD_SHIFT)
+                {
+		 Debugger_GT_ResetVSync();
+		 Debugger_GT_ResetHSync();
+		 WaitForHSYNC = true;
+		 WaitForVSYNC = false;
+		 NeedRun = true;
+		}
+		else if(event->key.keysym.mod & KMOD_CTRL)
+		{
+		 Debugger_GT_ResetVSync();
+		 Debugger_GT_ResetHSync();
+		 WaitForHSYNC = false;
+		 WaitForVSYNC = true;
+		 NeedRun = true;
+		}
+		else
+		{
+		 WaitForHSYNC = false;
+		 WaitForVSYNC = false;
+		 NeedStep = 2;
+		 UpdateCoreHooks();
+		}
 		break;
 
 	 case SDLK_w:
@@ -1869,7 +1924,11 @@ void Debugger_GT_Event(const SDL_Event *event)
 		 PromptTAKC = event->key.keysym.sym;
                 }
 		else if(InSteppingMode)
+		{
+		 WaitForHSYNC = false;
+		 WaitForVSYNC = false;
 		 NeedRun = true;
+		}
 		break;
 
 	 case SDLK_l:
