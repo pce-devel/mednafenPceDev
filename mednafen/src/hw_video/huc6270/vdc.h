@@ -517,7 +517,7 @@ class VDC
 	int HPhase, VPhase;
 	int HNextEvent;
 	int32 HPhaseCounter, VPhaseCounter;
-	int32 Scanline_from_VSYNC;
+	uint32 Scanline_from_VSYNC;
 
 	int32 sprite_cg_fetch_counter;
 

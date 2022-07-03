@@ -36,6 +36,17 @@ void Debugger_GT_ForceSteppingMode(void);
 void Debugger_GT_ForceStepIfStepping(void); // For synchronizations with save state loading and reset/power toggles.
 void Debugger_GT_SyncDisToPC(void);	// Synch disassembly address to current PC/IP/whatever.
 
+void Debugger_GT_SetHSync(void);
+void Debugger_GT_ResetHSync(void);
+bool Debugger_GT_HSyncIsSet(void);
+
+void Debugger_GT_SetVSync(void);
+void Debugger_GT_ResetVSync(void);
+bool Debugger_GT_VSyncIsSet(void);
+
+bool IsVSYNCBreakPoint(void);
+bool IsHSYNCBreakPoint(void);
+
 // Must be called in a specific place in the game thread's execution path.
 void Debugger_GTR_PassBlit(void);
 
@@ -57,6 +68,18 @@ static INLINE bool Debugger_GT_IsInSteppingMode(void) { return(false); }
 static INLINE void Debugger_GT_ForceSteppingMode(void) { }
 static INLINE void Debugger_GT_ForceStepIfStepping(void) { }
 static INLINE void Debugger_GT_SyncDisToPC(void) { }
+
+static INLINE void Debugger_GT_SetHSync(void) {  }
+static INLINE void Debugger_GT_ResetHSync(void) { }
+static INLINE bool Debugger_GT_HSyncSet(void) { return(false); }
+
+static INLINE void Debugger_GT_SetVSync(void) { }
+static INLINE void Debugger_GT_ResetVSync(void) { }
+static INLINE bool Debugger_GT_VSyncSet(void) { return(false); }
+
+static INLINE bool IsVSYNCBreakPoint(void) { }
+static INLINE bool IsHSYNCBreakPoint(void) { }
+
 static INLINE void Debugger_GTR_PassBlit(void) { }
 static INLINE void Debugger_MT_DrawToScreen(const MDFN_PixelFormat& pf, signed screen_w, signed screen_h) { }
 static INLINE bool Debugger_IsActive(void) { return(false); }
