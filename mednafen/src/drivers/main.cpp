@@ -1226,12 +1226,26 @@ void DoFrameAdvance(void)
 
 static int GameLoopPaused = 0;
 
+void InitScanLine(uint32 y)
+{
+ static int entry = 0;
+
+ if (entry > 2)  // don't copy if not yet properly initialized
+ {
+   uint32 pitch32 = SoftFB[SoftFB_BackBuffer ^ 1].surface->pitch32;    // refresh new frame with (frame-1) data (overwrite residual frame-2 data)
+   SoftFB[SoftFB_BackBuffer].lw[y] = SoftFB[SoftFB_BackBuffer ^ 1].lw[y];
+   memcpy(&SoftFB[SoftFB_BackBuffer].surface->pixels[y*pitch32], &SoftFB[SoftFB_BackBuffer ^ 1].surface->pixels[y*pitch32], (pitch32 * sizeof(uint32)));
+ }
+ else
+   entry++;
+}
+
 void DebuggerFudge(void)
 {
  const uint32 WaitMS = 10;
  uint32 wt = Time::MonoMS() + WaitMS;
 
- MDFND_Update(SoftFB_BackBuffer ^ 1, nullptr, 0);
+ MDFND_Update(SoftFB_BackBuffer, nullptr, 0);
 
  wt -= Time::MonoMS();
 
@@ -1277,7 +1291,7 @@ static int GameLoop(void *arg)
 	 NeedFrameAdvance = false;
 	 //
 	 //
-	 SoftFB[SoftFB_BackBuffer].lw[0] = ~0;
+	 //SoftFB[SoftFB_BackBuffer].lw[0] = ~0;   // This messes up "current frame" display; let's see if it is useful at all before deleting
 
 	 //
 	 //

@@ -59,6 +59,7 @@ void DoRunNormal(void);
 void DoFrameAdvance(void);
 bool IsInFrameAdvance(void);
 
+void InitScanLine(uint32 y);
 void DebuggerFudge(void);
 
 MDFN_HIDE extern volatile int GameThreadRun;
