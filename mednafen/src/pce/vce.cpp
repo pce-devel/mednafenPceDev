@@ -35,6 +35,8 @@
 extern bool DebugHSyncFlag;
 extern bool DebugVSyncFlag;
 
+extern void InitScanLine(uint32 y);
+
 namespace MDFN_IEN_PCE
 {
 
@@ -235,8 +237,8 @@ void VCE::StartFrame(MDFN_Surface *surface, MDFN_Rect *DisplayRect, int32 *LineW
   DisplayRect->y = 14 + MDFN_GetSettingUI("pce.slstart");
   DisplayRect->h = MDFN_GetSettingUI("pce.slend") - MDFN_GetSettingUI("pce.slstart") + 1;
 
-  for(int y = 0; y < 263; y++)
-   LineWidths[y] = 0;
+  for(uint32 y = 0; y < 262; y++) // This frame has residuals from two frames ago; refresh to only one frame ago
+   InitScanLine(y);
 
   pitch32 = surface->pitch32;
   fb = surface->pixels;
@@ -415,12 +417,15 @@ INLINE void VCE::SyncSub(int32 clocks)
        for(int32 s_i = 0; s_i < dot_clock_ratio; s_i++)
        {
         scanline_out_ptr[pixel_offset & 2047] = pix;
+        scanline_out_ptr[(pixel_offset & 2047) + 1] = boundbox_color;  // see the location of the raster scan
+        scanline_out_ptr[(pixel_offset & 2047) + 2] = boundbox_color;
         pixel_offset++;
        }
       }
       else
       {
-       scanline_out_ptr[pixel_offset & 2047] = pix;
+       scanline_out_ptr[(pixel_offset & 2047) + 1] = boundbox_color;  // see the location of the raster scan
+       scanline_out_ptr[(pixel_offset & 2047) + 2] = boundbox_color;
        pixel_offset++;
       }
      }
@@ -440,6 +445,8 @@ INLINE void VCE::SyncSub(int32 clocks)
          pix = color_table_cache[pixel_buffer[0][i] & 0x3FF];
 
         scanline_out_ptr[pixel_offset & 2047] = pix;
+        scanline_out_ptr[(pixel_offset & 2047) + 1] = boundbox_color;  // see the location of the raster scan
+        scanline_out_ptr[(pixel_offset & 2047) + 2] = boundbox_color;
         pixel_offset++;
        }
       }
@@ -454,6 +461,8 @@ INLINE void VCE::SyncSub(int32 clocks)
        else
         pix = color_table_cache[pixel_buffer[0][i] & 0x3FF];
        scanline_out_ptr[pixel_offset & 2047] = pix;
+       scanline_out_ptr[(pixel_offset & 2047) + 1] = boundbox_color;  // see the location of the raster scan
+       scanline_out_ptr[(pixel_offset & 2047) + 2] = boundbox_color;
        pixel_offset++;
       }
      }
