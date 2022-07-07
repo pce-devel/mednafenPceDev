@@ -77,6 +77,16 @@ bool VCE::WS_Hook(int32 vdc_cycles)
   ret = false;
  }
 
+ for(unsigned chip = 0; chip < chip_count; chip++)
+ {
+  while (vdc[chip].ActiveDisplayPenaltyCycles > 0)  // try to make accesses to ActiveDisplayPenaltyCycles as atomic as possible
+  {
+   to_steal++;
+   vdc[chip].ActiveDisplayPenaltyCycles--;
+  }
+ }
+
+
  if(to_steal > 0)
  {
   HuCPU.StealCycles(to_steal);

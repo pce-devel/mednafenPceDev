@@ -297,6 +297,14 @@ void VDC::SetLayerEnableMask(uint64 mask)
  userle = mask;
 }
 
+bool VDC::IsActiveDisplay(void)
+{
+ if ((VPhase == VPHASE_VDW) && (HPhase == HPHASE_HDW))
+  return true;
+ else
+  return false;
+}
+
 void VDC::RunSATDMA(int32 cycles, bool force_completion)
 {
  assert(sat_dma_counter > 0);
@@ -1333,6 +1341,18 @@ uint8 VDC::Read(uint32 A, int32 &next_event, bool peek)
 	      pending_read_addr = MARR;
 	      MARR += vram_inc_tab[(CR >> 11) & 0x3];
 
+	      // Simulate MAWR round-robin; implementing it properly would require changing too much code
+	      // Assume a 50% hit rate on missing the CPU window, taking a 1-cycle penalty
+	      // when committing such a word.
+	      if (IsActiveDisplay())
+	      {
+//	       if (MAWRPhase && ((select & 0x1F) == 0x02))
+//	       {
+	        ActiveDisplayPenaltyCycles++;
+//	       }
+//	       MAWRPhase = (MAWRPhase == true) ? false : true;
+	      }
+
 	      CheckAndCommitPending();
              }
             }
@@ -1371,6 +1391,19 @@ uint16 VDC::Read16(bool A, bool peek)
     pending_read = true;
     pending_read_addr = MARR;
     MARR += vram_inc_tab[(CR >> 11) & 0x3];
+
+    // Simulate MAWR round-robin; implementing it properly would require changing too much code
+    // Assume a 50% hit rate on missing the CPU window, taking a 1-cycle penalty
+    // when committing such a word.
+    if (IsActiveDisplay())
+    {
+//     if (MAWRPhase)
+//     {
+      ActiveDisplayPenaltyCycles++;
+      ActiveDisplayPenaltyCycles++;
+//     }
+//     MAWRPhase = (MAWRPhase == true) ? false : true;
+    }
 
     CheckAndCommitPending();
    }
@@ -1461,6 +1494,18 @@ void VDC::Write(uint32 A, uint8 V, int32 &next_event)
 			pending_write_addr = MAWR;
 			pending_write_latch = write_latch | (V << 8);
 	                MAWR += vram_inc_tab[(CR >> 11) & 0x3];
+
+			// Simulate MAWR round-robin; implementing it properly would require changing too much code
+			// Assume a 50% hit rate on missing the CPU window, taking a 1-cycle penalty
+			// when committing such a word.
+			if (IsActiveDisplay())
+			{
+//			 if (MAWRPhase && ((select & 0x1F) == 0x03))
+//			 {
+			  ActiveDisplayPenaltyCycles++;
+//			 }
+//			 MAWRPhase = (MAWRPhase == true) ? false : true;
+			}
 
 			CheckAndCommitPending();
                        }
@@ -1589,6 +1634,19 @@ void VDC::Write16(bool A, uint16 V)
 			pending_write_addr = MAWR;
 			pending_write_latch = V;
 	                MAWR += vram_inc_tab[(CR >> 11) & 0x3];
+
+			// Simulate MAWR round-robin; implementing it properly would require changing too much code
+			// Assume a 50% hit rate on missing the CPU window, taking a 1-cycle penalty
+			// when committing such a word.
+			if (IsActiveDisplay())
+			{
+//			 if (MAWRPhase)
+//			 {
+			  ActiveDisplayPenaltyCycles++;
+			  ActiveDisplayPenaltyCycles++;
+//			 }
+//			 MAWRPhase = (MAWRPhase == true) ? false : true;
+			}
 
 			CheckAndCommitPending();
                        break;
