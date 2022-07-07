@@ -272,6 +272,10 @@ class VDC
 	void DoVBIRQTest(void);
 	void HDS_Start(void);
 
+	bool IsActiveDisplay(void);
+	uint32 ActiveDisplayPenaltyCycles = 0;   // to simulate the MAWR time-slot 
+	bool MAWRPhase = false;   // to simulate the MAWR time-slot 
+
 	void StateExtra(LEPacker &sl_packer, bool load);
 	void StateAction(StateMem *sm, const unsigned load, const bool data_only, const char *sname);
 
