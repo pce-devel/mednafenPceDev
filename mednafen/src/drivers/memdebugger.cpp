@@ -27,6 +27,12 @@
 
 #include <trio/trio.h>
 
+extern bool WaitForVSYNC;
+extern bool WaitForHSYNC;
+extern int NeedRun;
+extern void Debugger_GT_ResetHSync(void);
+extern void Debugger_GT_ResetVSync(void);
+
 void MemDebugger::ICV_Init(const char* newcode)
 {
  iconv_t new_ict_game_to_utf8 = (iconv_t)-1, new_ict_utf8_to_game = (iconv_t)-1;
@@ -1234,16 +1240,35 @@ int MemDebugger::Event(const SDL_Event *event)
 		break;
 
 	 case SDLK_s:
-	        if(SizeCache[CurASpace] > (1 << 24))
-                {
-                 error_string = trio_aprintf(_("Address space is too large to search!"));
-                 error_time = -1;
-                }
-		else
+		if(event->key.keysym.mod & KMOD_CTRL)
+	        {
+	         Debugger_GT_ResetVSync();
+	         Debugger_GT_ResetHSync();
+	         WaitForHSYNC = false;
+	         WaitForVSYNC = true;
+	         NeedRun = true;
+	        }
+	        else if(event->key.keysym.mod & KMOD_SHIFT)
+	        {
+	         Debugger_GT_ResetVSync();
+	         Debugger_GT_ResetHSync();
+	         WaitForHSYNC = true;
+	         WaitForVSYNC = false;
+	         NeedRun = true;
+	        }
+	        else
 		{
-		 InPrompt = ByteStringSearch;
-		 myprompt = new MemDebuggerPrompt(this, "Byte String Search", BSS_String);
-		 PromptTAKC = event->key.keysym.sym;
+	         if(SizeCache[CurASpace] > (1 << 24))
+                 {
+                  error_string = trio_aprintf(_("Address space is too large to search!"));
+                  error_time = -1;
+                 }
+		 else
+		 {
+		  InPrompt = ByteStringSearch;
+		  myprompt = new MemDebuggerPrompt(this, "Byte String Search", BSS_String);
+		  PromptTAKC = event->key.keysym.sym;
+		 }
 		}
 		break;
 

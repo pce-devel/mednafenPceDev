@@ -48,10 +48,10 @@ static unsigned int WhichMode; // 0 = normal, 1 = gfx, 2 = memory
 
 static bool NeedPCBPToggle;
 static int NeedStep;	// 0 =, 1 = , 2 = 
-static int NeedRun;
+int NeedRun;
 static bool InSteppingMode;
-static bool WaitForVSYNC = false;
-static bool WaitForHSYNC = false;
+bool WaitForVSYNC = false;
+bool WaitForHSYNC = false;
 
 static std::vector<uint32> PCBreakPoints;
 static std::string ReadBreakpoints, IOReadBreakpoints, AuxReadBreakpoints;
@@ -1466,7 +1466,12 @@ static void CPUCallback(uint32 PC, bool bpoint)
  if((NeedStep == 2 && !InSteppingMode) || bpoint)
  {
   if(bpoint)
-   SetActive(true, 0);
+  {
+   if ((WaitForHSYNC) || (WaitForVSYNC))
+    SetActive(true, WhichMode);
+   else
+    SetActive(true, 0);
+  }
 
   DisAddr = PC;
   DisCOffs = 0xFFFFFFFF;
@@ -1507,11 +1512,11 @@ static void CPUCallback(uint32 PC, bool bpoint)
 }
 
 INLINE void Debugger_GT_SetHSync(void) { DebugHSyncFlag = true; }
-INLINE void Debugger_GT_ResetHSync(void) { DebugHSyncFlag = false; }
+void Debugger_GT_ResetHSync(void) { DebugHSyncFlag = false; }
 INLINE bool Debugger_GT_HSyncIsSet(void) { return(DebugHSyncFlag); }
 
 INLINE void Debugger_GT_SetVSync(void) { DebugVSyncFlag = true; }
-INLINE void Debugger_GT_ResetVSync(void) { DebugVSyncFlag = false; };
+void Debugger_GT_ResetVSync(void) { DebugVSyncFlag = false; };
 INLINE bool Debugger_GT_VSyncIsSet(void) { return(DebugVSyncFlag); }
 
 // Function called from game thread, input driver code.
