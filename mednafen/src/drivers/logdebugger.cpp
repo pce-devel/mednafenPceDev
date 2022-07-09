@@ -31,6 +31,13 @@
 
 #define LOG_NUMLINES	43
 
+extern bool WaitForVSYNC;
+extern bool WaitForHSYNC;
+extern int NeedRun;
+extern void Debugger_GT_ResetHSync(void);
+extern void Debugger_GT_ResetVSync(void);
+
+
 typedef struct
 {
  char *type;
@@ -248,6 +255,25 @@ int LogDebugger_Event(const SDL_Event *event)
 
 	 case SDLK_PAGEDOWN: ChangePos(LOG_NUMLINES); 
 			     break;
+
+	 case SDLK_s:
+	      if(event->key.keysym.mod & KMOD_CTRL)
+	      {
+	       Debugger_GT_ResetVSync();
+	       Debugger_GT_ResetHSync();
+	       WaitForHSYNC = false;
+	       WaitForVSYNC = true;
+	       NeedRun = true;
+	      }
+	      else if(event->key.keysym.mod & KMOD_SHIFT)
+	      {
+	       Debugger_GT_ResetVSync();
+	       Debugger_GT_ResetHSync();
+	       WaitForHSYNC = true;
+	       WaitForVSYNC = false;
+	       NeedRun = true;
+	      }
+	      break;
 
 	 case SDLK_t:LoggingActive = !LoggingActive;
 		     if(CurGame->Debugger->SetLogFunc)
