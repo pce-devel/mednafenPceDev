@@ -615,7 +615,7 @@ static MDFN_COLD bool DetectSGXCD(std::vector<CDInterface*>* CDInterfaces)
 
  cdiface->ReadTOC(&toc);
 
- // Check all data tracks for the 16-byte magic(4D 65 64 6E 61 66 65 6E 74 AB 90 19 42 62 7D E6) at offset 0x86A(assuming mode 1 sectors).
+ // Check all data tracks for the 16-byte magic(28 66 6F 72 20 53 75 70 65 72 47 52 41 46 58 29) at offset 0x880(assuming mode 1 sectors).
  for(int32 track = toc.first_track; track <= toc.last_track; track++)
  {
   if(toc.tracks[track].control & 0x4)
@@ -623,7 +623,7 @@ static MDFN_COLD bool DetectSGXCD(std::vector<CDInterface*>* CDInterfaces)
    if(cdiface->ReadSectors(sector_buffer, toc.tracks[track].lba + 1, 1) != 0x1)
     continue;
 
-   if(MDFN_de64msb(&sector_buffer[0x6A]) == 0x4D65646E6166656EULL && MDFN_de64msb(&sector_buffer[0x6A + 8]) == 0x74AB901942627DE6ULL)
+   if(MDFN_de64msb(&sector_buffer[0x80]) == 0x28666F7220537570ULL && MDFN_de64msb(&sector_buffer[0x80 + 8]) == 0x6572475241465829ULL)
     ret = true;
   }
  }
