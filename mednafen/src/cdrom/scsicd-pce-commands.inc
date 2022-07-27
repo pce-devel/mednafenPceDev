@@ -219,8 +219,10 @@ static void DoNEC_PCE_GETDIRINFO(const uint8 *cdb)
   case 0x0:
    data_in[0] = U8_to_BCD(toc.first_track);
    data_in[1] = U8_to_BCD(toc.last_track);
+   data_in[2] = 0;
+   data_in[3] = 0;
 
-   data_in_size = 2;
+   data_in_size = 4;
    break;
 
   case 0x1:
@@ -232,8 +234,9 @@ static void DoNEC_PCE_GETDIRINFO(const uint8 *cdb)
     data_in[0] = U8_to_BCD(m);
     data_in[1] = U8_to_BCD(s);
     data_in[2] = U8_to_BCD(f);
+    data_in[3] = 0;
 
-    data_in_size = 3;
+    data_in_size = 4;
    }
    break;
 
