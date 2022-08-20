@@ -81,7 +81,10 @@ bool VCE::WS_Hook(int32 vdc_cycles)
  {
   while (vdc[chip].ActiveDisplayPenaltyCycles > 0)  // try to make accesses to ActiveDisplayPenaltyCycles as atomic as possible
   {
-   to_steal++;
+   if (mwr_approximate)
+   {
+    to_steal++;
+   }
    vdc[chip].ActiveDisplayPenaltyCycles--;
   }
  }
@@ -147,6 +150,7 @@ VCE::VCE(const bool want_sgfx, const uint32 vram_size)
  }
 
  SetVDCUnlimitedSprites(false);
+ SetMWRTiming(false);
 
  memset(surf_clut, 0, sizeof(surf_clut));
 
@@ -165,6 +169,11 @@ void VCE::SetVDCUnlimitedSprites(const bool nospritelimit)
 {
  for(unsigned chip = 0; chip < chip_count; chip++)
   vdc[chip].SetUnlimitedSprites(nospritelimit);
+}
+
+void VCE::SetMWRTiming(const bool mwr_switch)
+{
+ mwr_approximate = mwr_switch;
 }
 
 VCE::~VCE()
