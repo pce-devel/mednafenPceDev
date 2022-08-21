@@ -49,6 +49,10 @@
 #include <mednafen/video.h>
 #include <mednafen/sound/OwlResampler.h>
 
+extern bool DebugHSyncFlag;
+extern bool DebugVSyncFlag;
+
+
 namespace MDFN_IEN_PCFX
 {
 
@@ -3049,10 +3053,15 @@ static void MDFN_FASTCALL KING_RunGfx(int32 clocks)
 
     case HPHASE_HBLANK_PART3:
 			fx_vce.raster_counter = (fx_vce.raster_counter + 1) % ((fx_vce.picture_mode & 0x1) ? 262 : 263); //lines_per_frame;
+			DebugHSyncFlag = true;
 
                         if(fx_vce.raster_counter == 0)
+			{
                          for(int chip = 0; chip < 2; chip++)
                           vdc_chips[chip]->VSync(true);
+
+			 DebugVSyncFlag = true;
+			}
 
                         if(fx_vce.raster_counter == 3)
                          for(int chip = 0; chip < 2; chip++)
