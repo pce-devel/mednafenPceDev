@@ -215,8 +215,8 @@ static uint32 SectorAddr;
 static uint32 SectorCount;
 static uint32 SectorIndex;
 static uint32 PrevSectorCount;
-static bool AllowThrottling;
-static bool Throttle120KBps;
+static bool AllowThrottling = false;
+static bool Throttle120KBps = false;
 
  // delayed status to send (after seek delay)
 static uint8 delayed_status;            // not added into savestates
