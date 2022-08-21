@@ -2026,6 +2026,7 @@ static void DoREADBase(uint32 sa, uint32 sc)
     if(SCSILog)
      SCSILog("SCSI", "SCSICD 120KB/s throttling activated");
     Throttle120KBps = true;
+    CDReadTimer -= (uint64)(6 * System_Clock / 60);
    }
   }
  }
