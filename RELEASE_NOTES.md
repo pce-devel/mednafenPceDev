@@ -1,5 +1,31 @@
 # Release Notes
 
+## New release 2022/08/21
+
+### New Features/Improvements:
+
+#### PC-FX:
+ - Step by frame, or scanline in debugger (issue 101, use Ctrl-S / Shift-S)
+
+#### PC-Engine:
+ - Partial screen-render as-it-happens when debugging (issue 65)
+ - Step by frame, or scanline in debugger (issue 74, use Ctrl-S / Shift-S)
+ - Expand frame/scanline step mode to graphics and memory viewers (issue 94)
+
+### Bugfixes/Default Setting Changes:
+
+#### PC-Engine
+ - Fix timing of when Burst bit is latched (issues 8, 12)
+ - Fix treatment of BG background blank bit (issue 84)
+ - Approximate MWR VRAM access wait states (experimental, partial fix of issues 5 and 56,
+pce.mwrtiming_approx in mednafen.cfg, defaults to original behaviour (off))
+ - Change default codec paramters to use PNG (issue 88)
+ - Fix treatment of CDROM "Read TOC" command $DE (issue 98) 
+ - Adjust CDROM data transfer rate to 150KB/s (experimental, partial fix of issue 102,
+pce.cdspeed (120KB/s=0 vs. 150KB/s=1) and pce.cdthrottle (to restabilize Sherlock Holmes) in
+mednafen.cfg - both default to original behaviour (off))
+
+
 ## New release 2022/06/05
 
 ### New Features/Improvements:
@@ -10,7 +36,7 @@
 
 #### PC Engine
  - Calculated CDROM Head Seek Time to match original console
- - Implement Memory Base 128 functionality (pce.memorybase128_enable and pce.memorybase128_file)
+ - Implement Memory Base 128 functionality (pce.memorybase128_enable and pce.memorybase128_file in mednafen.cfg)
  - Add 16-bit 'word' editing for video memory
  - Change Palette editor to G/R/B format with actual display of colors
  - Interpret data as if it is a SAT entry for certain type of memory
@@ -24,9 +50,9 @@
 #### General
  - Significant improvements to debugger from jbrandwood's 'mednafen-happyeyes' modifications
  - Display memory near stack pointer for systems with zero-page and single-page stack pointers
- - Add option to halt execution on "Alt-D" to enter debug screen (debugger.haltondebug)
- - Make debug overlay opacity persist between runs (debugger.opacity)
- - Allow debug overlay to fractionally scale to fit window (debugger.fractionalscaling)
+ - Add option to halt execution on "Alt-D" to enter debug screen (debugger.haltondebug in mednafen.cfg)
+ - Make debug overlay opacity persist between runs (debugger.opacity in mednafen.cfg)
+ - Allow debug overlay to fractionally scale to fit window (debugger.fractionalscaling in mednafen.cfg)
 
 ### Bugfixes/Default Setting Changes:
 
