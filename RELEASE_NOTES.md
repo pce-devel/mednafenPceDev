@@ -1,6 +1,6 @@
 # Release Notes
 
-## New release 2022/08/21
+## New release 1.1 2022/08/21
 
 ### New Features/Improvements:
 
@@ -26,7 +26,7 @@ pce.cdspeed (120KB/s=0 vs. 150KB/s=1) and pce.cdthrottle (to restabilize Sherloc
 mednafen.cfg - both default to original behaviour (off))
 
 
-## New release 2022/06/05
+## New release 1.0 2022/06/05
 
 ### New Features/Improvements:
 
