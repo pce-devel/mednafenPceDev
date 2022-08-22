@@ -34,6 +34,11 @@
 #include "input.h"
 #include <mednafen/cdrom/scsicd.h>
 
+
+extern bool IsHSYNCBreakPoint();
+extern bool IsVSYNCBreakPoint();
+
+
 namespace MDFN_IEN_PCFX
 {
 
@@ -425,6 +430,7 @@ static void CPUHandler(const v810_timestamp_t timestamp, uint32 PC)
    break;
   }
  }
+ FoundBPoint |=  IsVSYNCBreakPoint() | IsHSYNCBreakPoint();
 
  fx_vdc_chips[0]->ResetSimulate();
  fx_vdc_chips[1]->ResetSimulate();
