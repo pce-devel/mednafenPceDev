@@ -32,6 +32,7 @@ class VCE final
 	~VCE() MDFN_COLD;
 
 	void SetVDCUnlimitedSprites(const bool nospritelimit);
+	void SetMWRTiming(const bool mwr_flag);
 	void SetShowHorizOS(bool show);
 	void SetLayerEnableMask(uint64 mask);
 
@@ -232,6 +233,8 @@ class VCE final
 	bool FrameDone;
 	bool ShowHorizOS;
 	bool sgfx;
+
+	bool mwr_approximate;  // flag whether to approximate MWR timing round-robin
 
 	bool skipframe;
 	int32 *LW;

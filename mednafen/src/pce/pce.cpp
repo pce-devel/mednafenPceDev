@@ -438,6 +438,8 @@ static MDFN_COLD int LoadCommon(void)
 
  vce = new VCE(IsSGX, vram_size);
  vce->SetVDCUnlimitedSprites(MDFN_GetSettingB("pce.nospritelimit"));
+ vce->SetMWRTiming(MDFN_GetSettingB("pce.mwrtiming_approx"));
+
 
  if(IsSGX)
   MDFN_printf("SuperGrafx Emulation Enabled.\n");
@@ -1104,6 +1106,9 @@ static const MDFNSetting PCESettings[] =
 
   { "pce.nospritelimit", MDFNSF_NOFLAGS, gettext_noop("Remove 16-sprites-per-scanline hardware limit."), 
 					 gettext_noop("WARNING: Enabling this option may cause undesirable graphics glitching on some games(such as \"Bloody Wolf\")."), MDFNST_BOOL, "0" },
+
+  { "pce.mwrtiming_approx", MDFNSF_NOFLAGS, gettext_noop("Approximate MWR VRAM access timing during active display"), 
+					 gettext_noop("WARNING: This is an approximation, and is not accurate; sprite prefetch during HBLANK is not simulated either."), MDFNST_BOOL, "0" },
 
   { "pce.cdbios", MDFNSF_EMU_STATE | MDFNSF_CAT_PATH, gettext_noop("Path to the CD BIOS"), NULL, MDFNST_STRING, "syscard3.pce" },
   { "pce.gecdbios", MDFNSF_EMU_STATE | MDFNSF_CAT_PATH, gettext_noop("Path to the GE CD BIOS"), gettext_noop("Games Express CD Card BIOS (Unlicensed)"), MDFNST_STRING, "gecard.pce" },
