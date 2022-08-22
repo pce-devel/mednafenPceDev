@@ -48,7 +48,7 @@ static void DoNEC_PCE_SAPSP(const uint8 *cdb)
  read_sec = read_sec_start = new_read_sec_start;
  read_sec_end = toc.tracks[100].lba;
 
- seekms = get_pce_cd_seek_ms(head_pos, read_sec);
+ seekms = get_pce_cd_seek_ms(head_pos, read_sec, CD_DATA_TRANSFER_RATE);
  //printf("From sec %6.6X to %6.6X (SAPSP), ms = %.2f\n", head_pos, read_sec, seekms);
  CDDASeekTimer = (uint64)(System_Clock * seekms / 1000);
  CDAudioDelay  = (uint64)(System_Clock * 260 / 1000);

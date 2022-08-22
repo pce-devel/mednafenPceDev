@@ -8,5 +8,5 @@
  ============================================================================
  */
 
-extern float get_pce_cd_seek_ms(int start_sector, int target_sector);
+extern float get_pce_cd_seek_ms(int start_sector, int target_sector, unsigned transfer_rate);
 

@@ -1120,6 +1120,9 @@ static const MDFNSetting PCESettings[] =
 
   { "pce.vramsize", MDFNSF_EMU_STATE | MDFNSF_UNTRUSTED_SAFE | MDFNSF_SUPPRESS_DOC, gettext_noop("Size of emulated VRAM per VDC in 16-bit words.  DO NOT CHANGE THIS UNLESS YOU KNOW WTF YOU ARE DOING."), NULL, MDFNST_UINT, "32768", "32768", "65536" },
 
+  { "pce.cdspeed", MDFNSF_NOFLAGS, gettext_noop("Emulate full CD-ROM transfer rate."), gettext_noop("Disable to use Mednafen's traditional reduced transfer rate and other hacks needed to get the Sherlock Holmes videos to play correctly."), MDFNST_BOOL, "0" },
+  { "pce.cdthrottle", MDFNSF_NOFLAGS, gettext_noop("Enable CD throttling to 120KB/s when needed."), gettext_noop("When emulating the full CD-ROM transfer rate, this can be enabled to detect and throttle the Sherlock Holmes video playback to stop the audio and video going out of sync."), MDFNST_BOOL, "0" },
+
   { NULL }
 };
 

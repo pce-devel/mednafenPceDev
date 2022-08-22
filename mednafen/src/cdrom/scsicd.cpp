@@ -213,6 +213,10 @@ static int32 CDDASeekTimer; // not added into savestates
 static int32 CDAudioDelay;  // not added into savestates
 static uint32 SectorAddr;
 static uint32 SectorCount;
+static uint32 SectorIndex;
+static uint32 PrevSectorCount;
+static bool AllowThrottling = false;
+static bool Throttle120KBps = false;
 
  // delayed status to send (after seek delay)
 static uint8 delayed_status;            // not added into savestates
@@ -273,7 +277,7 @@ static void VirtualReset(void)
 
  pce_lastsapsp_timestamp = monotonic_timestamp;
 
- SectorAddr = SectorCount = 0;
+ PrevSectorCount = SectorAddr = SectorCount = SectorIndex = 0;
  read_sec_start = read_sec = 0;
  read_sec_end = ~0;
 
@@ -1982,31 +1986,69 @@ static void DoREADBase(uint32 sa, uint32 sc)
  {
   int Track = toc.FindTrackByLBA(sa);
   uint32 Offset = sa - toc.tracks[Track].lba; //Cur_CDIF->GetTrackStartPositionLBA(Track);
-  SCSILog("SCSI", "Read: start=0x%08x(track=%d, offs=0x%08x), cnt=0x%08x", sa, Track, Offset, sc);
+  SCSILog("SCSI", "%sRead: start=0x%08x(track=%d, offs=0x%08x), cnt=0x%08x", (SectorAddr == sa) ? "Sequential" : "", sa, Track, Offset, sc);
  }
- //const uint32 PrevSectorAddr = SectorAddr;
 
- seekms = get_pce_cd_seek_ms(head_pos, sa);
- //printf("From sec %6.6X to %6.6X (dat), ms = %.2f\n", head_pos, sa, seekms); 
+ if (WhichSystem == SCSICD_PCE)
+ {
+  seekms = get_pce_cd_seek_ms(head_pos, sa, CD_DATA_TRANSFER_RATE);
+  //printf("From sec %6.6X to %6.6X (dat), ms = %.2f\n", head_pos, sa, seekms);
+
+  // Sherlock Holmes Consulting Detective videos start with an 8 sector read
+  // of ADPCM data, followed by sequential reads of 252 sectors.
+  //
+  // To play back smoothly and keep the audio/video in sync, the CD-ROM data
+  // rate must be throttled to 120KB/s. On a real CD-ROM this occurs because
+  // the game's custom CD code causes stalls in the drive's buffering, which
+  // results in the drive pausing reads and waiting for the disc rotation to
+  // bring the next sector back around again.
+  //
+  // That is *really* hard to emulate accurately, so instead the code limits
+  // the data rate to 120KB/s by adding a delay every 6 sectors.
+
+  if (Throttle120KBps)
+  {
+   if (sa == SectorAddr && sc == 252)
+    CDReadTimer += 0; // Streaming time is updated in SCSICD_Run!
+   else
+   {
+    CDReadTimer = (uint64)(System_Clock * seekms / 1000);
+    if(SCSILog)
+     SCSILog("SCSI", "SCSICD 120KB/s throttling deactivated");
+    Throttle120KBps = false;
+   }
+  }
+  else
+  {
+   CDReadTimer = (uint64)(System_Clock * seekms / 1000);
+   if (AllowThrottling && PrevSectorCount == 8 && sa == SectorAddr && sc == 252)
+   {
+    if(SCSILog)
+     SCSILog("SCSI", "SCSICD 120KB/s throttling activated");
+    Throttle120KBps = true;
+    CDReadTimer -= (uint64)(6 * System_Clock / 60);
+   }
+  }
+ }
+ else
+ {
+  CDReadTimer = (uint64)(1 * 2048 * System_Clock / CD_DATA_TRANSFER_RATE);
+ }
 
  SectorAddr = sa;
  SectorCount = sc;
+ SectorIndex = 0;
+
  if(SectorCount)
  {
   Cur_CDIF->HintReadSector(sa);	//, sa + sc);
-
-  if (WhichSystem == SCSICD_PCE)
-    CDReadTimer = (uint64)(System_Clock * seekms / 1000);
-  else
-    CDReadTimer = (uint64)(1 * 2048 * System_Clock / CD_DATA_TRANSFER_RATE);
-  //printf("%d\n", SectorAddr - PrevSectorAddr);
-  //TODO?: CDReadTimer = (double)((WhichSystem == SCSICD_PCE) ? ((PrevSectorAddr == SectorAddr) ? 0.5 : 8) : 1) * 2048 * System_Clock / CD_DATA_TRANSFER_RATE;
  }
  else
  {
   CDReadTimer = 0;
   SendStatusAndMessage(STATUS_GOOD, 0x00);
  }
+ PrevSectorCount = SectorCount;
  cdda.CDDAStatus = CDDASTATUS_STOPPED;
 }
 
@@ -2817,20 +2859,40 @@ static INLINE void RunCDDA(uint32 system_timestamp, int32 run_time)
 
 static INLINE void RunCDRead(uint32 system_timestamp, int32 run_time)
 {
- if(CDReadTimer > 0)
+ // Allow CDReadTimer to go -ve 0.5s to track the CD-ROM's sector timing
+ // for mutliple reads asynchronous to the console's CPU.
+ if(CDReadTimer > (int32) - (System_Clock / 2))
  {
+  int32 OldCDReadTimer = CDReadTimer;
   CDReadTimer -= run_time;
 
-  if(CDReadTimer <= 0)
+  if(SectorCount && CDReadTimer <= 0)
   {
    if(din->CanWrite() < ((WhichSystem == SCSICD_PCFX) ? 2352 : 2048))	// +96 if we find out the PC-FX can read subchannel data along with raw data too. ;)
    {
-    //printf("Carp: %d %d %d\n", din->CanWrite(), SectorCount, CDReadTimer);
-    //CDReadTimer = (cd.data_in_size - cd.data_in_pos) * 10;
-    
-    CDReadTimer += (uint64) 1 * 2048 * System_Clock / CD_DATA_TRANSFER_RATE;
+    // N.B. This FIFO-not-empty condition only seems to happen incredibly rarely in
+    // everything *except* the PCE version of Sherlock Holmes, where it happens all
+    // of the time, and the game seems to rely on it for throttling the read rate.
+    //
+    // It is almost certain that both this method of determining when the condition
+    // occurs, and what the delay is that it causes, are totally incorrect!
 
-    //CDReadTimer += (uint64) 1 * 128 * System_Clock / CD_DATA_TRANSFER_RATE;
+    if (OldCDReadTimer > 0 && SectorCount != 0)
+    {
+     if (SCSILog)
+      SCSILog("SCSI", "SCSICD FIFO not empty when CDReadTime expired, SectorAddr 0x%08x, SectorIndex %d", SectorAddr, SectorIndex);
+    }
+
+    // Throttled CD-ROM reading accumulates CDReadTimer further down in the code!
+    if (!Throttle120KBps)
+    {
+     if (CD_DATA_TRANSFER_RATE == 153600)
+      // A value which seems plausible for real hardware.
+      CDReadTimer += (uint64) 16 * 2048 * System_Clock / CD_DATA_TRANSFER_RATE;
+     else
+      // A value which makes absolutely no sense.
+      CDReadTimer += (uint64) 1 * 2048 * System_Clock / CD_DATA_TRANSFER_RATE;
+    }
    }
    else
    {
@@ -2851,13 +2913,13 @@ static INLINE void RunCDRead(uint32 system_timestamp, int32 run_time)
     {
      CommandCCError(SENSEKEY_ILLEGAL_REQUEST, NSE_END_OF_VOLUME);
     }
-    else if(!Cur_CDIF->ReadRawSector(tmp_read_buf, SectorAddr))	//, SectorAddr + SectorCount))
+    else if(SectorCount && !Cur_CDIF->ReadRawSector(tmp_read_buf, SectorAddr))	//, SectorAddr + SectorCount))
     {
      cd.data_transfer_done = false;
 
      CommandCCError(SENSEKEY_ILLEGAL_REQUEST);
     }
-    else if(ValidateRawDataSector(tmp_read_buf, SectorAddr))
+    else if(SectorCount && ValidateRawDataSector(tmp_read_buf, SectorAddr))
     {
      head_pos = SectorAddr;
 
@@ -2873,20 +2935,24 @@ static INLINE void RunCDRead(uint32 system_timestamp, int32 run_time)
      CDIRQCallback(SCSICD_IRQ_DATA_TRANSFER_READY);
 
      SectorAddr++;
+     SectorIndex++;
      SectorCount--;
 
      if(CurrentPhase != PHASE_DATA_IN)
       ChangePhase(PHASE_DATA_IN);
 
-     if(SectorCount)
+     CDReadTimer += (uint64) 1 * 2048 * System_Clock / CD_DATA_TRANSFER_RATE;
+
+     if (Throttle120KBps && (SectorIndex % 6) == 0)
      {
-      cd.data_transfer_done = false;
-      CDReadTimer += (uint64) 1 * 2048 * System_Clock / CD_DATA_TRANSFER_RATE;
+       // For every 6 sectors at 75 sectors/s, add a 1.5 sector delay to
+       // provide an overall 60 sectors/s = 120KB/s.
+       // This is simpler than simulating the CD-ROM drive's read-buffer
+       // behavior on underruns, and it gives smoother streaming results.
+       CDReadTimer += (uint64) (3 * 2048 / 2) * System_Clock / CD_DATA_TRANSFER_RATE;
      }
-     else
-     {
-      cd.data_transfer_done = true;
-     }
+
+     cd.data_transfer_done = (SectorCount == 0);
     }
    }				// end else to if(!Cur_CDIF->ReadSector
 
@@ -3205,9 +3271,15 @@ void SCSICD_Init(int type, int cdda_time_div, int32* left_hrbuf, int32* right_hr
  SCSILog = NULL;
 
  if(type == SCSICD_PCFX)
+ {
   din = new SimpleFIFO<uint8>(65536);	//4096);
+  AllowThrottling = false;
+ }
  else
+ {
   din = new SimpleFIFO<uint8>(2048); //8192); //1024); /2048);
+  AllowThrottling = (MDFN_GetSettingB("pce.cdspeed") && MDFN_GetSettingB("pce.cdthrottle"));
+ }
 
  WhichSystem = type;
 
