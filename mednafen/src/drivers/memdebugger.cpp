@@ -1110,7 +1110,8 @@ int MemDebugger::Event(const SDL_Event *event)
 	//
 	//
 	//
-	const unsigned ks = event->key.keysym.sym;
+	const unsigned ks =
+	 (event->key.keysym.scancode == SDL_SCANCODE_GRAVE) ? SDLK_BACKQUOTE : event->key.keysym.sym;
 
         if(InPrompt)
         {
@@ -1182,7 +1183,7 @@ int MemDebugger::Event(const SDL_Event *event)
 	{
 	 //
 	}
-	else switch(event->key.keysym.sym)
+	else switch(ks) // was switch(event->key.keysym.sym)
 	{
 	 default: break;
 
@@ -1322,6 +1323,7 @@ int MemDebugger::Event(const SDL_Event *event)
 		}
 		break;
 
+	 case SDLK_BACKQUOTE:
 	 case SDLK_INSERT:
 		InEditMode = !InEditMode;
                 Digitnum = ASpace->MaxDigit;
@@ -1361,6 +1363,7 @@ int MemDebugger::Event(const SDL_Event *event)
 			  InTextArea = false; 
 			break;
 
+	 case SDLK_SEMICOLON:
 	 case SDLK_PERIOD:
 			CurASpace = (CurASpace + 1) % AddressSpaces->size();
 			ASpace = &(*AddressSpaces)[CurASpace];

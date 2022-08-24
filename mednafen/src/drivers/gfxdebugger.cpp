@@ -249,6 +249,7 @@ int GfxDebugger_Event(const SDL_Event *event)
 	RedoSGD();
 	break;
 
+   case SDLK_SEMICOLON:
    case SDLK_PERIOD:
 	LayerPBN[CurLayer]++;
 	RedoSGD();
