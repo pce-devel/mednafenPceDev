@@ -241,6 +241,7 @@ int LogDebugger_Event(const SDL_Event *event)
 			 break;
 
 	 case SDLK_RIGHT:
+	 case SDLK_SEMICOLON:
 	 case SDLK_PERIOD: LogGroupSelect(1);
 			   break;
 

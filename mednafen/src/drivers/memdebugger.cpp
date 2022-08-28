@@ -1361,6 +1361,7 @@ int MemDebugger::Event(const SDL_Event *event)
 			  InTextArea = false; 
 			break;
 
+	 case SDLK_SEMICOLON:
 	 case SDLK_PERIOD:
 			CurASpace = (CurASpace + 1) % AddressSpaces->size();
 			ASpace = &(*AddressSpaces)[CurASpace];
