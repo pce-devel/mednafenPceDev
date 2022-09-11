@@ -34,7 +34,7 @@ for the compile; the below instructions to build Mednafen will attempt to use al
 ```
 ./configure --enable-ss
 
-make -j -j `sysctl -n hw.logicalcpu`
+make -j `sysctl -n hw.logicalcpu`
 ```
 
 At this point, the Mednafen binary can be found in the mednafen/src/ folder; you may manually copy/move it
