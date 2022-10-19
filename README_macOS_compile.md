@@ -1,6 +1,6 @@
 # Mednafen
 
-## Compiling this Repository on macOS (tested on Monterey)
+## Compiling this Repository on macOS (tested on macOS Monterey)
 
 ### Dependencies
 
@@ -19,6 +19,12 @@ We have confirmed a successful Mednafen build on macOS Monterey running on both 
 For a native Intel(x86_64) build we will use "Homebrew" to pull in the needed Mednafen dependencies:
 ```
 brew install pkg-config gettext sdl2 libsndfile jack lzo zstd 
+```
+
+**Note** There is currently an SDL issue with newer SDL2 Brew (2.0.22+) installs that can cause Mednafen to "hang" when exiting due to the SDL Audio close function having changed. To work around this make sure to use the 2.0.22 SDL2 Brew install.
+```
+wget https://github.com/Homebrew/homebrew-core/raw/5c1cf00f7540d9cf0344c0bac4aabe4e5a7fa8a5/Formula/sdl2.rb
+brew install --build-from-source sdl2.rb
 ```
 
 For a native Apple silicon M1(ARM64) build we will have to use "MacPorts" in order to get the correct Mednafen dependencies to build:  
