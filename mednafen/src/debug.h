@@ -56,7 +56,8 @@ typedef enum
 typedef enum
 {
  PALETTE_NONE = 0,	// Not a palette
- PALETTE_PCE		// Only one supported so far
+ PALETTE_PCE,
+ PALETTE_PCFX		// Only two supported so far
 } ASpace_PALETTETYPE;	// Still room for more if weird ones come later
 
 //
