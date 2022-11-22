@@ -808,12 +808,21 @@ void MemDebugger::Draw(MDFN_Surface *surface, const MDFN_Rect *rect, const MDFN_
    uint8 r_digit = 0;
    uint8 g_digit = 0;
    uint8 b_digit = 0;
+
+   uint8 y_digit = 0;
+   uint8 u_digit = 0;
+   uint8 v_digit = 0;
+
    uint32 bcolor = pf_cache.MakeColor(0xFF, 0xFF, 0xFF, 0xFF);
    uint32 acolor = pf_cache.MakeColor(0xA0, 0xA0, 0xA0, 0xFF);
 
    uint32 r_color = pf_cache.MakeColor(0xFF, 0xA0, 0xA0, 0xFF);
    uint32 g_color = pf_cache.MakeColor(0xA0, 0xFF, 0xA0, 0xFF);
    uint32 b_color = pf_cache.MakeColor(0xA0, 0xA0, 0xFF, 0xFF);
+
+   uint32 y_color = pf_cache.MakeColor(0xB0, 0xB0, 0xB0, 0xFF);
+   uint32 u_color = pf_cache.MakeColor(0xA0, 0xA0, 0xFF, 0xFF);
+   uint32 v_color = pf_cache.MakeColor(0xFF, 0xA0, 0xA0, 0xFF);
    uint32 x;
 
    if((wordsize == 2) && (!InTextArea) && ((column & 0x01) == 1)) // if in hex area, only do even-numbered spots
@@ -874,6 +883,14 @@ void MemDebugger::Draw(MDFN_Surface *surface, const MDFN_Rect *rect, const MDFN_
     r_digit = ((tmp_word >> 3) & 0x07);
     b_digit = (tmp_word & 0x07);
    }
+   else if ((ASpace->IsPalette) && (ASpace->PaletteType == PALETTE_PCFX))
+   {
+    uint32 tmp_word = ((byte_buffer[(x*2)+1] << 8) | byte_buffer[(x*2)]);
+    y_digit = ((tmp_word >> 8) & 0xff);
+    u_digit = ((tmp_word >> 4) & 0x0f);
+    v_digit = (tmp_word & 0x0f);
+   }
+
    if (wordsize == 2)
    {
     if (endian == ENDIAN_LITTLE)
@@ -934,6 +951,9 @@ void MemDebugger::Draw(MDFN_Surface *surface, const MDFN_Rect *rect, const MDFN_
      r_color = pf_cache.MakeColor(0xFF, 0x00, 0x00, 0xFF);
      g_color = pf_cache.MakeColor(0xFF, 0x00, 0x00, 0xFF);
      b_color = pf_cache.MakeColor(0xFF, 0x00, 0x00, 0xFF);
+     y_color = pf_cache.MakeColor(0xFF, 0x00, 0x00, 0xFF);
+     u_color = pf_cache.MakeColor(0xFF, 0x00, 0x00, 0xFF);
+     v_color = pf_cache.MakeColor(0xFF, 0x00, 0x00, 0xFF);
     }
    }
 
@@ -948,6 +968,17 @@ void MemDebugger::Draw(MDFN_Surface *surface, const MDFN_Rect *rect, const MDFN_
      DrawText(surface, x_offset + (2 * byte_hex_font_width), text_y, quickbuf, r_color, byte_hex_font);
      trio_snprintf(quickbuf, 32, "%1X", b_digit);
      DrawText(surface, x_offset + (3 * byte_hex_font_width), text_y, quickbuf, b_color, byte_hex_font);
+   }
+   else if ((ASpace->IsPalette) && (ASpace->PaletteType == PALETTE_PCFX))
+   {
+     uint32 x_offset = alen + (x*2) * byte_hex_spacing + ((x / 4) * byte_hex_group_pad);
+
+     trio_snprintf(quickbuf, 32, "%2.2X", y_digit);
+     DrawText(surface, x_offset, text_y, quickbuf, y_color, byte_hex_font);
+     trio_snprintf(quickbuf, 32, "%1X", u_digit);
+     DrawText(surface, x_offset + (2 * byte_hex_font_width), text_y, quickbuf, u_color, byte_hex_font);
+     trio_snprintf(quickbuf, 32, "%1X", v_digit);
+     DrawText(surface, x_offset + (3 * byte_hex_font_width), text_y, quickbuf, v_color, byte_hex_font);
    }
    else if (wordsize == 2)
    {
@@ -971,6 +1002,30 @@ void MemDebugger::Draw(MDFN_Surface *surface, const MDFN_Rect *rect, const MDFN_
     }
 
      MDFN_DrawFillRect(surface, alen + byte_bpr * byte_hex_spacing + byte_hex_right_padding + (x*2) * byte_char_spacing + ((byte_bpr - 1) / 4) * byte_hex_group_pad, text_y + byte_char_y_adjust, 2 * byte_char_spacing, byte_vspacing, border_color, pal_color, RectStyle::Rounded);
+   }
+   if ((ASpace->IsPalette) && (ASpace->PaletteType == PALETTE_PCFX))
+   {
+    int32 r_temp = (int) ((float)y_digit + (1.402f * ((v_digit << 4) - 128)));
+    int32 g_temp = (int) ((float)y_digit - (0.344f * ((u_digit << 4) - 128)) - (0.714f * ((v_digit << 4) - 128)) );
+    int32 b_temp = (int) ((float)y_digit + (1.772 * ((u_digit << 4) - 128)));
+    if (r_temp > 255) r_temp = 255;
+    if (g_temp > 255) g_temp = 255;
+    if (b_temp > 255) b_temp = 255;
+    if (r_temp < 0) r_temp = 0;
+    if (g_temp < 0) g_temp = 0;
+    if (b_temp < 0) b_temp = 0;
+
+    uint32 pal_color = pf_cache.MakeColor(r_temp, g_temp, b_temp, 0xFF);   // approximation
+    uint32 border_color = pal_color;
+
+    if ((Ameow == test_match_pos) ||
+	((wordsize == 2) && ((Ameow & 0xFFFFFFFE) == (test_match_pos & 0xFFFFFFFE))))  
+    {
+     border_color = pf_cache.MakeColor(0xFF, 0x00, 0x00, 0xFF);
+    }
+
+     MDFN_DrawFillRect(surface, alen + byte_bpr * byte_hex_spacing + byte_hex_right_padding + (x*2) * byte_char_spacing + ((byte_bpr - 1) / 4) * byte_hex_group_pad, text_y + byte_char_y_adjust, 2 * byte_char_spacing, byte_vspacing, border_color, pal_color, RectStyle::Rounded);
+
    }
    else if (wordsize == 2)
    {

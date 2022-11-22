@@ -1839,7 +1839,7 @@ void KING_Init(void)
   ASpace_Add16(Do16BitGet, Do16BitPut, "vdcsat0", "VDC-A SAT", 8 + 1, 0, true, ENDIAN_LITTLE);  // SATB to show ?
   ASpace_Add16(Do16BitGet, Do16BitPut, "vdcvram1", "VDC-B VRAM", 17, 0, true, ENDIAN_LITTLE);
   ASpace_Add16(Do16BitGet, Do16BitPut, "vdcsat1", "VDC-B SAT", 8 + 1, 0, true, ENDIAN_LITTLE);  // SATB to show ?
-  ASpace_Add(KING_GetAddressSpaceBytes, KING_PutAddressSpaceBytes, "vce", "VCE Palette RAM", 10);
+  ASpace_AddPalette(KING_GetAddressSpaceBytes, KING_PutAddressSpaceBytes, "vce", "VCE Palette RAM", 10, 0, false, 2, ENDIAN_LITTLE, PALETTE_PCFX);
   #endif
 
   SCSICD_Init(SCSICD_PCFX, 3, FXCDDABufs[0]->Buf(), FXCDDABufs[1]->Buf(), 153600 * MDFN_GetSettingUI("pcfx.cdspeed"), 21477273, KING_CDIRQ, KING_StuffSubchannels);
