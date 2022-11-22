@@ -71,6 +71,12 @@ static uint8 MDFN_FASTCALL mem_rbyte(v810_timestamp_t &timestamp, uint32 A)
   if(BRAMDisabled)
    return(0xFF);
 
+  if(!(BackupControl & 0x1))
+  {
+   FXDBG("Read8 from internal BRAM when not enabled.");
+   return(0xFF);
+  }
+
   //printf("%d\n", (A - 0xE0000000) >> 1);
   return(BackupRAM[(A & 0xFFFF) >> 1]);
  }
@@ -82,6 +88,7 @@ static uint8 MDFN_FASTCALL mem_rbyte(v810_timestamp_t &timestamp, uint32 A)
   if(!(BackupControl & 0x2))
   {
    FXDBG("Read8 from external BRAM when not enabled.");
+   return(0xFF);
   }
 
   return(ExBackupRAM[(A & 0x3FFFF) >> 1]);
@@ -142,6 +149,12 @@ static uint16 MDFN_FASTCALL mem_rhword(v810_timestamp_t &timestamp, uint32 A)
   if(BRAMDisabled)
    return(0xFFFF);
 
+  if(!(BackupControl & 0x1))
+  {
+   FXDBG("Read16 from internal BRAM when not enabled.");
+   return(0xFFFF);
+  }
+
   //printf("%d\n", (A - 0xE0000000) >> 1);
   return(BackupRAM[(A & 0xFFFF) >> 1]);
  }
@@ -153,6 +166,7 @@ static uint16 MDFN_FASTCALL mem_rhword(v810_timestamp_t &timestamp, uint32 A)
   if(!(BackupControl & 0x2))
   {
    FXDBG("Read16 from external BRAM when not enabled.");
+   return(0xFFFF);
   }
 
   return(ExBackupRAM[(A & 0x3FFFF) >> 1]);
