@@ -751,7 +751,6 @@ uint8 HuC6280::IRQStatusRead(unsigned int address, bool peek)
  {
   case 0:
 	 if(!peek)
-	  IRQEnd(IQTIMER); 
 	 return(IRQMask ^ 0x7);
   case 1: 
 	{
