@@ -629,7 +629,8 @@ NO_INLINE void HuC6280::RunSub(void)
 	  {
  	   uint32 tmpa = 0;
 
-	   if((IRQlow & IQTIMER & IRQMask) && !IFlagSample) //IRQSample & IQTIMER)
+//	   if((IRQlow & IQTIMER & IRQMask) && !IFlagSample) //IRQSample & IQTIMER)
+	   if((IRQSample & IQTIMER) && !IFlagSample) //IRQSample & IQTIMER)
 	    tmpa = 0xFFFA;
 	   else if(IRQSample & IQIRQ1)
 	    tmpa = 0xFFF8;
