@@ -629,7 +629,8 @@ NO_INLINE void HuC6280::RunSub(void)
 	  {
  	   uint32 tmpa = 0;
 
-	   if((IRQlow & IQTIMER & IRQMask) && !IFlagSample) //IRQSample & IQTIMER)
+//	   if((IRQlow & IQTIMER & IRQMask) && !IFlagSample) //IRQSample & IQTIMER)
+	   if((IRQSample & IQTIMER) && !IFlagSample) //IRQSample & IQTIMER)
 	    tmpa = 0xFFFA;
 	   else if(IRQSample & IQIRQ1)
 	    tmpa = 0xFFF8;
@@ -751,7 +752,6 @@ uint8 HuC6280::IRQStatusRead(unsigned int address, bool peek)
  {
   case 0:
 	 if(!peek)
-	  IRQEnd(IQTIMER); 
 	 return(IRQMask ^ 0x7);
   case 1: 
 	{
