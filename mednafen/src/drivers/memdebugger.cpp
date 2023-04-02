@@ -1003,7 +1003,7 @@ void MemDebugger::Draw(MDFN_Surface *surface, const MDFN_Rect *rect, const MDFN_
 
      MDFN_DrawFillRect(surface, alen + byte_bpr * byte_hex_spacing + byte_hex_right_padding + (x*2) * byte_char_spacing + ((byte_bpr - 1) / 4) * byte_hex_group_pad, text_y + byte_char_y_adjust, 2 * byte_char_spacing, byte_vspacing, border_color, pal_color, RectStyle::Rounded);
    }
-   if ((ASpace->IsPalette) && (ASpace->PaletteType == PALETTE_PCFX))
+   else if ((ASpace->IsPalette) && (ASpace->PaletteType == PALETTE_PCFX))
    {
     int32 r_temp = (int) ((float)y_digit + (1.402f * ((v_digit << 4) - 128)));
     int32 g_temp = (int) ((float)y_digit - (0.344f * ((u_digit << 4) - 128)) - (0.714f * ((v_digit << 4) - 128)) );
