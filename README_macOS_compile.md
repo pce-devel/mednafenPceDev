@@ -21,7 +21,9 @@ For a native Intel(x86_64) build we will use "Homebrew" to pull in the needed Me
 brew install pkg-config gettext sdl2 libsndfile jack lzo zstd 
 ```
 
-**Note** There is currently an SDL issue with newer SDL2 Brew (2.0.22+) installs that can cause Mednafen to "hang" when exiting due to the SDL Audio close function having changed. To work around this make sure to use the 2.0.22 SDL2 Brew install.
+**Optional Note:** There is currently an SDL issue with newer SDL2 Brew (2.0.22+) installs that can cause Mednafen to "hang" when exiting due to the SDL Audio close function having changed. To work around this make sure to use the 2.0.22 SDL2 Brew install. 
+
+**Update 04/2023:** SDL 2.26.4(SDL-release-2.26.4-0-g07d0f51fa) no longer seems to exhibit this behaviour so we will mark the below as optional in case you are seeing the "hanging" behaviour upon exiting Mednafen.
 ```
 wget https://github.com/Homebrew/homebrew-core/raw/5c1cf00f7540d9cf0344c0bac4aabe4e5a7fa8a5/Formula/sdl2.rb
 brew install --build-from-source sdl2.rb
