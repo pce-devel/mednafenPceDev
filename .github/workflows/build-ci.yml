@@ -7,7 +7,7 @@ permissions:
 
 jobs:
   # === Windows (cross-compile via mingw) ===
-  windows:
+  win64:
     env:
       SDL2_VERSION: 2.28.2
       SYSROOT: /usr/x86_64-w64-mingw32/sys-root/mingw
@@ -30,13 +30,11 @@ jobs:
           path: dist/*
 
   # === Linux (Ubuntu 20.04) ===
-  linux:
+  linux64:
     runs-on: ubuntu-20.04
     steps:
-      - name: Upgrade packages
-        run: sudo apt-get update && sudo apt-get -y upgrade
       - name: Install required dependencies
-        run: sudo apt-get install build-essential pkg-config libasound2-dev libflac-dev libsdl2-dev zip zlib1g-dev
+        run: sudo apt-get update && sudo apt-get install build-essential pkg-config libasound2-dev libflac-dev libsdl2-dev zip zlib1g-dev
       - uses: actions/checkout@v3
       - name: Configure
         run: mednafen/configure --disable-apple2 --disable-gb --disable-gba --disable-nes --disable-sasplay --disable-sms --disable-snes --disable-snes-faust --disable-ssfplay
