@@ -1,0 +1,51 @@
+name: Build
+
+on: [push, pull_request, workflow_dispatch]
+
+permissions:
+  contents: read
+
+jobs:
+  # === Windows (cross-compile via mingw) ===
+  windows:
+    env:
+      SDL2_VERSION: 2.28.2
+      SYSROOT: /usr/x86_64-w64-mingw32/sys-root/mingw
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    steps:
+      - name: Install dependencies
+        run: sudo dnf -y install autoconf automake binutils cpp gcc make pkgconf pkgconf-m4 pkgconf-pkg-config zip unzip git mingw64-gcc mingw64-gcc-c++ mingw64-zlib mingw64-flac mingw64-SDL2 mingw64-win-iconv
+      - uses: actions/checkout@v3
+      - name: Configure
+        run: CPPFLAGS="-DUNICODE=1 -D_UNICODE=1" LDFLAGS="-fstack-protector -static-libstdc++" mednafen/configure --host=x86_64-w64-mingw32 --enable-threads=win32 --disable-alsa --disable-jack --disable-apple2 --disable-gb --disable-gba --disable-nes --disable-sasplay --disable-sms --disable-snes --disable-snes-faust --disable-ssfplay
+      - name: Build
+        run: make -j$(nproc)
+      - name: Package artifact
+        run: mkdir dist && cp src/mednafen.exe $SYSROOT/bin/SDL2.dll $SYSROOT/bin/iconv.dll $SYSROOT/bin/libFLAC-*.dll $SYSROOT/bin/libgcc* $SYSROOT/bin/libogg* $SYSROOT/bin/libssp* $SYSROOT/bin/libwinpthread* $SYSROOT/bin/zlib1.dll mednafen/COPYING dist/
+      - name: Archive artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: Mednafen (Windows)
+          path: dist/*
+
+  # === Linux (Ubuntu 20.04) ===
+  linux:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Upgrade packages
+        run: sudo apt-get update && sudo apt-get -y upgrade
+      - name: Install required dependencies
+        run: sudo apt-get install build-essential pkg-config libasound2-dev libflac-dev libsdl2-dev zip zlib1g-dev
+      - uses: actions/checkout@v3
+      - name: Configure
+        run: mednafen/configure --disable-apple2 --disable-gb --disable-gba --disable-nes --disable-sasplay --disable-sms --disable-snes --disable-snes-faust --disable-ssfplay
+      - name: Build
+        run: make -j$(nproc)
+      - name: Package artifact
+        run: mkdir dist && cp src/mednafen mednafen/COPYING dist/
+      - name: Archive artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: Mednafen (Linux)
+          path: dist/*
