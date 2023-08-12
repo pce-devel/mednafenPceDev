@@ -804,8 +804,8 @@ OP( 0xd3, i_rotshft_wcl ) {
 	}
 } OP_EPILOGUE;
 
-OP( 0xd4, i_aam    ) { (void)FETCH; I.regs.b[AH] = I.regs.b[AL] / 10; I.regs.b[AL] %= 10; SetSZPF_Word(I.regs.w[AW]); CLK(17); } OP_EPILOGUE;
-OP( 0xd5, i_aad    ) { (void)FETCH; I.regs.b[AL] = I.regs.b[AH] * 10 + I.regs.b[AL]; I.regs.b[AH] = 0; SetSZPF_Byte(I.regs.b[AL]); CLK(6); } OP_EPILOGUE;
+OP( 0xd4, i_aam    ) { uint8_t div = FETCH; I.regs.b[AH] = I.regs.b[AL] / div; I.regs.b[AL] %= div; SetSZPF_Word(I.regs.w[AW]); CLK(17); } OP_EPILOGUE;
+OP( 0xd5, i_aad    ) { uint8_t div = FETCH; I.regs.b[AL] = I.regs.b[AH] * div + I.regs.b[AL]; I.regs.b[AH] = 0; SetSZPF_Byte(I.regs.b[AL]); CLK(6); } OP_EPILOGUE;
 OP( 0xd6, i_setalc ) { I.regs.b[AL] = (CF)?0xff:0x00; CLK(3);  } OP_EPILOGUE;
 OP( 0xd7, i_trans  ) { uint32 dest = (I.regs.w[BW]+I.regs.b[AL])&0xffff; I.regs.b[AL] = GetMemB(DS0, dest); CLK(5); } OP_EPILOGUE;
 
