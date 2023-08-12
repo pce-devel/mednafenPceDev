@@ -38,7 +38,7 @@ int	wsVMode;
 
 void WSWan_TCacheInvalidByAddr(uint32 ws_offset)
 {
-  if(wsVMode  && (ws_offset>=0x4000)&&(ws_offset<0x8000))
+  if(wsIs4bpp() && (ws_offset>=0x4000)&&(ws_offset<0x8000))
   {
    wsTCacheUpdate[(ws_offset-0x4000)>>5]=false; /*invalidate tile*/
    return;
@@ -49,12 +49,12 @@ void WSWan_TCacheInvalidByAddr(uint32 ws_offset)
    return;
   }
 
-  if(wsVMode  && (ws_offset>=0x8000)&&(ws_offset<0xc000))
+  if(wsIs4bpp() && (ws_offset>=0x8000)&&(ws_offset<0xc000))
   {
    wsTCacheUpdate2[(ws_offset-0x8000)>>5]=false; /*invalidate tile*/
    return;
   }
-  else if((ws_offset>=0x4000)&&(ws_offset<0x6000))
+  else if(wsIsColor() && (ws_offset>=0x4000)&&(ws_offset<0x6000))
   {
    wsTCacheUpdate2[(ws_offset-0x4000)>>4]=false; /*invalidate tile*/
    return;

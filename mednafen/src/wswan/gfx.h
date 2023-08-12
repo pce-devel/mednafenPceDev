@@ -20,6 +20,10 @@ void wsMakeTiles(void);
 void wsGetTile(uint32,uint32,int,int,int);
 void wsSetVideo(int, bool);
 
+static inline bool wsIsColor(void) { return wsVMode & 0x04; }
+static inline bool wsIs4bpp(void) { return (wsVMode & 0x06) == 0x06; }
+static inline bool wsIsPacked(void) { return (wsVMode & 0x07) == 0x07; }
+
 MDFN_HIDE extern uint32	dx_r,dx_g,dx_b,dx_sr,dx_sg,dx_sb;
 MDFN_HIDE extern uint32	dx_bits,dx_pitch,cmov,dx_linewidth_blit,dx_buffer_line;
 

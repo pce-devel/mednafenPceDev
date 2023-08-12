@@ -629,7 +629,7 @@ void WSwan_SetPixelFormat(const MDFN_PixelFormat &format)
 template<typename T>
 static INLINE void wsBlitScanline(T* MDFN_RESTRICT target, uint8* MDFN_RESTRICT bg, uint8* MDFN_RESTRICT bg_pal)
 {
-	if(wsVMode)
+	if(wsIsColor())
 	{
 	 for(size_t l = 0; l < 224; l++)
 	  target[l] = ColorMap[wsCols[bg_pal[l]][bg[l] & 0xF]];
@@ -647,7 +647,7 @@ static void wsScanline(MDFN_Surface* surface)
 	uint8		b_bg[256];
 	uint8		b_bg_pal[256];
 
-	if(!wsVMode)
+	if(!wsIsColor())
 		memset(b_bg, wsColors[BGColor&0xF]&0xF, 256);
 	else
 	{
@@ -669,9 +669,9 @@ static void wsScanline(MDFN_Surface* surface)
 	  b2=(b2<<8)|b1;
 	  wsGetTile(b2&0x1ff,start_tile_n&7,b2&0x8000,b2&0x4000,b2&0x2000);
 
-          if(wsVMode)
+          if(wsIsColor())
           {
-           if(wsVMode & 0x2)
+           if(wsIs4bpp())
 	   {
             for(int x = 0; x < 8; x++)
              if(wsTileRow[x])
@@ -747,9 +747,9 @@ static void wsScanline(MDFN_Surface* surface)
           b2=(b2<<8)|b1;
           wsGetTile(b2&0x1ff,start_tile_n&7,b2&0x8000,b2&0x4000,b2&0x2000);
 
-          if(wsVMode)
+          if(wsIsColor())
           {
-	   if(wsVMode & 0x2)
+	   if(wsIs4bpp())
             for(int x = 0; x < 8; x++)
 	    {
              if(wsTileRow[x] && in_window[adrbuf + x])
@@ -821,9 +821,9 @@ static void wsScanline(MDFN_Surface* surface)
 			 ts |= (as&1) << 8;
 			 wsGetTile(ts, ys, as & 0x80, as & 0x40, 0);
 
-			 if(wsVMode)
+			 if(wsIsColor())
 			 {
-			  if(wsVMode & 0x2)
+			  if(wsIs4bpp())
 			  {
 			   for(int x = 0; x < 8; x++)
 			    if(wsTileRow[x])
@@ -1056,14 +1056,14 @@ static void DoGfxDecode(void)
  uint32 tile_limit;
  uint32 zero_color = GfxDecode_Buf->MakeColor(0, 0, 0, 0);
 
- if(wsVMode && GfxDecode_Layer != 2) // Sprites can't use the extra tile bank in WSC mode
+ if(wsIsColor() && GfxDecode_Layer != 2) // Sprites can't use the extra tile bank in WSC mode
   tile_limit = 0x400;
  else
   tile_limit = 0x200;
 
  if(GfxDecode_Pbn == -1)
  {
-  if(wsVMode)
+  if(wsIsColor())
   {
    for(int x = 0; x < 16; x++)
     neo_palette[x] = GfxDecode_Buf->MakeColor(x * 17, x * 17, x * 17, 0xFF);
@@ -1074,7 +1074,7 @@ static void DoGfxDecode(void)
  }
  else
  {
-  if(wsVMode)
+  if(wsIsColor())
    for(int x = 0; x < 16; x++)
    {
     uint32 raw = wsCols[GfxDecode_Pbn & 0xF][x];
@@ -1114,7 +1114,7 @@ static void DoGfxDecode(void)
    }
 
    wsGetTile(which_tile & 0x1FF, y&7, 0, 0, which_tile & 0x200);
-   if(wsVMode)
+   if(wsIsColor())
    {
     for(int sx = 0; sx < 8; sx++)
      target[x + sx] = neo_palette[wsTileRow[sx]];
@@ -1128,7 +1128,7 @@ static void DoGfxDecode(void)
    uint32 address_base;
    uint32 tile_bsize;
 
-   if(wsVMode & 0x4)
+   if(wsIsColor())
    {
     tile_bsize = 4 * 8 * 8 / 8;
     if(which_tile & 0x200)

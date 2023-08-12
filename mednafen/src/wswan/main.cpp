@@ -317,26 +317,26 @@ static void Load(GameFile* gf)
   md5.finish(MDFNGameInfo->MD5);
   MDFN_printf(_("ROM MD5:   0x%s\n"), md5_context::asciistr(MDFNGameInfo->MD5, 0).c_str());
 
-  uint8 header[10];
-  memcpy(header, wsCartROM + rom_size - 10, 10);
+  uint8 header[11];
+  memcpy(header, wsCartROM + rom_size - 11, 11);
 
   {
    const char *developer_name = "???";
    for(unsigned int x = 0; x < sizeof(Developers) / sizeof(DLEntry); x++)
    {
-    if(Developers[x].id == header[0])
+    if(Developers[x].id == header[1])
     {
      developer_name = Developers[x].name;
      break;
     }
    }
-   MDFN_printf(_("Developer: %s (0x%02x)\n"), developer_name, header[0]);
+   MDFN_printf(_("Developer: %s (0x%02x)\n"), developer_name, header[1]);
   }
 
   uint32 SRAMSize = 0;
   eeprom_size = 0;
 
-  switch(header[5])
+  switch(header[6])
   {
    case 0x01: SRAMSize =   8 * 1024; break;
    case 0x02: SRAMSize =  32 * 1024; break;
@@ -351,7 +351,7 @@ static void Load(GameFile* gf)
    case 0x50: eeprom_size = 1024; break;
   }
 
-  //printf("Header5: %02x\n", header[5]);
+  //printf("Header6: %02x\n", header[6]);
 
   if(eeprom_size)
    MDFN_printf(_("EEPROM:  %d bytes\n"), eeprom_size);
@@ -359,7 +359,7 @@ static void Load(GameFile* gf)
   if(SRAMSize)
    MDFN_printf(_("Battery-backed RAM:  %d bytes\n"), SRAMSize);
 
-  MDFN_printf(_("Recorded Checksum:  0x%04x\n"), header[8] | (header[9] << 8));
+  MDFN_printf(_("Recorded Checksum:  0x%04x\n"), header[9] | (header[10] << 8));
   {
    uint16 real_crc = 0;
    for(unsigned int i = 0; i < rom_size - 2; i++)
@@ -370,7 +370,7 @@ static void Load(GameFile* gf)
   if(IsWW)
    MDFN_printf(_("WonderWitch firmware detected.\n"));
 
-  if((header[8] | (header[9] << 8)) == 0x8de1 && (header[0]==0x01)&&(header[2]==0x27)) /* Detective Conan */
+  if((header[9] | (header[10] << 8)) == 0x8de1 && (header[1]==0x01)&&(header[3]==0x27)) /* Detective Conan */
   {
    //puts("HAX");
    /* WS cpu is using cache/pipeline or there's protected ROM bank where pointing CS */
@@ -381,9 +381,13 @@ static void Load(GameFile* gf)
    wsCartROM[0xfffec]=0x20;
   }
 
+  iEEPROM[0x76] = header[1];
+  iEEPROM[0x77] = header[2];
+  iEEPROM[0x78] = header[3];
+
   if(!IsWSR)
   {
-   if(header[6] & 0x1)
+   if(header[7] & 0x1)
     MDFNGameInfo->rotated = MDFN_ROTATE90;
   }
 
@@ -410,6 +414,8 @@ static void Load(GameFile* gf)
   wsMakeTiles();
 
   Reset();
+
+  WSwan_EEPROMLock(!(header[4] & 0x80));
  }
  catch(...)
  {
