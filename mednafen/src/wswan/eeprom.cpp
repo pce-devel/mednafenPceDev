@@ -20,107 +20,22 @@
 
 #include "wswan.h"
 #include "eeprom.h"
+#include "gfx.h"
 #include "memory.h"
 
 namespace MDFN_IEN_WSWAN
 {
 
-
+static uint16_t wsGetEepromMask() {
+ return wsIsColor() ? 0x7FF : 0x7F;
+}
 
 uint8 wsEEPROM[2048];
-static uint8 iEEPROM[0x400];
-static const uint8 iEEPROM_Init[0x400] = 
-{
- 255,255,255,255,255,255,192,255,0,0,0,0,
- 0,0,0,0,0,0,0,0,0,0,0,0,
- 0,0,127,0,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,0,0,0,0,0,0,
- 0,0,0,0,0,0,0,0,0,0,0,0,
- 0,0,0,0,0,0,0,0,0,0,0,0,
- 0,0,0,0,0,0,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255, 
- 0,252,255,1,255,253,255,253,255,253,255,253,
- 255,253,255,253,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 0,0,3,3,0,0,0,64,128,0,0,0,
- 0,0,0,0,0,0,0,0,0,0,0,0,
- 0,0,0,0,0,0,0,0,0,0,0,0,
- 0,0,0,0,0,0,0,0,0,0,0,0,
- 135,5,140,9,5,12,139,12,144,0,0,2,
- 0,76,165,0,128,0,0,0,255,127,255,127,
- 255,127,255,127,255,127,255,127,255,127,255,127,
- 255,127,255,127,255,127,255,127,255,127,255,127,
- 255,127,255,127,255,127,255,127,255,127,255,127,
- 255,127,255,127,255,127,255,127,255,127,255,127,
- 255,127,255,127,255,127,255,127,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 0,0,6,6,6,6,6,0,0,0,0,0,
- 1,128,15,0,1,1,1,15,0,0,0,0,
- 0,0,0,0,0,0,0,0,0,0,0,0,
- 0,0,0,0,0,0,0,0,0,0,0,0,
- 0,0,0,0,0,0,0,0,0,0,0,0,
- 0,0,0,0,0,0,0,0,0,0,0,0,
- 0,0,0,0,0,0,0,0,0,0,0,0,
- 0,0,0,0,0,0,0,0,0,0,0,0,
- 'C'-54,'Y'-54,'G'-54,'N'-54,'E'-54,0,0,0,0,0,0,0,0,0,0,
- 0,32,1,1,33,1,4,0,1,
- 0,152,60,127,74,1,53,1,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255,255,255,255,255,255,255,255,255,
- 255,255,255,255
-};
+uint8 iEEPROM[0x800];
 
 static uint8 iEEPROM_Command, EEPROM_Command;
 static uint16 iEEPROM_Address, EEPROM_Address;
+static uint16 iEEPROM_Data, EEPROM_Data;
 
 uint8 WSwan_EEPROMRead(uint32 A)
 {
@@ -128,44 +43,113 @@ uint8 WSwan_EEPROMRead(uint32 A)
  {
   default: printf("Read: %04x\n", A); break;
 
-  case 0xBA: return(iEEPROM[(iEEPROM_Address << 1) & 0x3FF]);
-  case 0xBB: return(iEEPROM[((iEEPROM_Address << 1) | 1) & 0x3FF]);
+  case 0xBA: return(iEEPROM_Data >> 0);
+  case 0xBB: return(iEEPROM_Data >> 8);
   case 0xBC: return(iEEPROM_Address >> 0);
   case 0xBD: return(iEEPROM_Address >> 8);
-  case 0xBE:
-        if(iEEPROM_Command & 0x20) return iEEPROM_Command|2;
-        if(iEEPROM_Command & 0x10) return iEEPROM_Command|1;
-        return iEEPROM_Command | 3;
+  case 0xBE: return iEEPROM_Command | 0xFC;
 
-
-  case 0xC4: return(wsEEPROM[(EEPROM_Address << 1) & (eeprom_size - 1)]);
-  case 0xC5: return(wsEEPROM[((EEPROM_Address << 1) | 1) & (eeprom_size - 1)]);
+  case 0xC4: return(EEPROM_Data >> 0);
+  case 0xC5: return(EEPROM_Data >> 8);
   case 0xC6: return(EEPROM_Address >> 0);
   case 0xC7: return(EEPROM_Address >> 8);
-  case 0xC8: if(EEPROM_Command & 0x20) return EEPROM_Command|2;
-             if(EEPROM_Command & 0x10) return EEPROM_Command|1;
-             return EEPROM_Command | 3;
+  case 0xC8: return EEPROM_Command | 0xFC;
  }
  return(0);
 }
 
+static void WSwan_EEPROMCommand(uint8 cmd, uint8 *eeprom, uint16 size, uint16 *data_p, uint16 *address_p, uint8 *command_p)
+{
+ if(cmd & 0x80)
+ {
+  *command_p |= 0x80;
+ }
+ if((cmd & 0x70) != 0x40 && (cmd & 0x70) != 0x20 && (cmd & 0x70) != 0x10)
+ {
+  return;
+ }
+
+ *command_p &= 0xFC;
+
+ uint16 data = 0xFFFF;
+ if(cmd & 0x20)
+ {
+  data = *data_p;
+ }
+ uint16 address = ((*address_p) << 1) & (size - 1);
+ uint8 opcode = (*address_p) >> (MDFN_log2(size) - 3);
+
+ bool unlocked = !(*command_p & 0x08);
+ if (eeprom == iEEPROM && (*command_p & 0x80) && address >= 0x30)
+ {
+  unlocked = false;
+ }
+
+ if((opcode & 0x1C) == 0x10)
+ {
+  // extended opcodes
+  switch(opcode & 0x03)
+  {
+  case 0x00: // erase/write disable
+    *command_p |= 0x08;
+    break;
+  case 0x01: // write all
+    // TODO: Does this write only the program area when internal EEPROM is protected?
+    if (unlocked) for(int i=0;i<size;i++) eeprom[i] = data >> ((i&1)*8);
+    break;
+  case 0x02: // erase all
+    // TODO: Does this erase only the program area when internal EEPROM is protected?
+    if (unlocked) memset(eeprom, 0xFF, size);
+    break;
+  case 0x03: // erase/write enable
+    *command_p &= ~0x08;
+    break;
+  }
+ }
+ else if((opcode & 0x1C) == 0x18)
+ {
+  // read
+  data = eeprom[address] | (eeprom[address | 1] << 8);
+ }
+ else if((opcode & 0x1C) == 0x14)
+ {
+  // write
+  if (unlocked)
+  {
+    eeprom[address] = data;
+    eeprom[address | 1] = data >> 8;
+  }
+ }
+ else if((opcode & 0x1C) == 0x1C)
+ {
+  // erase
+  if (unlocked)
+  {
+    eeprom[address] = 0xFF;
+    eeprom[address | 1] = 0xFF;
+  }
+ }
+
+ if(cmd & 0x70) *command_p |= 0x02;
+ if(cmd & 0x10) *command_p |= 0x01;
+ if(cmd & 0x10) *data_p = data;
+}
 
 void WSwan_EEPROMWrite(uint32 A, uint8 V)
 {
  switch(A)
  {
-  case 0xBA: iEEPROM[(iEEPROM_Address << 1) & 0x3FF] = V; break;
-  case 0xBB: iEEPROM[((iEEPROM_Address << 1) | 1) & 0x3FF] = V; break;
+  case 0xBA: iEEPROM_Data &= 0xFF00; iEEPROM_Data |= (V << 0); break;
+  case 0xBB: iEEPROM_Data &= 0x00FF; iEEPROM_Data |= (V << 8); break;
   case 0xBC: iEEPROM_Address &= 0xFF00; iEEPROM_Address |= (V << 0); break;
   case 0xBD: iEEPROM_Address &= 0x00FF; iEEPROM_Address |= (V << 8); break;
-  case 0xBE: iEEPROM_Command = V; break;
+  case 0xBE: WSwan_EEPROMCommand(V, iEEPROM, wsGetEepromMask() + 1, &iEEPROM_Data, &iEEPROM_Address, &iEEPROM_Command); break;
 
-  case 0xC4: wsEEPROM[(EEPROM_Address << 1) & (eeprom_size - 1)] = V; break;
-  case 0xC5: wsEEPROM[((EEPROM_Address << 1) | 1) & (eeprom_size - 1)] = V; break;
-
+  case 0xC4: EEPROM_Data &= 0xFF00; EEPROM_Data |= (V << 0); break;
+  case 0xC5: EEPROM_Data &= 0x00FF; EEPROM_Data |= (V << 8); break;
   case 0xC6: EEPROM_Address &= 0xFF00; EEPROM_Address |= (V << 0); break;
   case 0xC7: EEPROM_Address &= 0x00FF; EEPROM_Address |= (V << 8); break;
-  case 0xC8: EEPROM_Command = V; break;
+  case 0xC8: WSwan_EEPROMCommand(V, wsEEPROM, eeprom_size, &EEPROM_Data, &EEPROM_Address, &EEPROM_Command); break;
  }
 }
 
@@ -173,14 +157,25 @@ void WSwan_EEPROMReset(void)
 {
  iEEPROM_Command = EEPROM_Command = 0;
  iEEPROM_Address = EEPROM_Address = 0;
+ iEEPROM_Data = EEPROM_Data = 0;
+}
+
+void WSwan_EEPROMLock(bool locked)
+{
+ iEEPROM_Command = (iEEPROM_Command & 0x7F) | (locked ? 0x80 : 0x00);
 }
 
 void WSwan_EEPROMInit(const char *Name, const uint16 BYear, const uint8 BMonth, const uint8 BDay, const uint8 Sex, const uint8 Blood)
 {
  memset(wsEEPROM, 0, 2048);
- memcpy(iEEPROM, iEEPROM_Init, 0x400);
+ memset(iEEPROM, 0xFF, 0x800);
 
- for(unsigned int x = 0; x < 16; x++)
+ // http://perfectkiosk.net/stsws.html#ieep
+ // https://github.com/Godzil/splashbuilder
+
+ memset(iEEPROM, 0x00, 0x60); // program data
+
+ for(unsigned int x = 0; x < 16; x++) // owner name
  {
   uint8 zechar = 0;
 
@@ -188,11 +183,14 @@ void WSwan_EEPROMInit(const char *Name, const uint16 BYear, const uint8 BMonth, 
   {
    char tc = MDFN_azupper(Name[x]);
    if(tc == ' ') zechar = 0;
+   else if(tc == '+') zechar = 0x27;
+   else if(tc == '-') zechar = 0x28;
+   else if(tc == '?') zechar = 0x29;
+   else if(tc == '.') zechar = 0x2A;
    else if(tc >= '0' && tc <= '9') zechar = tc - '0' + 0x1;
    else if(tc >= 'A' && tc <= 'Z') zechar = tc - 'A' + 0xB;
-   else if(tc >= 'a' && tc <= 'z') zechar = tc - 'a' + 0xB + 26;
   }
-  iEEPROM[0x360 + x] = zechar;
+  iEEPROM[0x60 + x] = zechar;
  }
 
  #define  mBCD16(value) ( (((((value)%100) / 10) <<4)|((value)%10)) | ((((((value / 100)%100) / 10) <<4)|((value / 100)%10))<<8) )
@@ -200,12 +198,19 @@ void WSwan_EEPROMInit(const char *Name, const uint16 BYear, const uint8 BMonth, 
 
  uint16 bcd_BYear = INT16_TO_BCD(BYear);
 
- iEEPROM[0x370] = (bcd_BYear >> 8) & 0xFF;
- iEEPROM[0x371] = (bcd_BYear >> 0) & 0xFF;
- iEEPROM[0x372] = mBCD(BMonth);
- iEEPROM[0x373] = mBCD(BDay);
- iEEPROM[0x374] = Sex;
- iEEPROM[0x375] = Blood;
+ iEEPROM[0x70] = (bcd_BYear >> 8) & 0xFF; // owner data
+ iEEPROM[0x71] = (bcd_BYear >> 0) & 0xFF;
+ iEEPROM[0x72] = mBCD(BMonth);
+ iEEPROM[0x73] = mBCD(BDay);
+ iEEPROM[0x74] = Sex;
+ iEEPROM[0x75] = Blood;
+
+ iEEPROM[0x7C] = 0x01; // cartridge changes
+ iEEPROM[0x7D] = 0x01; // owner name changes
+ iEEPROM[0x7E] = 0x01; // console boot count
+ iEEPROM[0x7F] = 0x00;
+
+ iEEPROM[0x83] = 0x03;
 }
 
 void WSwan_EEPROMStateAction(StateMem *sm, const unsigned load, const bool data_only)
