@@ -1,3 +1,5 @@
+[![Build](https://github.com/pce-devel/mednafenPceDev/actions/workflows/build-ci.yml/badge.svg)](https://github.com/pce-devel/mednafenPceDev/actions/workflows/build-ci.yml)
+
 <p align="center">
 This is a curated and Community managed Mednafen<br> GitHub repo in support of the PCE (Developer) Community.
 <p align="center">
