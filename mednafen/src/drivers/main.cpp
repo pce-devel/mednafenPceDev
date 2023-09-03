@@ -1762,8 +1762,14 @@ void PrintSDLVersion(void)
  }
 }
 
-#ifdef HAVE_LIBFLAC
- #include <FLAC/all.h>
+#ifdef __MINGW32__
+// MinGW-w64 does not define _MSC_VER, but libFLAC requires _MSC_VER
+// to properly declare DLL imports/exports.
+# define _MSC_VER 1933
+# include <FLAC/all.h>
+# undef _MSC_VER
+#else
+# include <FLAC/all.h>
 #endif
 
 void PrintLIBFLACVersion(void)
@@ -1990,7 +1996,18 @@ static bool MSW_GetArgcArgv(int *argc, char ***argv)
 extern "C"
 {
  void __set_app_type(int);
+ extern int __mingw_app_type;
  extern int mingw_app_type;
+}
+
+static INLINE void set_mingw_app_type(int value)
+{
+#if __MINGW64_VERSION_MAJOR >= 10
+	// https://github.com/mirror/mingw-w64/commit/973b932e2da39f80ecbd25b8f0973c5fd82fafa3
+	__mingw_app_type = value;
+#else
+	mingw_app_type = value;
+#endif
 }
 
 __attribute__((force_align_arg_pointer))	// Not sure what's going on to cause this to be needed.
@@ -2011,12 +2028,12 @@ int main(int argc, char *argv[])
 	 if(SuppressErrorPopups)
 	 {
 	  __set_app_type(1);
-	  mingw_app_type = 0;
+	  set_mingw_app_type(0);
 	 }
 	 else
 	 {
 	  __set_app_type(2);
-	  mingw_app_type = 1;
+	  set_mingw_app_type(1);
 	 }
 #endif
 	}
