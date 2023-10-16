@@ -655,7 +655,7 @@ static MDFN_COLD void LoadCD(std::vector<CDInterface*> *CDInterfaces)
   bool disable_bram_cd = MDFN_GetSettingB("pce.disable_bram_cd");
 
   if(disable_bram_cd)
-   MDFN_printf(_("Warning: BRAM is disabled per pcfx.disable_bram_cd setting.  This is simulating a malfunction.\n"));
+   MDFN_printf(_("Warning: BRAM is disabled per pce.disable_bram_cd setting.  This is simulating a malfunction.\n"));
 
   HuC_Load(fp.stream(), disable_bram_cd, PCE_ACEnabled ? SYSCARD_ARCADE : SYSCARD_3);
 
