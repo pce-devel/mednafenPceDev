@@ -580,13 +580,13 @@ MDFN_FASTCALL uint8 PCECD_Read(uint32 timestamp, uint32 A, int32 &next_event, co
    case 0x4: ret = _Port[4];
 	     break;
 
-   case 0x5: if(_Port[0x3] & 0x2)
+   case 0x5: if((_Port[0x3] & 0x2) == 0)
 	      ret = RawPCMVolumeCache[1] & 0xff;	// Right
 	     else
 	      ret = RawPCMVolumeCache[0] & 0xff;	// Left
 	     break;
 
-   case 0x6: if(_Port[0x3] & 0x2)
+   case 0x6: if((_Port[0x3] & 0x2) == 0)
 	      ret = ((uint16)RawPCMVolumeCache[1]) >> 8;	// Right
 	     else
 	      ret = ((uint16)RawPCMVolumeCache[0]) >> 8;	// Left
