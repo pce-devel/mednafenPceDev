@@ -568,7 +568,8 @@ MDFN_FASTCALL uint8 PCECD_Read(uint32 timestamp, uint32 A, int32 &next_event, co
    case 0x2: ret = _Port[2];
 	     break;
 
-   case 0x3: bBRAMEnabled = false;
+   case 0x3: if(!PeekMode)
+               bBRAMEnabled = false;
 
 	     /* switch left/right of digitized cd playback */
 	     ret = _Port[0x3];
