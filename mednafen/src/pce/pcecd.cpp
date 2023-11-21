@@ -746,11 +746,6 @@ MDFN_FASTCALL int32 PCECD_Write(uint32 timestamp, uint32 physAddr, uint8 data)
 		case 0x7:	// $1807: D7=1 enables backup ram 
 
 			bBRAMEnabled = (data & 0x80) ? true : false;
-
-			//if (data & 0x80)
-			//{
-			//	bBRAMEnabled = true;
-			//}
 			break;
 	
 		case 0x8:	// Set ADPCM address low
