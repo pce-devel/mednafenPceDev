@@ -11,13 +11,14 @@
 
 #### PC-Engine Improvements / Bugfixes:
 - PSG Tweaks Update channel 1 frequency cache upon LFO frequency register writes (the way the channel 1 frequency and LFO frequency are combined is still inaccurate, however, causing frequency update timing granularity to be too high). Ported over MDFN 1.31.0 release
-- Backup Memory Lock-bit fix - While the backup memory lock bits inhibit writing to backup memory, the behaviour on the real machine also protects the memory from being read. This commit makes the emulator function more like the real machine
-- Remove Incorrect IRQ Acknowledgement scenario: TIMER interrupt is supposed to be acknowledged by write to $1403.  Original code was also acknowledging it on reads from $1402, which was not supported by official documentation.
+- Backup memory visibility was previously inconsistent between HuCard and CDROM, and locking behaviour was not always correct. Now, physical memory at $1EE000 should give the "processor's view" of the memory, depending on lock/unlock status, and "Backup Memory" screen should show the actual data (Note: HuCard startup state is still default 'unlocked' which is not correct). Also, $1807 register writes should be able to re-lock memory
+- Remove Incorrect IRQ Acknowledgement scenario: TIMER interrupt is supposed to be acknowledged by write to $1403. Original code was also acknowledging it on reads from $1402, which was not supported by official documentation.
 - Fix junk appearing on PCE Debug palette screen 
 - Change Default gamesave name removing hash value for BRAM retention and compatbilty when doing PCE dev builds
 - Fix improper CDROM BRAM locking in debugger
 - PC Engine music player VU meter shows incorrect channels
-- BRAM unlock bit should be able to re-lock: Backup memory unlock bit (0x1807 bit 7) is set to unlock BRAM (i.e. set 0x1807 = 0x80). Normally, BRAM is re-locked by reading 0x1803, but can also be locked by resetting bit of 0x1807 (i.e. same as above but the bit is reset)
+- Fix VU Meter display
+- Other minor changes to warnings and defaults
 - Add CI builds for Windows / Linux
   
 #### Other items:
