@@ -1,5 +1,29 @@
 # Release Notes
 
+## New release 1.2 2023/11/24
+
+### New Features/Improvements:
+
+#### PC-FX Improvements / BugFixes: 
+ - Adds Azerty Keyboard support for Debugging functions
+ - Improve PC-FX palette editor - In debug mode, change PC-FX palette editor to show 16-bit values, with a colour swatch in the right-hand side to demonstrate actual colour (based on YUV)
+ - PSG Tweaks Update channel 1 frequency cache upon LFO frequency register writes (the way the channel 1 frequency and LFO frequency are combined is still inaccurate, however, causing frequency update timing granularity to be too high). Ported over MDFN 1.31.0 release
+
+#### PC-Engine Improvements / Bugfixes:
+- PSG Tweaks Update channel 1 frequency cache upon LFO frequency register writes (the way the channel 1 frequency and LFO frequency are combined is still inaccurate, however, causing frequency update timing granularity to be too high). Ported over MDFN 1.31.0 release
+- Backup memory visibility was previously inconsistent between HuCard and CDROM, and locking behaviour was not always correct. Now, physical memory at $1EE000 should give the "processor's view" of the memory, depending on lock/unlock status, and "Backup Memory" screen should show the actual data (Note: HuCard startup state is still default 'unlocked' which is not correct). Also, $1807 register writes should be able to re-lock memory
+- Remove Incorrect IRQ Acknowledgement scenario: TIMER interrupt is supposed to be acknowledged by write to $1403. Original code was also acknowledging it on reads from $1402, which was not supported by official documentation.
+- Fix junk appearing on PCE Debug palette screen 
+- Change Default gamesave name removing hash value for BRAM retention and compatbilty when doing PCE dev builds
+- Fix improper CDROM BRAM locking in debugger
+- PC Engine music player VU meter shows incorrect channels
+- Fix VU Meter display
+- Other minor changes to warnings and defaults
+- Add CI builds for Windows / Linux
+  
+#### Other items:
+ - This release also contains several Wonderswan module updates that improve emulation accuracy
+
 ## New release 1.1 2022/08/21
 
 ### New Features/Improvements:
