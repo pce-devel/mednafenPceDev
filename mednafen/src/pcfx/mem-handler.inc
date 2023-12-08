@@ -91,7 +91,7 @@ static uint8 MDFN_FASTCALL mem_rbyte(v810_timestamp_t &timestamp, uint32 A)
    return(0xFF);
   }
 
-  return(ExBackupRAM[(A & 0x3FFFF) >> 1]);
+  return(ExBackupRAM[(A & ((ExBackupSize << 1) -1)) >> 1]);
  }
  else if(A >= 0x80000000 && A <= 0x807FFFFF)
  {
@@ -169,7 +169,7 @@ static uint16 MDFN_FASTCALL mem_rhword(v810_timestamp_t &timestamp, uint32 A)
    return(0xFFFF);
   }
 
-  return(ExBackupRAM[(A & 0x3FFFF) >> 1]);
+  return(ExBackupRAM[(A & ((ExBackupSize << 1) -1)) >> 1]);
  }
  else if(A >= 0xF8000000 && A <= 0xFFEFFFFF) // PIO
  {
@@ -251,8 +251,8 @@ static void MDFN_FASTCALL mem_wbyte(v810_timestamp_t &timestamp, uint32 A, uint8
 
   if(BackupControl & 0x2)
   {
-   BackupSignalDirty |= (ExBackupRAM[(A & 0x3FFFF) >> 1] != V);
-   ExBackupRAM[(A & 0x3FFFF) >> 1] = V;
+   BackupSignalDirty |= (ExBackupRAM[(A & ((ExBackupSize << 1) -1)) >> 1] != V);
+   ExBackupRAM[(A & ((ExBackupSize << 1) -1)) >> 1] = V;
   }
  }
  else if(A >= 0xF8000000 && A <= 0xFFEFFFFF)
@@ -298,8 +298,8 @@ static void MDFN_FASTCALL mem_whword(v810_timestamp_t &timestamp, uint32 A, uint
 
   if(BackupControl & 0x2)
   {
-   BackupSignalDirty |= (ExBackupRAM[(A & 0x3FFFF) >> 1] != (uint8)V);
-   ExBackupRAM[(A & 0x3FFFF) >> 1] = (uint8)V;
+   BackupSignalDirty |= (ExBackupRAM[(A & ((ExBackupSize << 1) -1)) >> 1] != (uint8)V);
+   ExBackupRAM[(A & ((ExBackupSize << 1) -1)) >> 1] = (uint8)V;
   }
  }
  else if(A >= 0xF8000000 && A <= 0xFFEFFFFF)
