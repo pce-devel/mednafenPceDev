@@ -140,6 +140,9 @@ typedef struct
  uint8 LastCmd;
  uint32 SampleFreq;
 
+ uint8 Reg0e;
+ uint8 Reg0f;
+
  uint8 PlayBuffer;
  uint8 ReadBuffer;
  int32 ReadPending;
@@ -551,8 +554,10 @@ MDFN_FASTCALL uint8 PCECD_Read(uint32 timestamp, uint32 A, int32 &next_event, co
   if(!PeekMode)
    PCECD_Run(timestamp);
 
-  switch(A & 0xf)
+  if ((A & 0x1F00) == 0x1800)
   {
+   switch(A & 0xff)
+   {
    case 0x0:
     ret = 0;
     ret |= SCSICD_GetBSY() ? 0x80 : 0x00;
@@ -641,6 +646,16 @@ MDFN_FASTCALL uint8 PCECD_Read(uint32 timestamp, uint32 A, int32 &next_event, co
    case 0xd: 
     ret = ADPCM.LastCmd;
     break;
+
+   case 0xe: 
+    ret = ADPCM.Reg0e;
+    break;   
+
+   case 0xf: 
+    ret = ADPCM.Reg0f;
+    break;   
+
+   }
   }
  }
 
@@ -685,8 +700,10 @@ MDFN_FASTCALL int32 PCECD_Write(uint32 timestamp, uint32 physAddr, uint8 data)
 
 	PCECD_Run(timestamp);
 
-	switch (physAddr & 0xf)
+	if ((physAddr & 0x1F00) == 0x1800)
 	{
+	 switch (physAddr & 0xff)
+	 {
 		case 0x0:
 			SCSICD_SetSEL(1);
 			SCSICD_Run(timestamp);
@@ -828,6 +845,7 @@ MDFN_FASTCALL int32 PCECD_Write(uint32 timestamp, uint32 physAddr, uint8 data)
 
 		         MSM5205.SetSample(0x800);
 		         MSM5205.SetSSI(0);
+		         ADPCM.LastCmd = data;
 		         break;
 		        }
 
@@ -885,6 +903,7 @@ MDFN_FASTCALL int32 PCECD_Write(uint32 timestamp, uint32 physAddr, uint8 data)
 
 		case 0xe:		// Set ADPCM playback rate
 			{
+		         ADPCM.Reg0e = data;
 			 uint8 freq = V & 0x0F;
 
 		         ADPCM.SampleFreq = freq;
@@ -895,6 +914,7 @@ MDFN_FASTCALL int32 PCECD_Write(uint32 timestamp, uint32 physAddr, uint8 data)
 			break;
 
 		case 0xf:
+		        ADPCM.Reg0f = data;
 			Fader.Command = V;
 
 			#ifdef PCECD_DEBUG
@@ -920,6 +940,7 @@ MDFN_FASTCALL int32 PCECD_Write(uint32 timestamp, uint32 physAddr, uint8 data)
 			}
 			Fader_SyncWhich();
 			break;
+	 }
 	}
 
 
