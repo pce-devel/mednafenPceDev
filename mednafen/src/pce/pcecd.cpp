@@ -455,7 +455,7 @@ void PCECD_Init(const PCECD_Settings *settings, void (*irqcb)(bool), double mast
 
 	ADPCMBuf = adbuf;
 
-	SCSICD_Init(SCSICD_PCE, 3, hrbuf_l, hrbuf_r, MDFN_GetSettingB("pce.cdspeed") ? 153600 : 126000, master_clock, CDIRQ, StuffSubchannel);
+	SCSICD_Init(SCSICD_PCE, 3, hrbuf_l, hrbuf_r, 153600, master_clock, CDIRQ, StuffSubchannel);
 
         ADPCM.RAM = new uint8[0x10000];
 

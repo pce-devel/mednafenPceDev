@@ -57,7 +57,7 @@ static int find_sector_group(int sector_num)
 	return group_index;
 }
 
-float get_pce_cd_seek_ms(int start_sector, int target_sector, unsigned transfer_rate)
+float get_pce_cd_seek_ms(int start_sector, int target_sector)
 {
 	int start_index;
 	int target_index;
@@ -93,17 +93,7 @@ float get_pce_cd_seek_ms(int start_sector, int target_sector, unsigned transfer_
 	// Now, we use the algorithm to determine how long to wait
 	if (abs(target_sector - start_sector) <= 3)
 	{
-		if (transfer_rate == 153600)
-		{
-			// A value which closely matches real hardware.
-			milliseconds = (6 * 1000 / 60) + (float)(sector_list[target_index].rotation_ms * 0.75);
-		}
-		else
-		{
-			// An insanely-short value needed for Mednafen's traditional
-			// method of getting Sherlock Holmes video streaming to work.
-			milliseconds = (2 * 1000 / 60);
-		}
+		milliseconds = (6 * 1000 / 60) + (float)(sector_list[target_index].rotation_ms * 0.75);
 	}
 	else if (abs(target_sector - start_sector) < 7)
 	{
