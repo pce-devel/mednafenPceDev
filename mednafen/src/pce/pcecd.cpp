@@ -131,7 +131,7 @@ typedef struct
  uint16   Addr;
  uint16   ReadAddr;
  uint16   WriteAddr;
- uint16   LengthCount;
+ uint32   LengthCount;
 
  bool HalfReached;
  bool EndReached;
@@ -277,7 +277,7 @@ uint32 PCECD_GetRegister(const unsigned int id, char *special, const uint32 spec
 	break;
 
   case CD_GSREG_ADPCM_LENGTH:
-	value = ADPCM.LengthCount;
+	value = (ADPCM.LengthCount & 0x10000) ? 0xFFFF : ADPCM.LengthCount;
 	break;
 
   case CD_GSREG_ADPCM_PLAYNIBBLE:
@@ -1183,7 +1183,7 @@ static INLINE void ADPCM_Run(const int32 clocks, const int32 timestamp)
   if(ADPCM.WritePending <= 0)
   {
    ADPCM.HalfReached = (ADPCM.LengthCount < 32768);
-   if(!(ADPCM.LastCmd & 0x10) && ADPCM.LengthCount < 0xFFFF)
+   if(!(ADPCM.LastCmd & 0x10) && ADPCM.LengthCount < 0x1FFFF)
     ADPCM.LengthCount++;
 
    ADPCM.RAM[ADPCM.WriteAddr++] = ADPCM.WritePendingValue;
