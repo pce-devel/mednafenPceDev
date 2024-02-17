@@ -2042,6 +2042,8 @@ static void DoREADBase(uint32 sa, uint32 sc)
  if(SectorCount)
  {
   Cur_CDIF->HintReadSector(sa);	//, sa + sc);
+  cd.data_transfer_done = false;
+  ChangePhase(PHASE_DATA_IN);
  }
  else
  {
@@ -3016,6 +3018,13 @@ uint32 SCSICD_Run(scsicd_timestamp_t system_timestamp)
  else switch(CurrentPhase)
  {
   case PHASE_COMMAND:
+    if((WhichSystem == SCSICD_PCE) && SEL_signal)
+    {
+     cd.command_buffer_pos = 0;
+     ChangePhase(PHASE_COMMAND);
+     break;
+    }
+
     if(REQ_signal && ACK_signal)	// Data bus is valid nowww
     {
      //printf("Command Phase Byte I->T: %02x, %d\n", cd_bus.DB, cd.command_buffer_pos);
@@ -3025,7 +3034,15 @@ uint32 SCSICD_Run(scsicd_timestamp_t system_timestamp)
 
     if(!REQ_signal && !ACK_signal && cd.command_buffer_pos)	// Received at least one byte, what should we do?
     {
-     if(cd.command_buffer_pos == RequiredCDBLen[cd.command_buffer[0] >> 4])
+     if(cd.command_buffer[0] == 0xFF)
+     {
+      if(SCSILog)
+       SCSILog("SCSI", "Got Command $FF");
+
+      cd.command_buffer_pos = 0;
+      SendStatusAndMessage(STATUS_GOOD, 0x00);
+     }
+     else if(cd.command_buffer_pos == RequiredCDBLen[cd.command_buffer[0] >> 4])
      {
       const SCSICH *cmd_info_ptr;
 
@@ -3148,10 +3165,14 @@ uint32 SCSICD_Run(scsicd_timestamp_t system_timestamp)
     //if(cd_bus.DB == 0x6)		// ABORT message!
     if(1)
     {
+     if(SCSILog)
+      SCSILog("SCSI", "SCSICD Abort Received(DB=0x%02x)", cd_bus.DB);
+
      //printf("[SCSICD] Abort Received(DB=0x%02x)\n", cd_bus.DB);
      din->Flush();
      cd.data_out_pos = cd.data_out_want = 0;
 
+     SectorCount = 0;
      CDReadTimer = 0;
      cdda.CDDAStatus = CDDASTATUS_STOPPED;
      ChangePhase(PHASE_BUS_FREE);
@@ -3163,6 +3184,14 @@ uint32 SCSICD_Run(scsicd_timestamp_t system_timestamp)
 
 
   case PHASE_STATUS:
+    if((WhichSystem == SCSICD_PCE) && SEL_signal)
+    {
+     cd.status_sent = true;
+     cd.message_sent = true;
+     ChangePhase(PHASE_COMMAND);
+     break;
+    }
+
     if(REQ_signal && ACK_signal)
     {
      SetREQ(false);
@@ -3180,6 +3209,14 @@ uint32 SCSICD_Run(scsicd_timestamp_t system_timestamp)
     break;
 
   case PHASE_DATA_IN:
+    if((WhichSystem == SCSICD_PCE) && SEL_signal)
+    {
+     SectorCount = 0;
+     din->Flush();
+     cd.data_transfer_done = true;
+     SetREQ(false);
+    }
+
     if(!REQ_signal && !ACK_signal)
     {
      //puts("REQ and ACK false");
@@ -3200,6 +3237,7 @@ uint32 SCSICD_Run(scsicd_timestamp_t system_timestamp)
       SetREQ(true);
      }
     }
+
     if(REQ_signal && ACK_signal)
     {
      //puts("REQ and ACK true");
@@ -3208,6 +3246,13 @@ uint32 SCSICD_Run(scsicd_timestamp_t system_timestamp)
     break;
 
   case PHASE_MESSAGE_IN:
+   if((WhichSystem == SCSICD_PCE) && SEL_signal)
+   {
+    cd.message_sent = false;
+    ChangePhase(PHASE_COMMAND);
+    break;
+   }
+
    if(REQ_signal && ACK_signal)
    {
     SetREQ(false);
