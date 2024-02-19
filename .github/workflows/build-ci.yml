@@ -18,7 +18,7 @@ jobs:
         run: sudo dnf -y install autoconf automake binutils cpp gcc make pkgconf pkgconf-m4 pkgconf-pkg-config zip unzip git mingw64-gcc mingw64-gcc-c++ mingw64-zlib mingw64-flac mingw64-SDL2 mingw64-win-iconv
       - uses: actions/checkout@v3
       - name: Configure
-        run: CPPFLAGS="-DUNICODE=1 -D_UNICODE=1" LDFLAGS="-fstack-protector -static-libstdc++" mednafen/configure --host=x86_64-w64-mingw32 --enable-threads=win32 --disable-alsa --disable-jack --disable-apple2 --disable-gb --disable-gba --disable-nes --disable-sasplay --disable-sms --disable-snes --disable-snes-faust --disable-ssfplay
+        run: CPPFLAGS="-DUNICODE=1 -D_UNICODE=1 -DPCEDEVEL_FLAC_DLL" LDFLAGS="-fstack-protector -static-libstdc++" mednafen/configure --host=x86_64-w64-mingw32 --enable-threads=win32 --disable-alsa --disable-jack --disable-apple2 --disable-gb --disable-gba --disable-nes --disable-sasplay --disable-sms --disable-snes --disable-snes-faust --disable-ssfplay
       - name: Build
         run: make -j$(nproc)
       - name: Package artifact
