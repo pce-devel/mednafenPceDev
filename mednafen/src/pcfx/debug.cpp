@@ -455,14 +455,16 @@ static void CPUHandler(const v810_timestamp_t timestamp, uint32 PC)
    const uint16 sc = PCFX_V810.GetPR(6) & 0xFFFF;
    const char* s = PCFXDBG_ShiftJIS_to_UTF8(sc);
    PCFXDBG_DoLog("ROMFONT", "0x%08x->0xFFF0000C, PR7=0x%08x=%s, PR6=0x%04x = %s", lastPC, pr7, (pr7 > 5) ? "?" : font_sizes[pr7], sc, s);
+#if 0
    for(const char* tmp = s; *tmp; tmp++)
    {
     const char c = *tmp;
 
-    if(c != 0x1B)
+    if(c < 0 || c >= 0x20)
      putchar(c);
    }
    fflush(stdout);
+#endif
   }
   else if(PC == 0xFFF00008)
    DoSyscallLog();

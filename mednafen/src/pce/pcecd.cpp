@@ -131,7 +131,7 @@ typedef struct
  uint16   Addr;
  uint16   ReadAddr;
  uint16   WriteAddr;
- uint16   LengthCount;
+ uint32   LengthCount;
 
  bool HalfReached;
  bool EndReached;
@@ -280,7 +280,7 @@ uint32 PCECD_GetRegister(const unsigned int id, char *special, const uint32 spec
 	break;
 
   case CD_GSREG_ADPCM_LENGTH:
-	value = ADPCM.LengthCount;
+	value = (ADPCM.LengthCount & 0x10000) ? 0xFFFF : ADPCM.LengthCount;
 	break;
 
   case CD_GSREG_ADPCM_PLAYNIBBLE:
@@ -458,7 +458,7 @@ void PCECD_Init(const PCECD_Settings *settings, void (*irqcb)(bool), double mast
 
 	ADPCMBuf = adbuf;
 
-	SCSICD_Init(SCSICD_PCE, 3, hrbuf_l, hrbuf_r, MDFN_GetSettingB("pce.cdspeed") ? 153600 : 126000, master_clock, CDIRQ, StuffSubchannel);
+	SCSICD_Init(SCSICD_PCE, 3, hrbuf_l, hrbuf_r, 153600, master_clock, CDIRQ, StuffSubchannel);
 
         ADPCM.RAM = new uint8[0x10000];
 
@@ -1204,7 +1204,7 @@ static INLINE void ADPCM_Run(const int32 clocks, const int32 timestamp)
   if(ADPCM.WritePending <= 0)
   {
    ADPCM.HalfReached = (ADPCM.LengthCount < 32768);
-   if(!(ADPCM.LastCmd & 0x10) && ADPCM.LengthCount < 0xFFFF)
+   if(!(ADPCM.LastCmd & 0x10) && ADPCM.LengthCount < 0x1FFFF)
     ADPCM.LengthCount++;
 
    ADPCM.RAM[ADPCM.WriteAddr++] = ADPCM.WritePendingValue;
