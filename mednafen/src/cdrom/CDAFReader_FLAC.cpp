@@ -24,11 +24,16 @@
 #include "CDAFReader_FLAC.h"
 
 #ifdef __MINGW32__
-// MinGW-w64 does not define _MSC_VER, but libFLAC requires _MSC_VER
-// to properly declare DLL imports/exports.
-# define _MSC_VER 1933
-# include <FLAC/all.h>
-# undef _MSC_VER
+# ifdef PCEDEVEL_FLAC_DLL
+   // MinGW-w64 does not define _MSC_VER, but libFLAC < 1.3.4 requires _MSC_VER
+   // to properly declare DLL imports/exports.
+#  define _MSC_VER 1933
+#  include <FLAC/all.h>
+#  undef _MSC_VER
+# else
+#  define FLAC__NO_DLL
+#  include <FLAC/all.h>
+# endif
 #else
 # include <FLAC/all.h>
 #endif
