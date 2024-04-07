@@ -639,12 +639,12 @@ INLINE void MemDebugger::DrawAtCursorInfo(MDFN_Surface* surface, const int32 bas
 
  notsat = ASpace->PossibleSATB ? 0 : 1;
 
- tmpx = (zebytes[0] | (zebytes[1] << 8)) - 32;
- if ((tmpx < -32) || (tmpx > 1024))
+ tmpy = (zebytes[0] | (zebytes[1] << 8)) - 64;
+ if ((tmpy < -64) || (tmpy > 1024))
   notsat = 1;
 
- tmpy = (zebytes[2] | (zebytes[3] << 8)) - 64;
- if ((tmpy < -64) || (tmpy > 1024))
+ tmpx = (zebytes[2] | (zebytes[3] << 8)) - 32;
+ if ((tmpx < -32) || (tmpx > 1024))
   notsat = 1;
 
 
@@ -661,7 +661,7 @@ INLINE void MemDebugger::DrawAtCursorInfo(MDFN_Surface* surface, const int32 bas
   x += 12;
   y += line_spacing;
 
-  tmpval = (zebytes[0] | (zebytes[1] << 8)) - 32;
+  tmpval = (zebytes[2] | (zebytes[3] << 8)) - 32;
   trio_snprintf(cpstr, sizeof(cpstr), "  %4d  ", tmpval);
   cpplen = DrawText(surface, x, y, "X-Position:   ", surface->MakeColor(0xA0, 0xA0, 0xFF, 0xFF), fontid);
   cpplen2 = DrawText(surface, x + cpplen, y, cpstr, surface->MakeColor(0xEF, 0xEF, 0xEF, 0xFF), fontid);
@@ -670,7 +670,7 @@ INLINE void MemDebugger::DrawAtCursorInfo(MDFN_Surface* surface, const int32 bas
   cpplen2 = DrawText(surface, x + cpplen + cpplen2, y, cpstr, surface->MakeColor(0xEF, 0xEF, 0xEF, 0xFF), fontid);
   y += line_spacing;
 
-  tmpval = (zebytes[2] | (zebytes[3] << 8)) - 64;
+  tmpval = (zebytes[0] | (zebytes[1] << 8)) - 64;
   trio_snprintf(cpstr, sizeof(cpstr), "  %4d  ", tmpval);
   cpplen = DrawText(surface, x, y, "Y-Position:   ", surface->MakeColor(0xA0, 0xA0, 0xFF, 0xFF), fontid);
   cpplen2 = DrawText(surface, x + cpplen, y, cpstr, surface->MakeColor(0xEF, 0xEF, 0xEF, 0xFF), fontid);
