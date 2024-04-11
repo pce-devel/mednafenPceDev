@@ -42,7 +42,10 @@ namespace MDFN_IEN_PCE
 INLINE void HuC6280::LastCycle(void)
 {
  /*assert(((P & I_FLAG) ? 0 : (uint32)~0) == PIMaskCache);*/
- IRQSample = (IRQlow & IRQMask) & PIMaskCache;
+
+ // TIMER interrupt to be tested after opcodes, not one cycle early
+ //
+ IRQSample = (((IRQlow & IRQMask) & PIMaskCache) & ~IQTIMER);
  IFlagSample = P & I_FLAG;
  ADDCYC(1);
 }
@@ -603,6 +606,11 @@ NO_INLINE void HuC6280::RunSub(void)
 	    goto IBM_Dispatch;
 	  }
          }
+
+         // TIMER interrupt to be tested after opcodes, not one cycle early
+         //
+         if (!IFlagSample)
+           IRQSample |= (IRQlow & IRQMask & IQTIMER);
 
 	 if(IRQSample | IRQlow)
 	 {
