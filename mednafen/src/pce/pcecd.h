@@ -52,8 +52,6 @@ int32 PCECD_Power(uint32 timestamp);
 MDFN_FASTCALL uint8 PCECD_Read(uint32 timestamp, uint32, int32 &next_event, const bool PeekMode = false);
 MDFN_FASTCALL int32 PCECD_Write(uint32 timestamp, uint32, uint8 data) MDFN_WARN_UNUSED_RESULT;
 
-bool PCECD_IsBRAMEnabled();
-
 void PCECD_StateAction(StateMem *sm, const unsigned load, const bool data_only);
 
 void ADPCM_PeekRAM(uint32 Address, uint32 Length, uint8 *Buffer);

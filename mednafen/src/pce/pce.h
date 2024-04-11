@@ -27,6 +27,8 @@ MDFN_HIDE extern uint32 PCE_InDebug;
 MDFN_HIDE extern bool PCE_ACEnabled; // Arcade Card emulation enabled?
 void PCE_Power(void);
 
+bool PCE_IsBRAMEnabled(void);
+
 uint8 PCE_PeekMainRAM(uint32 A);
 void PCE_PokeMainRAM(uint32 A, uint8 V);
 
