@@ -65,9 +65,10 @@ static bool WantHuC6273 = false;
 VDC *fx_vdc_chips[2];
 
 
+static uint32 BackupSize;
 static uint32 ExBackupSize;
 static uint16 BackupControl;
-static uint8 BackupRAM[0x8000], ExBackupRAM[2097152];
+static uint8 BackupRAM[0x20000], ExBackupRAM[2097152];
 static uint8 ExBusReset; // I/O Register at 0x0700
 
 static bool BRAMDisabled;	// Cached at game load, don't remove this caching behavior or save game loss may result(if we ever get a GUI).
@@ -400,7 +401,7 @@ static void PCFXDBG_GetAddressSpaceBytes(const char *name, uint32 Address, uint3
  {
   while(Length--)
   {
-   Address &= 0x7FFF;
+   Address &= (BackupSize -1);
    *Buffer = BackupRAM[Address];
    Address++;
    Buffer++;
@@ -472,8 +473,8 @@ static void PCFXDBG_PutAddressSpaceBytes(const char *name, uint32 Address, uint3
    {
     if(!(Address & 1))
     {
-     BackupSignalDirty |= (BackupRAM[(Address & 0xFFFF) >> 1] != *Buffer);
-     BackupRAM[(Address & 0xFFFF) >> 1] = *Buffer;
+     BackupSignalDirty |= (BackupRAM[(Address & ((ExBackupSize << 1) -1)) >> 1] != *Buffer);
+     BackupRAM[(Address & ((ExBackupSize << 1) -1)) >> 1] = *Buffer;
     }
    }
    else if(Address >= 0xE8000000 && Address <= 0xE9FFFFFF)
@@ -502,7 +503,7 @@ static void PCFXDBG_PutAddressSpaceBytes(const char *name, uint32 Address, uint3
  {
   while(Length--)
   {
-   Address &= 0x7FFF;
+   Address &= (BackupSize -1);
    BackupSignalDirty |= (BackupRAM[Address] != *Buffer);
    BackupRAM[Address] = *Buffer;
    Address++;
@@ -708,14 +709,19 @@ static MDFN_COLD void LoadCommon(std::vector<CDInterface*> *CDInterfaces)
   memset(BackupRAM, 0, sizeof(BackupRAM));
   memset(ExBackupRAM, 0, sizeof(ExBackupRAM));
 
-  static const uint8 BRInit00[] = { 0x24, 0x8A, 0xDF, 0x50, 0x43, 0x46, 0x58, 0x53, 0x72, 0x61, 0x6D, 0x80,
-                                   0x00, 0x01, 0x01, 0x00, 0x01, 0x40, 0x00, 0x00, 0x01, 0xF9, 0x03, 0x00,
-                                   0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00
-                                  };
-  static const uint8 BRInit80[] = { 0xF9, 0xFF, 0xFF };
-
-  memcpy(BackupRAM + 0x00, BRInit00, sizeof(BRInit00));
-  memcpy(BackupRAM + 0x80, BRInit80, sizeof(BRInit80));
+ // These constructs were used to automatically format memory of fixed sizes
+ // They include definitions of those fixed sizes, and are not useful for automatically
+ // formatting backup memory of variable sizes. For this reason, they have been disabled and
+ // the user is requested to format their memory through the use of the BIOS functionality.
+ //
+ // static const uint8 BRInit00[] = { 0x24, 0x8A, 0xDF, 0x50, 0x43, 0x46, 0x58, 0x53, 0x72, 0x61, 0x6D, 0x80,
+ //                                  0x00, 0x01, 0x01, 0x00, 0x01, 0x40, 0x00, 0x00, 0x01, 0xF9, 0x03, 0x00,
+ //                                  0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00
+ //                                 };
+ // static const uint8 BRInit80[] = { 0xF9, 0xFF, 0xFF };
+ //
+ // memcpy(BackupRAM + 0x00, BRInit00, sizeof(BRInit00));
+ // memcpy(BackupRAM + 0x80, BRInit80, sizeof(BRInit80));
 
 
   //static const uint8 ExBRInit00[] = { 0x24, 0x8A, 0xDF, 0x50, 0x43, 0x46, 0x58, 0x43, 0x61, 0x72, 0x64, 0x80,
@@ -732,14 +738,22 @@ static MDFN_COLD void LoadCommon(std::vector<CDInterface*> *CDInterfaces)
 
   try
   {
+   int64 SizeKBytes = MDFN_GetSettingI("pcfx.internal_bram_size_kbytes");
+   if ((SizeKBytes != 32) &&
+       (SizeKBytes != 64) &&
+       (SizeKBytes != 128))
+    throw MDFN_Error(0, _("Error in mednafne.cfg file: 'pcfx.internal_bram_size_kbytes' (%ld) must be one of: 32, 64, 128"), SizeKBytes);
+
+   BackupSize = SizeKBytes * 1024;
+
    std::string save_path = MDFN_MakeFName(MDFNMKF_SAV, 0, "sav");
    GZFileStream savefp(save_path, GZFileStream::MODE::READ);
    const uint64 fp_size_tmp = savefp.size();
 
-   if(fp_size_tmp < 32768)
-    throw MDFN_Error(0, _("Save game memory file \"%s\" is an incorrect size(%llu bytes).  The correct size is %llu bytes."), MDFN_strhumesc(save_path).c_str(), (unsigned long long)fp_size_tmp, (unsigned long long)32768);
+   if(fp_size_tmp != BackupSize)
+    throw MDFN_Error(0, _("Save game memory file \"%s\" is an incorrect size(%llu bytes).  The correct size is %llu bytes."), MDFN_strhumesc(save_path).c_str(), (unsigned long long)fp_size_tmp, (unsigned long long)BackupSize);
 
-   savefp.read(BackupRAM, 0x8000);
+   savefp.read(BackupRAM, BackupSize);
   }
   catch(MDFN_Error &e)
   {
@@ -977,7 +991,7 @@ static void SaveBackupMemory(void)
  if(!BRAMDisabled)
  {
   FileStream fp(MDFN_MakeFName(MDFNMKF_SAV, 0, "sav"), FileStream::MODE_WRITE_INPLACE);
-  fp.write(BackupRAM, 0x8000);
+  fp.write(BackupRAM, BackupSize);
   fp.close();
 
   FileStream fp_e(MDFN_MakeFName(MDFNMKF_FIXEDSAV, 0, MDFN_GetSettingS("pcfx.external_bram_file")), FileStream::MODE_WRITE_INPLACE);
@@ -1021,7 +1035,7 @@ static void StateAction(StateMem *sm, const unsigned load, const bool data_only)
   SFVAR(RAM_LPA),
   SFVAR(BackupControl),
   SFVAR(ExBusReset),
-  SFPTR8(BackupRAM, BRAMDisabled ? 0 : 0x8000, SFORMAT::FORM::NVMEM),
+  SFPTR8(BackupRAM, BRAMDisabled ? 0 : BackupSize, SFORMAT::FORM::NVMEM),
   SFPTR8(ExBackupRAM, BRAMDisabled ? 0 : ExBackupSize, SFORMAT::FORM::NVMEM),
 
   SFEND
@@ -1087,6 +1101,7 @@ static const MDFNSetting PCFXSettings[] =
   { "pcfx.fxscsi", MDFNSF_EMU_STATE | MDFNSF_CAT_PATH, gettext_noop("Path to the FX-SCSI ROM"), gettext_noop("Intended for developers only."), MDFNST_STRING, "0" },
   { "pcfx.disable_bram", MDFNSF_EMU_STATE | MDFNSF_UNTRUSTED_SAFE, gettext_noop("Disable internal and external BRAM."), gettext_noop("It is intended for viewing games' error screens that may be different from simple BRAM full and uninitialized BRAM error screens, though it can cause the game to crash outright."), MDFNST_BOOL, "0" },
   { "pcfx.external_bram_file", MDFNSF_EMU_STATE | MDFNSF_CAT_PATH, gettext_noop("Path to external Backup Memory file (i.e. FX-BMP cartridge)."), NULL, MDFNST_STRING, "pcfx_fx-bmp.sav" },
+  { "pcfx.internal_bram_size_kbytes", MDFNSF_EMU_STATE | MDFNSF_CAT_PATH, gettext_noop("Size of internal Backup memory file, in kilobytes. Intended for developers only."), NULL, MDFNST_UINT, "32", "32", "128" },
   { "pcfx.external_bram_size_kbytes", MDFNSF_EMU_STATE | MDFNSF_CAT_PATH, gettext_noop("Size of external Backup memory file, in kilobytes (i.e. FX-BMP cartridge)."), NULL, MDFNST_UINT, "128", "128", "2048" },
   { "pcfx.cdspeed", MDFNSF_EMU_STATE | MDFNSF_UNTRUSTED_SAFE, gettext_noop("Emulated CD-ROM speed."), gettext_noop("Setting the value higher than 2, the default, will decrease loading times in most games by some degree."), MDFNST_UINT, "2", "2", "10" },
 
