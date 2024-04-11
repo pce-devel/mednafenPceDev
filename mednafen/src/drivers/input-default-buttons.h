@@ -260,7 +260,7 @@ static const char* const TsushinKBConfig[] =
  MKDEF(Y),
  MKDEF(Z),
  MKDEF(LEFTBRACKET),	// Left bracket
- MKDEF(EQUALS),		// Yen
+ MKDEF(BACKSLASH),	// Yen
  MKDEF(RIGHTBRACKET),	// Right bracket
  MKDEF(EQUALS),		// Caret
 
