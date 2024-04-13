@@ -67,6 +67,7 @@ static bool SetSoundRate(double rate);
 static void Cleanup(void);
 
 bool PCE_ACEnabled;
+bool bBRAMEnabled;
 uint32 PCE_InDebug = 0;
 uint64 PCE_TimestampBase;	// Only used with the debugger for the time being.
 
@@ -174,6 +175,9 @@ static DECLFR(IORead)
   case 0x1800: if(IsTsushin)
 		return(PCE_TsushinRead(A));
 
+               if (((A & 0x1fff) == 0x1803) && (!PCE_InDebug))
+                 bBRAMEnabled = false;
+
 	       if(!PCE_IsCD)
 		break;
 	       if((A & 0x1E00) == 0x1A00)
@@ -239,6 +243,9 @@ static DECLFW(IOWrite)
 
   case 0x1800: if(IsTsushin)
                 PCE_TsushinWrite(A & 0x1FFF, V);
+
+	       if ((A & 0x1fff) == 0x1807)       // $1807: D7=1 enables backup ram
+                bBRAMEnabled = (V & 0x80) ? true : false;
 
 	       if(!PCE_IsCD)
 	       {
@@ -1004,6 +1011,7 @@ static void StateAction(StateMem *sm, const unsigned load, const bool data_only)
  {
   SFPTR8(BaseRAM, IsSGX? 32768 : 8192),
   SFVAR(PCE_TimestampBase),
+  SFVAR(bBRAMEnabled),
 
   SFEND
  };
@@ -1048,6 +1056,8 @@ void PCE_Power(void)
 
  PCEINPUT_Power(timestamp);
 
+ bBRAMEnabled = false;
+
  if(PCE_IsCD)
  {
   vce->SetCDEvent(PCECD_Power(timestamp));
@@ -1069,6 +1079,11 @@ static void SetMedia(uint32 drive_idx, uint32 state_idx, uint32 media_idx, uint3
  {
   SCSICD_SetDisc(rs->MediaCanChange, NULL);
  }
+}
+
+bool PCE_IsBRAMEnabled()
+{
+ return bBRAMEnabled;
 }
 
 static void DoSimpleCommand(int cmd)

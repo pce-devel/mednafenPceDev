@@ -106,7 +106,6 @@ static bool ADPCMExtraPrecision;
 //static bool ADPCMFancyLP;	// Commented out, not really a worthwhile feature IMO(sound effects don't sound right without the extra spectrum duplicates).
 
 
-static bool	bBRAMEnabled;
 static uint8	_Port[15];
 static uint8 	ACKStatus;
 
@@ -490,7 +489,6 @@ int32 PCECD_Power(uint32 timestamp)
 	SCSICD_Power(timestamp);
         scsicd_ne = 0x7fffffff;
 
-        bBRAMEnabled = false;
         memset(_Port, 0, sizeof(_Port));
 	ACKStatus = 0;
 	ClearACKDelay = 0;
@@ -528,11 +526,6 @@ int32 PCECD_Power(uint32 timestamp)
 	Fader.Clocked = false;
 
 	return(CalcNextEvent(0x7FFFFFFF));
-}
-
-bool PCECD_IsBRAMEnabled()
-{
-	return bBRAMEnabled;
 }
 
 MDFN_FASTCALL uint8 PCECD_Read(uint32 timestamp, uint32 A, int32 &next_event, const bool PeekMode)
@@ -573,9 +566,7 @@ MDFN_FASTCALL uint8 PCECD_Read(uint32 timestamp, uint32 A, int32 &next_event, co
    case 0x2: ret = _Port[2];
 	     break;
 
-   case 0x3: if(!PeekMode)
-               bBRAMEnabled = false;
-
+   case 0x3:
 	     /* switch left/right of digitized cd playback */
 	     ret = _Port[0x3];
 	     if(!PeekMode)
@@ -760,9 +751,7 @@ MDFN_FASTCALL int32 PCECD_Write(uint32 timestamp, uint32 physAddr, uint8 data)
 			 }
 			 break;
 
-		case 0x7:	// $1807: D7=1 enables backup ram 
-
-			bBRAMEnabled = (data & 0x80) ? true : false;
+		case 0x7:
 			break;
 	
 		case 0x8:	// Set ADPCM address low
@@ -1374,7 +1363,6 @@ void PCECD_StateAction(StateMem *sm, const unsigned load, const bool data_only)
 {
 	SFORMAT StateRegs[] =
 	{
-	 SFVAR(bBRAMEnabled),
 	 SFVAR(ACKStatus),
 	 SFVAR(ClearACKDelay),
 	 SFVAR(RawPCMVolumeCache),

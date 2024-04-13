@@ -134,7 +134,7 @@ static DECLFR(SaveRAMRead)
  if(BRAM_Disabled)
   return(0xFF);
 
- if((!PCE_IsCD || PCECD_IsBRAMEnabled()) && (A & 8191) < 2048)
+ if((PCE_IsBRAMEnabled()) && (A & 8191) < 2048)
   return(SaveRAM[A & 2047]);
  else
   return(0xFF);
@@ -145,7 +145,7 @@ static DECLFW(SaveRAMWrite)
  if(BRAM_Disabled)
   return;
 
- if((!PCE_IsCD || PCECD_IsBRAMEnabled()) && (A & 8191) < 2048)
+ if((PCE_IsBRAMEnabled()) && (A & 8191) < 2048)
   SaveRAM[A & 2047] = V;
 }
 
