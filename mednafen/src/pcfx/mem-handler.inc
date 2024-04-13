@@ -78,7 +78,7 @@ static uint8 MDFN_FASTCALL mem_rbyte(v810_timestamp_t &timestamp, uint32 A)
   }
 
   //printf("%d\n", (A - 0xE0000000) >> 1);
-  return(BackupRAM[(A & 0xFFFF) >> 1]);
+  return(BackupRAM[(A & ((BackupSize << 1) -1)) >> 1]);
  }
  else if(A >= 0xE8000000 && A <= 0xE9FFFFFF)
  {
@@ -156,7 +156,7 @@ static uint16 MDFN_FASTCALL mem_rhword(v810_timestamp_t &timestamp, uint32 A)
   }
 
   //printf("%d\n", (A - 0xE0000000) >> 1);
-  return(BackupRAM[(A & 0xFFFF) >> 1]);
+  return(BackupRAM[(A & ((BackupSize << 1) -1)) >> 1]);
  }
  else if(A >= 0xE8000000 && A <= 0xE9FFFFFF)
  {
@@ -239,8 +239,8 @@ static void MDFN_FASTCALL mem_wbyte(v810_timestamp_t &timestamp, uint32 A, uint8
 
   if(BackupControl & 0x1)
   {
-   BackupSignalDirty |= (BackupRAM[(A & 0xFFFF) >> 1] != V);
-   BackupRAM[(A & 0xFFFF) >> 1] = V;
+   BackupSignalDirty |= (BackupRAM[(A & ((BackupSize << 1) -1)) >> 1] != V);
+   BackupRAM[(A & ((BackupSize << 1) -1)) >> 1] = V;
   }
  }
  else if(A >= 0xE8000000 && A <= 0xE9FFFFFF)
@@ -286,8 +286,8 @@ static void MDFN_FASTCALL mem_whword(v810_timestamp_t &timestamp, uint32 A, uint
 
   if(BackupControl & 0x1)
   {
-   BackupSignalDirty |= (BackupRAM[(A & 0xFFFF) >> 1] != (uint8)V);
-   BackupRAM[(A & 0xFFFF) >> 1] = (uint8)V;
+   BackupSignalDirty |= (BackupRAM[(A & ((ExBackupSize << 1) -1)) >> 1] != (uint8)V);
+   BackupRAM[(A & ((ExBackupSize << 1) -1)) >> 1] = (uint8)V;
   }
  }
  else if(A >= 0xE8000000 && A <= 0xE9FFFFFF)
