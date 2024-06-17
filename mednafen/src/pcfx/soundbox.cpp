@@ -22,6 +22,7 @@
 #include "pcfx.h"
 #include "soundbox.h"
 #include "king.h"
+#include "debug.h"
 #include <mednafen/cdrom/scsicd.h>
 #include <mednafen/hw_sound/pce_psg/pce_psg.h>
 #include <mednafen/sound/OwlResampler.h>
@@ -308,6 +309,26 @@ static void Cleanup(void)
  }
 }
 
+static void GetAddressSpaceBytes(const char *name, uint32 Address, uint32 Length, uint8 *Buffer)
+{
+// PCE_InDebug++;
+
+ if(!strncmp(name, "psgram", 6))
+  pce_psg->PeekWave(name[6] - '0', Address, Length, Buffer);
+
+// PCE_InDebug--;
+}
+
+static void PutAddressSpaceBytes(const char *name, uint32 Address, uint32 Length, uint32 Granularity, bool hl, const uint8 *Buffer)
+{
+// PCE_InDebug++;
+
+ if(!strncmp(name, "psgram", 6))
+  pce_psg->PokeWave(name[6] - '0', Address, Length, Buffer);
+
+// PCE_InDebug--;
+}
+
 void SoundBox_Init(bool arg_EmulateBuggyCodec, bool arg_ResetAntiClickEnabled)
 {
  try
@@ -325,6 +346,34 @@ void SoundBox_Init(bool arg_EmulateBuggyCodec, bool arg_ResetAntiClickEnabled)
     }
 
     pce_psg = new PCE_PSG(FXsbuf[0]->Buf(), FXsbuf[1]->Buf(), PCE_PSG::REVISION_HUC6280A);
+
+    for (int x = 0; x < 6; x++)
+    {
+       AddressSpaceType newt;
+       char tmpname[128], tmpinfo[128];
+       trio_snprintf(tmpname, 128, "psgram%d", x);
+       trio_snprintf(tmpinfo, 128, "PSG Ch %d RAM", x);
+
+       newt.GetAddressSpaceBytes = GetAddressSpaceBytes;
+       newt.PutAddressSpaceBytes = PutAddressSpaceBytes;
+
+       newt.name = std::string(tmpname);
+       newt.long_name = std::string(tmpinfo);
+       newt.TotalBits = 5;
+       newt.NP2Size = 0;
+       newt.PossibleSATB = false;
+
+       newt.Wordbytes  = 1;
+       newt.Endianness = ENDIAN_LITTLE;
+       newt.MaxDigit   = 1;
+       newt.IsPalette  = false;
+
+       newt.IsWave = true;
+       newt.WaveFormat = ASPACE_WFMT_UNSIGNED;
+       newt.WaveBits = 5;
+
+       ASpace_Add(newt); //PSG_GetAddressSpaceBytes, PSG_PutAddressSpaceBytes, tmpname, tmpinfo, 5);
+    }
 
     #ifdef WANT_DEBUGGER
     MDFNDBG_AddRegGroup(&SBoxRegsGroup);

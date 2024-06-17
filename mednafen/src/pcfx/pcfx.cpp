@@ -644,15 +644,15 @@ static MDFN_COLD void LoadCommon(std::vector<CDInterface*> *CDInterfaces)
   //fx_vdc_chips[1] = FXVDC_Init(PCFXIRQ_SOURCE_VDCB, MDFN_GetSettingB("pcfx.nospritelimit"));
  }
 
- RAINBOW_Init(MDFN_GetSettingB("pcfx.rainbow.chromaip"));
- SoundBox_Init(MDFN_GetSettingB("pcfx.adpcm.emulate_buggy_codec"), MDFN_GetSettingB("pcfx.adpcm.suppress_channel_reset_clicks"));
- FXINPUT_Init();
- FXTIMER_Init();
-
  if(WantHuC6273)
   HuC6273_Init();
 
  KING_Init();
+
+ RAINBOW_Init(MDFN_GetSettingB("pcfx.rainbow.chromaip"));
+ SoundBox_Init(MDFN_GetSettingB("pcfx.adpcm.emulate_buggy_codec"), MDFN_GetSettingB("pcfx.adpcm.suppress_channel_reset_clicks"));
+ FXINPUT_Init();
+ FXTIMER_Init();
 
  SCSICD_SetDisc(true, NULL, true);
 
