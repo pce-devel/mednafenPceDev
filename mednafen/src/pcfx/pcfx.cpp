@@ -68,7 +68,7 @@ VDC *fx_vdc_chips[2];
 static uint32 BackupSize;
 static uint32 ExBackupSize;
 static uint16 BackupControl;
-static uint8 BackupRAM[0x20000], ExBackupRAM[2097152];
+static uint8 BackupRAM[0x20000], ExBackupRAM[8388608];
 static uint8 ExBusReset; // I/O Register at 0x0700
 
 static bool BRAMDisabled;	// Cached at game load, don't remove this caching behavior or save game loss may result(if we ever get a GUI).
@@ -769,8 +769,10 @@ static MDFN_COLD void LoadCommon(std::vector<CDInterface*> *CDInterfaces)
        (ExSizeKBytes != 256) &&
        (ExSizeKBytes != 512) &&
        (ExSizeKBytes != 1024) &&
-       (ExSizeKBytes != 2048))
-    throw MDFN_Error(0, _("Error in mednafne.cfg file: 'pcfx.external_bram_size_kbytes' (%ld) must be one of: 128, 256, 512, 1024, 2048"), ExSizeKBytes);
+       (ExSizeKBytes != 2048) &&
+       (ExSizeKBytes != 4096) &&
+       (ExSizeKBytes != 8192))
+    throw MDFN_Error(0, _("Error in mednafen.cfg file: 'pcfx.external_bram_size_kbytes' (%ld) must be one of: 128, 256, 512, 1024, 2048, 4096, 8192"), ExSizeKBytes);
    
    ExBackupSize = ExSizeKBytes * 1024;
 
@@ -1102,7 +1104,7 @@ static const MDFNSetting PCFXSettings[] =
   { "pcfx.disable_bram", MDFNSF_EMU_STATE | MDFNSF_UNTRUSTED_SAFE, gettext_noop("Disable internal and external BRAM."), gettext_noop("It is intended for viewing games' error screens that may be different from simple BRAM full and uninitialized BRAM error screens, though it can cause the game to crash outright."), MDFNST_BOOL, "0" },
   { "pcfx.external_bram_file", MDFNSF_EMU_STATE | MDFNSF_CAT_PATH, gettext_noop("Path to external Backup Memory file (i.e. FX-BMP cartridge)."), NULL, MDFNST_STRING, "pcfx_fx-bmp.sav" },
   { "pcfx.internal_bram_size_kbytes", MDFNSF_EMU_STATE | MDFNSF_CAT_PATH, gettext_noop("Size of internal Backup memory file, in kilobytes. Intended for developers only."), NULL, MDFNST_UINT, "32", "32", "128" },
-  { "pcfx.external_bram_size_kbytes", MDFNSF_EMU_STATE | MDFNSF_CAT_PATH, gettext_noop("Size of external Backup memory file, in kilobytes (i.e. FX-BMP cartridge)."), NULL, MDFNST_UINT, "128", "128", "2048" },
+  { "pcfx.external_bram_size_kbytes", MDFNSF_EMU_STATE | MDFNSF_CAT_PATH, gettext_noop("Size of external Backup memory file, in kilobytes (i.e. FX-BMP cartridge)."), NULL, MDFNST_UINT, "128", "128", "8192" },
   { "pcfx.cdspeed", MDFNSF_EMU_STATE | MDFNSF_UNTRUSTED_SAFE, gettext_noop("Emulated CD-ROM speed."), gettext_noop("Setting the value higher than 2, the default, will decrease loading times in most games by some degree."), MDFNST_UINT, "2", "2", "10" },
 
   { "pcfx.nospritelimit", MDFNSF_NOFLAGS, gettext_noop("Remove 16-sprites-per-scanline hardware limit."), NULL, MDFNST_BOOL, "0" },
