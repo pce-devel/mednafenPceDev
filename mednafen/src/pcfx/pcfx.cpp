@@ -66,7 +66,9 @@ VDC *fx_vdc_chips[2];
 
 
 static uint32 BackupSize;
+static uint32 BackupSizeBits;
 static uint32 ExBackupSize;
+static uint32 ExBackupSizeBits;
 static uint16 BackupControl;
 static uint8 BackupRAM[0x20000], ExBackupRAM[8388608];
 static uint8 ExBusReset; // I/O Register at 0x0700
@@ -624,11 +626,139 @@ static MDFN_COLD void LoadCommon(std::vector<CDInterface*> *CDInterfaces)
   }
  }
 
+ // Initialize memory before allocating debug windows
+ //
+ MDFNMP_Init(1024 * 1024, ((uint64)1 << 32) / (1024 * 1024));
+ MDFNMP_AddRAM(8192 * 1024, 0x00000000, RAM);
+
+
+ BackupSignalDirty = false;
+ BackupSaveDelay = 0;
+
+ BRAMDisabled = MDFN_GetSettingB("pcfx.disable_bram");
+
+ if(BRAMDisabled)
+  MDFN_printf(_("Warning: BRAM is disabled per pcfx.disable_bram setting.  This is simulating a malfunction.\n"));
+
+ if(!BRAMDisabled)
+ {
+  // Initialize backup RAM
+  memset(BackupRAM, 0, sizeof(BackupRAM));
+  memset(ExBackupRAM, 0, sizeof(ExBackupRAM));
+
+ // These constructs were used to automatically format memory of fixed sizes
+ // They include definitions of those fixed sizes, and are not useful for automatically
+ // formatting backup memory of variable sizes. For this reason, they have been disabled and
+ // the user is requested to format their memory through the use of the BIOS functionality.
+ //
+ // static const uint8 BRInit00[] = { 0x24, 0x8A, 0xDF, 0x50, 0x43, 0x46, 0x58, 0x53, 0x72, 0x61, 0x6D, 0x80,
+ //                                  0x00, 0x01, 0x01, 0x00, 0x01, 0x40, 0x00, 0x00, 0x01, 0xF9, 0x03, 0x00,
+ //                                  0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00
+ //                                 };
+ // static const uint8 BRInit80[] = { 0xF9, 0xFF, 0xFF };
+ //
+ // memcpy(BackupRAM + 0x00, BRInit00, sizeof(BRInit00));
+ // memcpy(BackupRAM + 0x80, BRInit80, sizeof(BRInit80));
+
+
+  //static const uint8 ExBRInit00[] = { 0x24, 0x8A, 0xDF, 0x50, 0x43, 0x46, 0x58, 0x43, 0x61, 0x72, 0x64, 0x80,
+  //                                   0x00, 0x01, 0x01, 0x00, 0x01, 0xFC, 0x00, 0x00, 0x04, 0xF9, 0x0C, 0x00,
+  //                                   0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00
+  //                                };
+  //static const uint8 ExBRInit80[] = { 0xF9, 0xFF, 0xFF };
+  //
+  // Do NOT pre-initialize external memory
+  // this should be formatted through the use of the BIOS ROM
+  //
+  //memcpy(ExBackupRAM + 0x00, ExBRInit00, sizeof(ExBRInit00));
+  //memcpy(ExBackupRAM + 0x80, ExBRInit80, sizeof(ExBRInit80));
+
+  try
+  {
+   int64 SizeKBytes = MDFN_GetSettingI("pcfx.internal_bram_size_kbytes");
+   switch (SizeKBytes) {
+      case 32:
+         BackupSizeBits = 15;
+	 break;
+      case 64:
+         BackupSizeBits = 16;
+	 break;
+      case 128:
+         BackupSizeBits = 17;
+	 break;
+      default:
+         throw MDFN_Error(0, _("Error in mednafen.cfg file: 'pcfx.internal_bram_size_kbytes' (%ld) must be one of: 32, 64, 128"), SizeKBytes);
+   }
+
+   BackupSize = SizeKBytes * 1024;
+
+   std::string save_path = MDFN_MakeFName(MDFNMKF_SAV, 0, "sav");
+   GZFileStream savefp(save_path, GZFileStream::MODE::READ);
+   const uint64 fp_size_tmp = savefp.size();
+
+   if(fp_size_tmp != BackupSize)
+    throw MDFN_Error(0, _("Save game memory file \"%s\" is an incorrect size(%llu bytes).  The correct size is %llu bytes."), MDFN_strhumesc(save_path).c_str(), (unsigned long long)fp_size_tmp, (unsigned long long)BackupSize);
+
+   savefp.read(BackupRAM, BackupSize);
+  }
+  catch(MDFN_Error &e)
+  {
+   if(e.GetErrno() != ENOENT)
+    throw;
+  }
+
+//
+  try
+  {
+   int64 ExSizeKBytes = MDFN_GetSettingI("pcfx.external_bram_size_kbytes");
+   switch (ExSizeKBytes) {
+      case 128:
+         ExBackupSizeBits = 17;
+	 break;
+      case 256:
+         ExBackupSizeBits = 18;
+	 break;
+      case 512:
+         ExBackupSizeBits = 19;
+	 break;
+      case 1024:
+         ExBackupSizeBits = 20;
+	 break;
+      case 2048:
+         ExBackupSizeBits = 21;
+	 break;
+      case 4096:
+         ExBackupSizeBits = 22;
+	 break;
+      case 8192:
+         ExBackupSizeBits = 23;
+	 break;
+      default:
+         throw MDFN_Error(0, _("Error in mednafen.cfg file: 'pcfx.external_bram_size_kbytes' (%ld) must be one of: 128, 256, 512, 1024, 2048, 4096, 8192"), ExSizeKBytes);
+   }
+   
+   ExBackupSize = ExSizeKBytes * 1024;
+
+   std::string ext_save_path = MDFN_MakeFName(MDFNMKF_FIXEDSAV, 0, MDFN_GetSettingS("pcfx.external_bram_file"));
+   GZFileStream esavefp(ext_save_path, GZFileStream::MODE::READ);
+   const uint64 efp_size_tmp = esavefp.size();
+
+   if(efp_size_tmp != ExBackupSize)
+    throw MDFN_Error(0, _("External save game memory file \"%s\" is an incorrect size(%llu bytes).  The correct size is %llu bytes."), MDFN_strhumesc(ext_save_path).c_str(), (unsigned long long)efp_size_tmp, (unsigned long long)ExBackupSize);
+   esavefp.read(ExBackupRAM, ExBackupSize);
+//
+  }
+  catch(MDFN_Error &e)
+  {
+   if(e.GetErrno() != ENOENT)
+    throw;
+  }
+ }
  #ifdef WANT_DEBUGGER
  ASpace_Add(PCFXDBG_GetAddressSpaceBytes, PCFXDBG_PutAddressSpaceBytes, "cpu", "CPU Physical", 32);
  ASpace_Add(PCFXDBG_GetAddressSpaceBytes, PCFXDBG_PutAddressSpaceBytes, "ram", "RAM", 23);
- ASpace_Add(PCFXDBG_GetAddressSpaceBytes, PCFXDBG_PutAddressSpaceBytes, "backup", "Internal Backup Memory", 15);
- ASpace_Add(PCFXDBG_GetAddressSpaceBytes, PCFXDBG_PutAddressSpaceBytes, "exbackup", "External Backup Memory", 17);
+ ASpace_Add(PCFXDBG_GetAddressSpaceBytes, PCFXDBG_PutAddressSpaceBytes, "backup", "Internal Backup Memory", BackupSizeBits);
+ ASpace_Add(PCFXDBG_GetAddressSpaceBytes, PCFXDBG_PutAddressSpaceBytes, "exbackup", "External Backup Memory", ExBackupSizeBits);
  ASpace_Add(PCFXDBG_GetAddressSpaceBytes, PCFXDBG_PutAddressSpaceBytes, "bios", "BIOS ROM", 20);
  #endif
 
@@ -691,106 +821,6 @@ static MDFN_COLD void LoadCommon(std::vector<CDInterface*> *CDInterfaces)
  MDFNGameInfo->lcm_width = (MDFN_GetSettingUI("pcfx.high_dotclock_width") == 256) ? 256 : 1024;
  MDFNGameInfo->lcm_height = MDFNGameInfo->nominal_height;
 
- MDFNMP_Init(1024 * 1024, ((uint64)1 << 32) / (1024 * 1024));
- MDFNMP_AddRAM(8192 * 1024, 0x00000000, RAM);
-
-
- BackupSignalDirty = false;
- BackupSaveDelay = 0;
-
- BRAMDisabled = MDFN_GetSettingB("pcfx.disable_bram");
-
- if(BRAMDisabled)
-  MDFN_printf(_("Warning: BRAM is disabled per pcfx.disable_bram setting.  This is simulating a malfunction.\n"));
-
- if(!BRAMDisabled)
- {
-  // Initialize backup RAM
-  memset(BackupRAM, 0, sizeof(BackupRAM));
-  memset(ExBackupRAM, 0, sizeof(ExBackupRAM));
-
- // These constructs were used to automatically format memory of fixed sizes
- // They include definitions of those fixed sizes, and are not useful for automatically
- // formatting backup memory of variable sizes. For this reason, they have been disabled and
- // the user is requested to format their memory through the use of the BIOS functionality.
- //
- // static const uint8 BRInit00[] = { 0x24, 0x8A, 0xDF, 0x50, 0x43, 0x46, 0x58, 0x53, 0x72, 0x61, 0x6D, 0x80,
- //                                  0x00, 0x01, 0x01, 0x00, 0x01, 0x40, 0x00, 0x00, 0x01, 0xF9, 0x03, 0x00,
- //                                  0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00
- //                                 };
- // static const uint8 BRInit80[] = { 0xF9, 0xFF, 0xFF };
- //
- // memcpy(BackupRAM + 0x00, BRInit00, sizeof(BRInit00));
- // memcpy(BackupRAM + 0x80, BRInit80, sizeof(BRInit80));
-
-
-  //static const uint8 ExBRInit00[] = { 0x24, 0x8A, 0xDF, 0x50, 0x43, 0x46, 0x58, 0x43, 0x61, 0x72, 0x64, 0x80,
-  //                                   0x00, 0x01, 0x01, 0x00, 0x01, 0xFC, 0x00, 0x00, 0x04, 0xF9, 0x0C, 0x00,
-  //                                   0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00
-  //                                };
-  //static const uint8 ExBRInit80[] = { 0xF9, 0xFF, 0xFF };
-  //
-  // Do NOT pre-initialize external memory
-  // this should be formatted through the use of the BIOS ROM
-  //
-  //memcpy(ExBackupRAM + 0x00, ExBRInit00, sizeof(ExBRInit00));
-  //memcpy(ExBackupRAM + 0x80, ExBRInit80, sizeof(ExBRInit80));
-
-  try
-  {
-   int64 SizeKBytes = MDFN_GetSettingI("pcfx.internal_bram_size_kbytes");
-   if ((SizeKBytes != 32) &&
-       (SizeKBytes != 64) &&
-       (SizeKBytes != 128))
-    throw MDFN_Error(0, _("Error in mednafne.cfg file: 'pcfx.internal_bram_size_kbytes' (%ld) must be one of: 32, 64, 128"), SizeKBytes);
-
-   BackupSize = SizeKBytes * 1024;
-
-   std::string save_path = MDFN_MakeFName(MDFNMKF_SAV, 0, "sav");
-   GZFileStream savefp(save_path, GZFileStream::MODE::READ);
-   const uint64 fp_size_tmp = savefp.size();
-
-   if(fp_size_tmp != BackupSize)
-    throw MDFN_Error(0, _("Save game memory file \"%s\" is an incorrect size(%llu bytes).  The correct size is %llu bytes."), MDFN_strhumesc(save_path).c_str(), (unsigned long long)fp_size_tmp, (unsigned long long)BackupSize);
-
-   savefp.read(BackupRAM, BackupSize);
-  }
-  catch(MDFN_Error &e)
-  {
-   if(e.GetErrno() != ENOENT)
-    throw;
-  }
-
-//
-  try
-  {
-   int64 ExSizeKBytes = MDFN_GetSettingI("pcfx.external_bram_size_kbytes");
-   if ((ExSizeKBytes != 128) &&
-       (ExSizeKBytes != 256) &&
-       (ExSizeKBytes != 512) &&
-       (ExSizeKBytes != 1024) &&
-       (ExSizeKBytes != 2048) &&
-       (ExSizeKBytes != 4096) &&
-       (ExSizeKBytes != 8192))
-    throw MDFN_Error(0, _("Error in mednafen.cfg file: 'pcfx.external_bram_size_kbytes' (%ld) must be one of: 128, 256, 512, 1024, 2048, 4096, 8192"), ExSizeKBytes);
-   
-   ExBackupSize = ExSizeKBytes * 1024;
-
-   std::string ext_save_path = MDFN_MakeFName(MDFNMKF_FIXEDSAV, 0, MDFN_GetSettingS("pcfx.external_bram_file"));
-   GZFileStream esavefp(ext_save_path, GZFileStream::MODE::READ);
-   const uint64 efp_size_tmp = esavefp.size();
-
-   if(efp_size_tmp != ExBackupSize)
-    throw MDFN_Error(0, _("External save game memory file \"%s\" is an incorrect size(%llu bytes).  The correct size is %llu bytes."), MDFN_strhumesc(ext_save_path).c_str(), (unsigned long long)efp_size_tmp, (unsigned long long)ExBackupSize);
-   esavefp.read(ExBackupRAM, ExBackupSize);
-//
-  }
-  catch(MDFN_Error &e)
-  {
-   if(e.GetErrno() != ENOENT)
-    throw;
-  }
- }
 
  // Default to 16-bit bus.
  for(int i = 0; i < 256; i++)
