@@ -21,7 +21,7 @@
 
 uint8 MDFN_FASTCALL mem_peekbyte(const v810_timestamp_t timestamp, const uint32 A)
 {
- if(A <= 0x007FFFFF)
+ if(A <= (RAMSize-1))
   return(RAM[A]);
  else if(A <= 0x00FFFFFF)
   return(0xFF);
@@ -36,7 +36,7 @@ uint8 MDFN_FASTCALL mem_peekbyte(const v810_timestamp_t timestamp, const uint32 
 
 uint16 MDFN_FASTCALL mem_peekhword(const v810_timestamp_t timestamp, const uint32 A) // TODO: Full memory map peeking.
 {
- if(A <= 0x007FFFFF)
+ if(A <= (RAMSize-1))
   return MDFN_de16lsb<true>(&RAM[A]);
  else if(A <= 0x00FFFFFF)
   return 0xFFFF;
@@ -50,7 +50,7 @@ uint16 MDFN_FASTCALL mem_peekhword(const v810_timestamp_t timestamp, const uint3
 
 static uint8 MDFN_FASTCALL mem_rbyte(v810_timestamp_t &timestamp, uint32 A)
 {
- if(A <= 0x007FFFFF)
+ if(A <= (RAMSize-1))
  {
   RAMLPCHECK;
   return(RAM[A]);
@@ -104,7 +104,7 @@ static uint8 MDFN_FASTCALL mem_rbyte(v810_timestamp_t &timestamp, uint32 A)
 
 static uint16 MDFN_FASTCALL mem_rhword(v810_timestamp_t &timestamp, uint32 A)
 {
- if(A <= 0x007FFFFF)
+ if(A <= (RAMSize-1))
  {
   RAMLPCHECK;
   return MDFN_de16lsb<true>(&RAM[A]);
@@ -190,7 +190,7 @@ static uint16 MDFN_FASTCALL mem_rhword(v810_timestamp_t &timestamp, uint32 A)
 
 static uint32 MDFN_FASTCALL mem_rword(v810_timestamp_t &timestamp, uint32 A)
 {
- if(A <= 0x007FFFFF)
+ if(A <= (RAMSize-1))
  {
   RAMLPCHECK;
   return MDFN_de32lsb<true>(&RAM[A]);
@@ -223,7 +223,7 @@ static uint32 MDFN_FASTCALL mem_rword(v810_timestamp_t &timestamp, uint32 A)
 
 static void MDFN_FASTCALL mem_wbyte(v810_timestamp_t &timestamp, uint32 A, uint8 V)
 {
- if(A <= 0x007FFFFF)
+ if(A <= (RAMSize-1))
  {
   RAMLPCHECK;
   RAM[A] = V;
@@ -270,7 +270,7 @@ static void MDFN_FASTCALL mem_wbyte(v810_timestamp_t &timestamp, uint32 A, uint8
 
 static void MDFN_FASTCALL mem_whword(v810_timestamp_t &timestamp, uint32 A, uint16 V)
 {
- if(A <= 0x007FFFFF)
+ if(A <= (RAMSize-1))
  {
   RAMLPCHECK;
   MDFN_en16lsb<true>(&RAM[A], V);
@@ -346,7 +346,7 @@ static void MDFN_FASTCALL mem_whword(v810_timestamp_t &timestamp, uint32 A, uint
 
 static void MDFN_FASTCALL mem_wword(v810_timestamp_t &timestamp, uint32 A, uint32 V)
 {
- if(A <= 0x007FFFFF)
+ if(A <= (RAMSize-1))
  {
   RAMLPCHECK;
   MDFN_en32lsb<true>(&RAM[A], V);

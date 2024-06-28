@@ -65,10 +65,14 @@ static bool WantHuC6273 = false;
 VDC *fx_vdc_chips[2];
 
 
+static uint32 RAMSize;
+static uint32 RAMSizeBits;
 static uint32 BackupSize;
+static uint32 BackupSizeBits;
 static uint32 ExBackupSize;
+static uint32 ExBackupSizeBits;
 static uint16 BackupControl;
-static uint8 BackupRAM[0x20000], ExBackupRAM[2097152];
+static uint8 BackupRAM[0x20000], ExBackupRAM[8388608];
 static uint8 ExBusReset; // I/O Register at 0x0700
 
 static bool BRAMDisabled;	// Cached at game load, don't remove this caching behavior or save game loss may result(if we ever get a GUI).
@@ -339,7 +343,7 @@ static void PCFX_Reset(void)
  Last_VDC_AR[0] = 0;
  Last_VDC_AR[1] = 0;
 
- memset(RAM, 0x00, 8192 * 1024);
+ memset(RAM, 0x00, RAMSize);
 
  for(int i = 0; i < 2; i++)
  {
@@ -391,7 +395,7 @@ static void PCFXDBG_GetAddressSpaceBytes(const char *name, uint32 Address, uint3
  {
   while(Length--)
   {
-   Address &= 8192 * 1024 - 1;
+   Address &= (RAMSize - 1);
    *Buffer = RAM[Address];
    Address++;
    Buffer++;
@@ -465,9 +469,9 @@ static void PCFXDBG_PutAddressSpaceBytes(const char *name, uint32 Address, uint3
    {
     BIOSROM[Address & 0xFFFFF] = *Buffer;
    }
-   else if(Address <= 0x7FFFFF)
+   else if(Address <= (RAMSize-1))
    {
-    RAM[Address & 0x7FFFFF] = *Buffer;
+    RAM[Address & (RAMSize-1)] = *Buffer;
    }
    else if(Address >= 0xE0000000 && Address <= 0xE7FFFFFF)
    {
@@ -493,7 +497,7 @@ static void PCFXDBG_PutAddressSpaceBytes(const char *name, uint32 Address, uint3
  {
   while(Length--)
   {
-   Address &= 8192 * 1024 - 1;
+   Address &= (RAMSize - 1);
    RAM[Address] = *Buffer;
    Address++;
    Buffer++;
@@ -592,7 +596,6 @@ static MDFN_COLD void LoadCommon(std::vector<CDInterface*> *CDInterfaces)
  uint32 RAM_Map_Addresses[1] = { 0x00000000 };
  uint32 BIOSROM_Map_Addresses[1] = { 0xFFF00000 };
 
- RAM = PCFX_V810.SetFastMap(RAM_Map_Addresses, 0x00800000, 1, _("RAM"));
  BIOSROM = PCFX_V810.SetFastMap(BIOSROM_Map_Addresses, 0x00100000, 1, _("BIOS ROM"));
 
  {
@@ -624,75 +627,29 @@ static MDFN_COLD void LoadCommon(std::vector<CDInterface*> *CDInterfaces)
   }
  }
 
- #ifdef WANT_DEBUGGER
- ASpace_Add(PCFXDBG_GetAddressSpaceBytes, PCFXDBG_PutAddressSpaceBytes, "cpu", "CPU Physical", 32);
- ASpace_Add(PCFXDBG_GetAddressSpaceBytes, PCFXDBG_PutAddressSpaceBytes, "ram", "RAM", 23);
- ASpace_Add(PCFXDBG_GetAddressSpaceBytes, PCFXDBG_PutAddressSpaceBytes, "backup", "Internal Backup Memory", 15);
- ASpace_Add(PCFXDBG_GetAddressSpaceBytes, PCFXDBG_PutAddressSpaceBytes, "exbackup", "External Backup Memory", 17);
- ASpace_Add(PCFXDBG_GetAddressSpaceBytes, PCFXDBG_PutAddressSpaceBytes, "bios", "BIOS ROM", 20);
- #endif
-
- for(int i = 0; i < 2; i++)
- {
-  fx_vdc_chips[i] = new VDC();
-  fx_vdc_chips[i]->SetUnlimitedSprites(MDFN_GetSettingB("pcfx.nospritelimit"));
-  fx_vdc_chips[i]->SetVRAMSize(65536);
-  fx_vdc_chips[i]->SetWSHook(NULL);
-  fx_vdc_chips[i]->SetIRQHook(i ? VDCB_IRQHook : VDCA_IRQHook);
-
-  //fx_vdc_chips[0] = FXVDC_Init(PCFXIRQ_SOURCE_VDCA, MDFN_GetSettingB("pcfx.nospritelimit"));
-  //fx_vdc_chips[1] = FXVDC_Init(PCFXIRQ_SOURCE_VDCB, MDFN_GetSettingB("pcfx.nospritelimit"));
- }
-
- RAINBOW_Init(MDFN_GetSettingB("pcfx.rainbow.chromaip"));
- SoundBox_Init(MDFN_GetSettingB("pcfx.adpcm.emulate_buggy_codec"), MDFN_GetSettingB("pcfx.adpcm.suppress_channel_reset_clicks"));
- FXINPUT_Init();
- FXTIMER_Init();
-
- if(WantHuC6273)
-  HuC6273_Init();
-
- KING_Init();
-
- SCSICD_SetDisc(true, NULL, true);
-
- #ifdef WANT_DEBUGGER
- for(unsigned disc = 0; disc < CDInterfaces->size(); disc++)
- {
-  CDUtility::TOC toc;
-
-  (*CDInterfaces)[disc]->ReadTOC(&toc);
-
-  for(int32 track = toc.first_track; track <= toc.last_track; track++)
-  {
-   if(toc.tracks[track].control & 0x4)
-   {
-    char tmpn[256], tmpln[256];
-    uint32 sectors;
-
-    trio_snprintf(tmpn, 256, "track%d-%d-%d", disc, track, toc.tracks[track].lba);
-    trio_snprintf(tmpln, 256, "CD - Disc %d/%d - Track %d/%d", disc + 1, (int)CDInterfaces->size(), track, toc.last_track - toc.first_track + 1);
-
-    sectors = toc.tracks[(track == toc.last_track) ? 100 : track + 1].lba - toc.tracks[track].lba;
-    ASpace_Add(PCFXDBG_GetAddressSpaceBytes, PCFXDBG_PutAddressSpaceBytes, tmpn, tmpln, 0, sectors * 2048);
-   }
-  }
- }
- #endif
-
-
- MDFNGameInfo->fps = (uint32)((double)7159090.90909090 / 455 / 263 * 65536 * 256);
-
- MDFNGameInfo->nominal_height = MDFN_GetSettingUI("pcfx.slend") - MDFN_GetSettingUI("pcfx.slstart") + 1;
-
- // Emulation raw framebuffer image should always be of 256 width when the pcfx.high_dotclock_width setting is set to "256",
- // but it could be either 256 or 341 when the setting is set to "341", so stay with 1024 in that case so we won't have
- // a messed up aspect ratio in our recorded QuickTime movies.
- MDFNGameInfo->lcm_width = (MDFN_GetSettingUI("pcfx.high_dotclock_width") == 256) ? 256 : 1024;
- MDFNGameInfo->lcm_height = MDFNGameInfo->nominal_height;
-
+ // Initialize memory before allocating debug windows
+ //
  MDFNMP_Init(1024 * 1024, ((uint64)1 << 32) / (1024 * 1024));
- MDFNMP_AddRAM(8192 * 1024, 0x00000000, RAM);
+
+   int64 SizeMBytes = MDFN_GetSettingI("pcfx.main_memory_size_mbytes");
+   switch (SizeMBytes) {
+      case 2:
+         RAMSizeBits = 21;
+         break;
+      case 4:
+         RAMSizeBits = 22;
+         break;
+      case 8:
+         RAMSizeBits = 23;
+         break;
+      default:
+         throw MDFN_Error(0, _("Error in mednafen.cfg file: 'pcfx.main_memory_size_mbytes' (%ld) must be one of: 2, 4, 8"), SizeMBytes);
+   }
+   RAMSize = SizeMBytes * 1024 * 1024;
+
+ RAM = PCFX_V810.SetFastMap(RAM_Map_Addresses, RAMSize, 1, _("RAM"));
+
+ MDFNMP_AddRAM(RAMSize, 0x00000000, RAM);
 
 
  BackupSignalDirty = false;
@@ -739,10 +696,19 @@ static MDFN_COLD void LoadCommon(std::vector<CDInterface*> *CDInterfaces)
   try
   {
    int64 SizeKBytes = MDFN_GetSettingI("pcfx.internal_bram_size_kbytes");
-   if ((SizeKBytes != 32) &&
-       (SizeKBytes != 64) &&
-       (SizeKBytes != 128))
-    throw MDFN_Error(0, _("Error in mednafne.cfg file: 'pcfx.internal_bram_size_kbytes' (%ld) must be one of: 32, 64, 128"), SizeKBytes);
+   switch (SizeKBytes) {
+      case 32:
+         BackupSizeBits = 15;
+	 break;
+      case 64:
+         BackupSizeBits = 16;
+	 break;
+      case 128:
+         BackupSizeBits = 17;
+	 break;
+      default:
+         throw MDFN_Error(0, _("Error in mednafen.cfg file: 'pcfx.internal_bram_size_kbytes' (%ld) must be one of: 32, 64, 128"), SizeKBytes);
+   }
 
    BackupSize = SizeKBytes * 1024;
 
@@ -765,12 +731,31 @@ static MDFN_COLD void LoadCommon(std::vector<CDInterface*> *CDInterfaces)
   try
   {
    int64 ExSizeKBytes = MDFN_GetSettingI("pcfx.external_bram_size_kbytes");
-   if ((ExSizeKBytes != 128) &&
-       (ExSizeKBytes != 256) &&
-       (ExSizeKBytes != 512) &&
-       (ExSizeKBytes != 1024) &&
-       (ExSizeKBytes != 2048))
-    throw MDFN_Error(0, _("Error in mednafne.cfg file: 'pcfx.external_bram_size_kbytes' (%ld) must be one of: 128, 256, 512, 1024, 2048"), ExSizeKBytes);
+   switch (ExSizeKBytes) {
+      case 128:
+         ExBackupSizeBits = 17;
+	 break;
+      case 256:
+         ExBackupSizeBits = 18;
+	 break;
+      case 512:
+         ExBackupSizeBits = 19;
+	 break;
+      case 1024:
+         ExBackupSizeBits = 20;
+	 break;
+      case 2048:
+         ExBackupSizeBits = 21;
+	 break;
+      case 4096:
+         ExBackupSizeBits = 22;
+	 break;
+      case 8192:
+         ExBackupSizeBits = 23;
+	 break;
+      default:
+         throw MDFN_Error(0, _("Error in mednafen.cfg file: 'pcfx.external_bram_size_kbytes' (%ld) must be one of: 128, 256, 512, 1024, 2048, 4096, 8192"), ExSizeKBytes);
+   }
    
    ExBackupSize = ExSizeKBytes * 1024;
 
@@ -789,6 +774,73 @@ static MDFN_COLD void LoadCommon(std::vector<CDInterface*> *CDInterfaces)
     throw;
   }
  }
+ #ifdef WANT_DEBUGGER
+ ASpace_Add(PCFXDBG_GetAddressSpaceBytes, PCFXDBG_PutAddressSpaceBytes, "cpu", "CPU Physical", 32);
+ ASpace_Add(PCFXDBG_GetAddressSpaceBytes, PCFXDBG_PutAddressSpaceBytes, "ram", "RAM", RAMSizeBits);
+ ASpace_Add(PCFXDBG_GetAddressSpaceBytes, PCFXDBG_PutAddressSpaceBytes, "backup", "Internal Backup Memory", BackupSizeBits);
+ ASpace_Add(PCFXDBG_GetAddressSpaceBytes, PCFXDBG_PutAddressSpaceBytes, "exbackup", "External Backup Memory", ExBackupSizeBits);
+ ASpace_Add(PCFXDBG_GetAddressSpaceBytes, PCFXDBG_PutAddressSpaceBytes, "bios", "BIOS ROM", 20);
+ #endif
+
+ for(int i = 0; i < 2; i++)
+ {
+  fx_vdc_chips[i] = new VDC();
+  fx_vdc_chips[i]->SetUnlimitedSprites(MDFN_GetSettingB("pcfx.nospritelimit"));
+  fx_vdc_chips[i]->SetVRAMSize(65536);
+  fx_vdc_chips[i]->SetWSHook(NULL);
+  fx_vdc_chips[i]->SetIRQHook(i ? VDCB_IRQHook : VDCA_IRQHook);
+
+  //fx_vdc_chips[0] = FXVDC_Init(PCFXIRQ_SOURCE_VDCA, MDFN_GetSettingB("pcfx.nospritelimit"));
+  //fx_vdc_chips[1] = FXVDC_Init(PCFXIRQ_SOURCE_VDCB, MDFN_GetSettingB("pcfx.nospritelimit"));
+ }
+
+ if(WantHuC6273)
+  HuC6273_Init();
+
+ KING_Init();
+
+ RAINBOW_Init(MDFN_GetSettingB("pcfx.rainbow.chromaip"));
+ SoundBox_Init(MDFN_GetSettingB("pcfx.adpcm.emulate_buggy_codec"), MDFN_GetSettingB("pcfx.adpcm.suppress_channel_reset_clicks"));
+ FXINPUT_Init();
+ FXTIMER_Init();
+
+ SCSICD_SetDisc(true, NULL, true);
+
+ #ifdef WANT_DEBUGGER
+ for(unsigned disc = 0; disc < CDInterfaces->size(); disc++)
+ {
+  CDUtility::TOC toc;
+
+  (*CDInterfaces)[disc]->ReadTOC(&toc);
+
+  for(int32 track = toc.first_track; track <= toc.last_track; track++)
+  {
+   if(toc.tracks[track].control & 0x4)
+   {
+    char tmpn[256], tmpln[256];
+    uint32 sectors;
+
+    trio_snprintf(tmpn, 256, "track%d-%d-%d", disc, track, toc.tracks[track].lba);
+    trio_snprintf(tmpln, 256, "CD - Disc %d/%d - Track %d/%d", disc + 1, (int)CDInterfaces->size(), track, toc.last_track - toc.first_track + 1);
+
+    sectors = toc.tracks[(track == toc.last_track) ? 100 : track + 1].lba - toc.tracks[track].lba;
+    ASpace_Add(PCFXDBG_GetAddressSpaceBytes, PCFXDBG_PutAddressSpaceBytes, tmpn, tmpln, 0, sectors * 2048);
+   }
+  }
+ }
+ #endif
+
+
+ MDFNGameInfo->fps = (uint32)((double)7159090.90909090 / 455 / 263 * 65536 * 256);
+
+ MDFNGameInfo->nominal_height = MDFN_GetSettingUI("pcfx.slend") - MDFN_GetSettingUI("pcfx.slstart") + 1;
+
+ // Emulation raw framebuffer image should always be of 256 width when the pcfx.high_dotclock_width setting is set to "256",
+ // but it could be either 256 or 341 when the setting is set to "341", so stay with 1024 in that case so we won't have
+ // a messed up aspect ratio in our recorded QuickTime movies.
+ MDFNGameInfo->lcm_width = (MDFN_GetSettingUI("pcfx.high_dotclock_width") == 256) ? 256 : 1024;
+ MDFNGameInfo->lcm_height = MDFNGameInfo->nominal_height;
+
 
  // Default to 16-bit bus.
  for(int i = 0; i < 256; i++)
@@ -1030,7 +1082,7 @@ static void StateAction(StateMem *sm, const unsigned load, const bool data_only)
 
  SFORMAT StateRegs[] =
  {
-  SFPTR8(RAM, 0x800000),
+  SFPTR8(RAM, RAMSize),
   SFVAR(Last_VDC_AR),
   SFVAR(RAM_LPA),
   SFVAR(BackupControl),
@@ -1102,7 +1154,8 @@ static const MDFNSetting PCFXSettings[] =
   { "pcfx.disable_bram", MDFNSF_EMU_STATE | MDFNSF_UNTRUSTED_SAFE, gettext_noop("Disable internal and external BRAM."), gettext_noop("It is intended for viewing games' error screens that may be different from simple BRAM full and uninitialized BRAM error screens, though it can cause the game to crash outright."), MDFNST_BOOL, "0" },
   { "pcfx.external_bram_file", MDFNSF_EMU_STATE | MDFNSF_CAT_PATH, gettext_noop("Path to external Backup Memory file (i.e. FX-BMP cartridge)."), NULL, MDFNST_STRING, "pcfx_fx-bmp.sav" },
   { "pcfx.internal_bram_size_kbytes", MDFNSF_EMU_STATE | MDFNSF_CAT_PATH, gettext_noop("Size of internal Backup memory file, in kilobytes. Intended for developers only."), NULL, MDFNST_UINT, "32", "32", "128" },
-  { "pcfx.external_bram_size_kbytes", MDFNSF_EMU_STATE | MDFNSF_CAT_PATH, gettext_noop("Size of external Backup memory file, in kilobytes (i.e. FX-BMP cartridge)."), NULL, MDFNST_UINT, "128", "128", "2048" },
+  { "pcfx.external_bram_size_kbytes", MDFNSF_EMU_STATE | MDFNSF_CAT_PATH, gettext_noop("Size of external Backup memory file, in kilobytes (i.e. FX-BMP cartridge)."), NULL, MDFNST_UINT, "128", "128", "8192" },
+  { "pcfx.main_memory_size_mbytes", MDFNSF_EMU_STATE | MDFNSF_CAT_PATH, gettext_noop("Size of main memory, in megabytes (original console was 2)."), NULL, MDFNST_UINT, "2", "2", "8" },
   { "pcfx.cdspeed", MDFNSF_EMU_STATE | MDFNSF_UNTRUSTED_SAFE, gettext_noop("Emulated CD-ROM speed."), gettext_noop("Setting the value higher than 2, the default, will decrease loading times in most games by some degree."), MDFNST_UINT, "2", "2", "10" },
 
   { "pcfx.nospritelimit", MDFNSF_NOFLAGS, gettext_noop("Remove 16-sprites-per-scanline hardware limit."), NULL, MDFNST_BOOL, "0" },
