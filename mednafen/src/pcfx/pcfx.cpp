@@ -65,6 +65,8 @@ static bool WantHuC6273 = false;
 VDC *fx_vdc_chips[2];
 
 
+static uint32 RAMSize;
+static uint32 RAMSizeBits;
 static uint32 BackupSize;
 static uint32 BackupSizeBits;
 static uint32 ExBackupSize;
@@ -341,7 +343,7 @@ static void PCFX_Reset(void)
  Last_VDC_AR[0] = 0;
  Last_VDC_AR[1] = 0;
 
- memset(RAM, 0x00, 8192 * 1024);
+ memset(RAM, 0x00, RAMSize);
 
  for(int i = 0; i < 2; i++)
  {
@@ -393,7 +395,7 @@ static void PCFXDBG_GetAddressSpaceBytes(const char *name, uint32 Address, uint3
  {
   while(Length--)
   {
-   Address &= 8192 * 1024 - 1;
+   Address &= (RAMSize - 1);
    *Buffer = RAM[Address];
    Address++;
    Buffer++;
@@ -467,9 +469,9 @@ static void PCFXDBG_PutAddressSpaceBytes(const char *name, uint32 Address, uint3
    {
     BIOSROM[Address & 0xFFFFF] = *Buffer;
    }
-   else if(Address <= 0x7FFFFF)
+   else if(Address <= (RAMSize-1))
    {
-    RAM[Address & 0x7FFFFF] = *Buffer;
+    RAM[Address & (RAMSize-1)] = *Buffer;
    }
    else if(Address >= 0xE0000000 && Address <= 0xE7FFFFFF)
    {
@@ -495,7 +497,7 @@ static void PCFXDBG_PutAddressSpaceBytes(const char *name, uint32 Address, uint3
  {
   while(Length--)
   {
-   Address &= 8192 * 1024 - 1;
+   Address &= (RAMSize - 1);
    RAM[Address] = *Buffer;
    Address++;
    Buffer++;
@@ -594,7 +596,6 @@ static MDFN_COLD void LoadCommon(std::vector<CDInterface*> *CDInterfaces)
  uint32 RAM_Map_Addresses[1] = { 0x00000000 };
  uint32 BIOSROM_Map_Addresses[1] = { 0xFFF00000 };
 
- RAM = PCFX_V810.SetFastMap(RAM_Map_Addresses, 0x00800000, 1, _("RAM"));
  BIOSROM = PCFX_V810.SetFastMap(BIOSROM_Map_Addresses, 0x00100000, 1, _("BIOS ROM"));
 
  {
@@ -629,7 +630,26 @@ static MDFN_COLD void LoadCommon(std::vector<CDInterface*> *CDInterfaces)
  // Initialize memory before allocating debug windows
  //
  MDFNMP_Init(1024 * 1024, ((uint64)1 << 32) / (1024 * 1024));
- MDFNMP_AddRAM(8192 * 1024, 0x00000000, RAM);
+
+   int64 SizeMBytes = MDFN_GetSettingI("pcfx.main_memory_size_mbytes");
+   switch (SizeMBytes) {
+      case 2:
+         RAMSizeBits = 21;
+         break;
+      case 4:
+         RAMSizeBits = 22;
+         break;
+      case 8:
+         RAMSizeBits = 23;
+         break;
+      default:
+         throw MDFN_Error(0, _("Error in mednafen.cfg file: 'pcfx.main_memory_size_mbytes' (%ld) must be one of: 2, 4, 8"), SizeMBytes);
+   }
+   RAMSize = SizeMBytes * 1024 * 1024;
+
+ RAM = PCFX_V810.SetFastMap(RAM_Map_Addresses, RAMSize, 1, _("RAM"));
+
+ MDFNMP_AddRAM(RAMSize, 0x00000000, RAM);
 
 
  BackupSignalDirty = false;
@@ -756,7 +776,7 @@ static MDFN_COLD void LoadCommon(std::vector<CDInterface*> *CDInterfaces)
  }
  #ifdef WANT_DEBUGGER
  ASpace_Add(PCFXDBG_GetAddressSpaceBytes, PCFXDBG_PutAddressSpaceBytes, "cpu", "CPU Physical", 32);
- ASpace_Add(PCFXDBG_GetAddressSpaceBytes, PCFXDBG_PutAddressSpaceBytes, "ram", "RAM", 23);
+ ASpace_Add(PCFXDBG_GetAddressSpaceBytes, PCFXDBG_PutAddressSpaceBytes, "ram", "RAM", RAMSizeBits);
  ASpace_Add(PCFXDBG_GetAddressSpaceBytes, PCFXDBG_PutAddressSpaceBytes, "backup", "Internal Backup Memory", BackupSizeBits);
  ASpace_Add(PCFXDBG_GetAddressSpaceBytes, PCFXDBG_PutAddressSpaceBytes, "exbackup", "External Backup Memory", ExBackupSizeBits);
  ASpace_Add(PCFXDBG_GetAddressSpaceBytes, PCFXDBG_PutAddressSpaceBytes, "bios", "BIOS ROM", 20);
@@ -1062,7 +1082,7 @@ static void StateAction(StateMem *sm, const unsigned load, const bool data_only)
 
  SFORMAT StateRegs[] =
  {
-  SFPTR8(RAM, 0x800000),
+  SFPTR8(RAM, RAMSize),
   SFVAR(Last_VDC_AR),
   SFVAR(RAM_LPA),
   SFVAR(BackupControl),
@@ -1135,6 +1155,7 @@ static const MDFNSetting PCFXSettings[] =
   { "pcfx.external_bram_file", MDFNSF_EMU_STATE | MDFNSF_CAT_PATH, gettext_noop("Path to external Backup Memory file (i.e. FX-BMP cartridge)."), NULL, MDFNST_STRING, "pcfx_fx-bmp.sav" },
   { "pcfx.internal_bram_size_kbytes", MDFNSF_EMU_STATE | MDFNSF_CAT_PATH, gettext_noop("Size of internal Backup memory file, in kilobytes. Intended for developers only."), NULL, MDFNST_UINT, "32", "32", "128" },
   { "pcfx.external_bram_size_kbytes", MDFNSF_EMU_STATE | MDFNSF_CAT_PATH, gettext_noop("Size of external Backup memory file, in kilobytes (i.e. FX-BMP cartridge)."), NULL, MDFNST_UINT, "128", "128", "8192" },
+  { "pcfx.main_memory_size_mbytes", MDFNSF_EMU_STATE | MDFNSF_CAT_PATH, gettext_noop("Size of main memory, in megabytes (original console was 2)."), NULL, MDFNST_UINT, "2", "2", "8" },
   { "pcfx.cdspeed", MDFNSF_EMU_STATE | MDFNSF_UNTRUSTED_SAFE, gettext_noop("Emulated CD-ROM speed."), gettext_noop("Setting the value higher than 2, the default, will decrease loading times in most games by some degree."), MDFNST_UINT, "2", "2", "10" },
 
   { "pcfx.nospritelimit", MDFNSF_NOFLAGS, gettext_noop("Remove 16-sprites-per-scanline hardware limit."), NULL, MDFNST_BOOL, "0" },
