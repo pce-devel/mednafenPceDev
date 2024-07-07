@@ -238,11 +238,12 @@ uint16 FXINPUT_Read16(uint32 A, const v810_timestamp_t timestamp)
  if(A == 0x00 || A == 0x80)
  {
   int w = (A & 0x80) >> 7;
+  int scanning = (LatchPending[w] > 0) ? 1 : 0;
 
   if(latched[w])
-   ret = 0x8;
+   ret = 0x8 | scanning;
   else
-   ret = 0x0;
+   ret = 0x0 | scanning;
  }
  else 
  {
@@ -287,6 +288,7 @@ void FXINPUT_Write16(uint32 A, uint16 V, const v810_timestamp_t timestamp)
 	        TapCounter[w] = 0;
 	      }
 	      LatchPending[w] = 1536;
+	      latched[w] = false;
 	      PCFX_SetEvent(PCFX_EVENT_PAD, CalcNextEventTS(timestamp));
 	     }
 	     control[w] = V & 0x7;
