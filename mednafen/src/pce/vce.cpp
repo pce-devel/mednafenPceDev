@@ -831,17 +831,24 @@ uint8 VCE::ReadVDC(uint32 A)
 
   if(A & 0x8)
   {
-   ret = 0;
-
-   switch(A)
+   if (A & 0x10)
    {
-    case 0x8: ret = priority[0]; break;
-    case 0x9: ret = priority[1]; break;
-    case 0xA: ret = winwidths[0]; break;
-    case 0xB: ret = winwidths[0] >> 8; break;
-    case 0xC: ret = winwidths[1]; break;
-    case 0xD: ret = winwidths[1] >> 8; break;
-    case 0xE: ret = 0; break;
+    ret = 0xFF;
+   }
+   else
+   {
+    ret = 0;
+
+    switch(A)
+    {
+     case 0x8: ret = priority[0]; break;
+     case 0x9: ret = priority[1]; break;
+     case 0xA: ret = winwidths[0]; break;
+     case 0xB: ret = winwidths[0] >> 8; break;
+     case 0xC: ret = winwidths[1]; break;
+     case 0xD: ret = winwidths[1] >> 8; break;
+     case 0xE: ret = 0; break;
+    }
    }
   }
   else
