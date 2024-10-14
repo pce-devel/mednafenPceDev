@@ -415,21 +415,43 @@ INLINE void VCE::SyncSub(int32 clocks)
       /* Dai MakaiMura uses setting 1, and expects VDC #2 sprites in front of VDC #1 background, but
         behind VDC #1's sprites.
       */
-      switch(pb >> 2)
+      switch(pb & 3)
       {
-       case 1:
-                if((vdc2_pixel & 0x100) && !(vdc1_pixel & 0x100) && (vdc2_pixel & 0xF))
-                        vdc1_pixel = 0; //amask;
-                break;
-       case 2:
-                if((vdc1_pixel & 0x100) && !(vdc2_pixel & 0x100) && (vdc2_pixel & 0xF))
-                        vdc1_pixel = 0; //|= amask;
-                break;
+        case 0:
+           vdc1_pixel = 0;
+           vdc2_pixel = 0;
+           break;
+
+        case 1:
+           vdc2_pixel = 0;
+           break;
+
+        case 2:
+           vdc1_pixel = 0;
+           break;
+
+        default:
+           switch(pb >> 2)
+           {
+            case 1:
+                     if((vdc2_pixel & 0x100) && !(vdc1_pixel & 0x100) && (vdc2_pixel & 0xF))
+                             vdc1_pixel = 0; //amask;
+                     break;
+            case 2:
+                     if((vdc1_pixel & 0x100) && !(vdc2_pixel & 0x100) && (vdc2_pixel & 0xF))
+                             vdc1_pixel = 0; //|= amask;
+                     break;
+           }
       }
       if ( (pixel_buffer[0][i] & VDC_BOUND_BOX_MASK) || (pixel_buffer[1][i] & VDC_BOUND_BOX_MASK) )
        pix = boundbox_color;  // magenta bound box
       else
-       pix = color_table_cache[((vdc1_pixel & 0xF) ? vdc1_pixel : vdc2_pixel) & 0x1FF];
+      {
+       if ((vdc1_pixel & 0x0f) != 0)
+         pix = color_table_cache[vdc1_pixel & 0x1FF];
+       else
+         pix = color_table_cache[((vdc2_pixel & 0x1FF) ? vdc2_pixel : vdc1_pixel) & 0x1FF];
+      }
 
       if(TA_AwesomeMode)
       {
